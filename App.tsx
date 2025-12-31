@@ -1,31 +1,18 @@
 
 import React from 'react';
-import { Screen, User, AdItem, AdStatus, MessageItem, BannerItem, NotificationItem, ReportItem } from './types';
-import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, HISTORY_DATA, HISTORY_CHART_DATA, MESSAGES_DATA, POPULAR_CARS, POPULAR_REAL_ESTATE, POPULAR_SERVICES, FEATURED_VEHICLES, DEFAULT_BANNERS, DEFAULT_VEHICLE_BANNERS, DEFAULT_REAL_ESTATE_BANNERS, DEFAULT_PARTS_SERVICES_BANNERS, MOCK_ADMIN_VEHICLES, MOCK_NOTIFICATIONS, MOCK_REPORTS, MOCK_ADMIN_REAL_ESTATE, MOCK_ADMIN_PARTS_SERVICES, APP_LOGOS } from './constants';
+import { Screen, User, AdItem, AdStatus, MessageItem, NotificationItem, ReportItem, BannerItem } from './types';
+import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, HISTORY_DATA, HISTORY_CHART_DATA, MESSAGES_DATA, POPULAR_CARS, POPULAR_REAL_ESTATE, POPULAR_SERVICES, FEATURED_VEHICLES, DEFAULT_BANNERS, DEFAULT_VEHICLE_BANNERS, DEFAULT_REAL_ESTATE_BANNERS, DEFAULT_PARTS_SERVICES_BANNERS, MOCK_ADMIN_VEHICLES, MOCK_NOTIFICATIONS, MOCK_REPORTS, MOCK_ADMIN_REAL_ESTATE, MOCK_ADMIN_PARTS_SERVICES, APP_LOGOS, MOCK_SELLER } from './constants';
 import { BottomNav, Toast } from './components/Shared';
 import { Wrench, Shield, LogOut } from 'lucide-react';
 
 // Screens
 import { AppRouter } from './components/AppRouter';
-
 import { useAppState } from './hooks/useAppState';
+import { useAppActions } from './hooks/useAppActions';
 
-// --- MOCK SELLER FOR DEMO ---
-export const MOCK_SELLER: User = {
-  name: "Marcos Paulo",
-  email: "marcos@email.com",
-  avatarUrl: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=200",
-  balance: 0,
-  phone: "(61) 99999-8888",
-  location: "Águas Claras, DF",
-  bio: "Apaixonado por carros e motos. Vendo apenas veículos de procedência.",
-  rating: 4.8,
-  joinDate: "Ago 2022",
-  reviewsCount: 14,
-  verified: true
-};
 
 const App: React.FC = () => {
+  const state = useAppState();
   const {
     currentScreen, setCurrentScreen,
     previousScreen, setPreviousScreen,
@@ -46,7 +33,37 @@ const App: React.FC = () => {
     selectedChat, setSelectedChat,
     viewingProfile, setViewingProfile,
     toast, setToast
-  } = useAppState();
+  } = state;
+
+  const {
+    handleLogin,
+    handleLogout,
+    handleRegister,
+    navigateTo,
+    goBackToDashboard,
+    goBackToPanel,
+    handleSaveProfile,
+    handleToggleRole,
+    handleDeleteAd,
+    handleEditAd,
+    handleRemoveFavorite,
+    handleToggleFavorite,
+    handleAddReport,
+    handleToggleFairPresence,
+    handleAdClick,
+    handleViewProfile,
+    handleViewProfileFromChat,
+    handleCreateAdFinish,
+    handleAdminSaveAd,
+    handleAdminAdUpdate,
+    handleModerationBlockUser,
+    handleModerationDeleteAd,
+    handleReportAction,
+    handleDeleteAccount,
+    handleSelectChat,
+    handleStartChatFromAd,
+    navigateToAdDetails
+  } = useAppActions(state);
 
   // --- FILTRAGEM E COMPOSIÇÃO DE DADOS ---
 
@@ -95,363 +112,6 @@ const App: React.FC = () => {
     ...POPULAR_REAL_ESTATE,
     ...POPULAR_SERVICES
   ];
-
-
-  const handleLogin = (selectedUser: User) => {
-    setUser(selectedUser);
-    setCurrentScreen(Screen.DASHBOARD);
-  };
-
-  const handleLogout = () => setCurrentScreen(Screen.LOGIN);
-
-  const handleRegister = (newUserData: Partial<User>) => {
-    const newUser: User = {
-      id: `user_${Date.now()}`,
-      name: newUserData.name || 'Novo Usuário',
-      email: newUserData.email || '',
-      avatarUrl: "https://i.pravatar.cc/150?u=new_user",
-      balance: 0,
-      adsCount: 0,
-      phone: "",
-      location: "Brasília, DF",
-      bio: "Novo no Feirão da Orca",
-      joinDate: new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-      verified: false,
-      isAdmin: false,
-      ...newUserData
-    };
-    setUser(newUser);
-    setToast({ message: "Conta criada com sucesso! Bem-vindo!", type: 'success' });
-    setCurrentScreen(Screen.DASHBOARD);
-  };
-
-  const navigateTo = (screen: Screen) => {
-    setPreviousScreen(currentScreen);
-    setCurrentScreen(screen);
-  };
-
-  const goBackToDashboard = () => setCurrentScreen(Screen.DASHBOARD);
-  const goBackToPanel = () => setCurrentScreen(Screen.USER_PANEL);
-
-  const handleSaveProfile = (updatedUser: User) => {
-    setUser(updatedUser);
-    goBackToPanel();
-  };
-
-  // --- DEV TOOLS: TOGGLE ROLE ---
-  const handleToggleRole = () => {
-    const newRoleIsAdmin = !user.isAdmin;
-    setUser(prev => ({
-      ...prev,
-      isAdmin: newRoleIsAdmin,
-      name: newRoleIsAdmin ? "Administrador (Dev)" : "João Usuário",
-      email: newRoleIsAdmin ? "admin@orca.com" : "joao@email.com"
-    }));
-    setToast({
-      message: `Modo alterado para: ${newRoleIsAdmin ? 'Administrador' : 'Usuário Padrão'}`,
-      type: 'success'
-    });
-  };
-
-  const handleDeleteAd = (id: string) => {
-    setMyAds(prev => prev.filter(ad => ad.id !== id));
-  };
-
-  const handleEditAd = (ad: AdItem) => {
-    setAdToEdit(ad);
-    setCurrentScreen(Screen.CREATE_AD);
-  };
-
-  const handleRemoveFavorite = (id: string) => {
-    setFavorites(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleToggleFavorite = (ad: AdItem) => {
-    setFavorites(prev => {
-      const exists = prev.some(item => item.id === ad.id);
-      if (exists) return prev.filter(item => item.id !== ad.id);
-      return [...prev, ad];
-    });
-  };
-
-  const handleAddReport = (newReport: ReportItem) => {
-    setReports(prev => [newReport, ...prev]);
-  };
-
-  const handleToggleFairPresence = (ad: AdItem) => {
-    if (!fairActive) {
-      setToast({ message: "A feira não está ativa no momento.", type: 'error' });
-      return;
-    }
-
-    const isMyAd = myAds.some(my => my.id === ad.id);
-    if (!isMyAd) return;
-
-    let isActivating = false;
-
-    setMyAds(prev => prev.map(item => {
-      if (item.id === ad.id) {
-        if (item.fairPresence?.active) {
-          isActivating = false;
-          return {
-            ...item,
-            fairPresence: { active: false, expiresAt: new Date().toISOString() }
-          };
-        } else {
-          isActivating = true;
-          const now = new Date();
-          const expireTime = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-          return {
-            ...item,
-            fairPresence: { active: true, expiresAt: expireTime.toISOString() }
-          };
-        }
-      }
-      return item;
-    }));
-
-    if (isActivating) {
-      setToast({ message: "Sua presença na feira foi ativada! 🚗", type: 'success' });
-    } else {
-      setToast({ message: "Modo feira desativado.", type: 'info' });
-    }
-
-    setSelectedAd(prev => {
-      if (prev && prev.id === ad.id) {
-        const isActive = prev.fairPresence?.active;
-        const now = new Date();
-        const expireTime = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-        return {
-          ...prev,
-          fairPresence: isActive
-            ? { active: false, expiresAt: new Date().toISOString() }
-            : { active: true, expiresAt: expireTime.toISOString() }
-        };
-      }
-      return prev;
-    });
-  };
-
-  const handleAdClick = (ad: AdItem) => {
-    setPreviousScreen(currentScreen);
-    const myAdVersion = myAds.find(m => m.id === ad.id);
-    setSelectedAd(myAdVersion || ad);
-
-    if (ad.category === 'autos') setCurrentScreen(Screen.VEHICLE_DETAILS);
-    else if (ad.category === 'imoveis') setCurrentScreen(Screen.REAL_ESTATE_DETAILS);
-    else if (ad.category === 'pecas' || ad.category === 'servicos') setCurrentScreen(Screen.PART_SERVICE_DETAILS);
-    else setCurrentScreen(Screen.VEHICLE_DETAILS);
-  };
-
-  const handleViewProfile = () => {
-    if (!selectedAd) return;
-    if (selectedAd.isOwner) {
-      setViewingProfile({ ...user, rating: 5.0, joinDate: "Mar 2023", verified: true });
-    } else {
-      setViewingProfile(MOCK_SELLER);
-    }
-    setPreviousScreen(currentScreen);
-    setCurrentScreen(Screen.PUBLIC_PROFILE);
-  };
-
-  const handleViewProfileFromChat = () => {
-    if (!selectedChat) return;
-
-    // Creates a temporary user profile based on chat data
-    const profileUser: User = {
-      id: selectedChat.id,
-      name: selectedChat.senderName,
-      email: "usuario@chat.com", // Mock email
-      avatarUrl: selectedChat.avatarUrl,
-      balance: 0,
-      phone: "",
-      location: "Brasília, DF",
-      bio: "Usuário do Feirão da Orca",
-      joinDate: "Recente",
-      verified: false,
-      adsCount: 0
-    };
-
-    setViewingProfile(profileUser);
-    setPreviousScreen(Screen.CHAT_DETAIL);
-    setCurrentScreen(Screen.PUBLIC_PROFILE);
-  };
-
-  const handleCreateAdFinish = (adData: Partial<AdItem>) => {
-    if (adToEdit) {
-      setMyAds(prev => prev.map(ad => {
-        if (ad.id === adToEdit.id) {
-          return {
-            ...ad,
-            ...adData,
-            status: AdStatus.PENDING,
-            id: adToEdit.id,
-            image: adData.images && adData.images.length > 0 ? adData.images[0] : ad.image
-          };
-        }
-        return ad;
-      }));
-      setToast({ message: "Anúncio atualizado e enviado para análise!", type: 'success' });
-      setAdToEdit(undefined);
-    } else {
-      const newAd: AdItem = {
-        id: `ad_${Date.now()}`,
-        title: "Novo Anúncio",
-        price: 0,
-        location: user.location || "Brasília, DF",
-        image: "https://picsum.photos/400/300",
-        status: AdStatus.PENDING,
-        date: new Date().toLocaleDateString('pt-BR'),
-        category: 'autos',
-        isOwner: true,
-        ownerName: user.name,
-        ...adData,
-      };
-      setMyAds(prev => [newAd, ...prev]);
-      setToast({ message: "Anúncio criado e enviado para análise!", type: 'info' });
-    }
-
-    setPreviousScreen(Screen.DASHBOARD);
-    setCurrentScreen(Screen.MY_ADS);
-  };
-
-  const handleAdminSaveAd = (updatedAd: AdItem) => {
-    const isMyAd = myAds.some(ad => ad.id === updatedAd.id);
-
-    if (isMyAd) {
-      setMyAds(prev => prev.map(ad => ad.id === updatedAd.id ? updatedAd : ad));
-    } else {
-      setAdminMockAds(prev => prev.map(ad => ad.id === updatedAd.id ? updatedAd : ad));
-    }
-    setToast({ message: "Anúncio atualizado com sucesso!", type: 'success' });
-  };
-
-  const handleAdminAdUpdate = (id: string, newStatus: AdStatus) => {
-    const updateAdProps = (ad: AdItem) => {
-      if (ad.id !== id) return ad;
-      const updated = { ...ad, status: newStatus };
-      if (newStatus === AdStatus.ACTIVE) {
-        if (ad.boostPlan && ad.boostPlan !== 'gratis') {
-          updated.isFeatured = true;
-        }
-        updated.fairPresence = { active: false, expiresAt: '' };
-      }
-      else if (newStatus === AdStatus.REJECTED) {
-        updated.isFeatured = false;
-        updated.fairPresence = { active: false, expiresAt: '' };
-      }
-      return updated;
-    };
-
-    const isMyAd = myAds.some(ad => ad.id === id);
-    let targetAdTitle = '';
-
-    if (isMyAd) {
-      const target = myAds.find(ad => ad.id === id);
-      targetAdTitle = target?.title || 'Seu anúncio';
-      setMyAds(prev => prev.map(updateAdProps));
-    } else {
-      const target = adminMockAds.find(ad => ad.id === id);
-      targetAdTitle = target?.title || 'Seu anúncio';
-      setAdminMockAds(prev => prev.map(updateAdProps));
-    }
-
-    if (newStatus === AdStatus.ACTIVE) {
-      setToast({ message: "Anúncio APROVADO! Já está visível na plataforma.", type: 'success' });
-    } else if (newStatus === AdStatus.REJECTED) {
-      setToast({ message: "Anúncio Rejeitado.", type: 'error' });
-    } else {
-      setToast({ message: `Status alterado para: ${newStatus}`, type: 'info' });
-    }
-
-    const newNotification: NotificationItem = {
-      id: Date.now(),
-      type: 'system',
-      title: newStatus === AdStatus.ACTIVE ? 'Anúncio Aprovado!' : 'Anúncio Rejeitado',
-      message: newStatus === AdStatus.ACTIVE
-        ? `O anúncio "${targetAdTitle}" foi aprovado e já está online.`
-        : `O anúncio "${targetAdTitle}" não atendeu às diretrizes.`,
-      time: 'Agora',
-      unread: true,
-      image: null
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-  };
-
-  const handleModerationBlockUser = (userId: string, userName: string) => {
-    setToast({ message: `Usuário "${userName}" (ID: ${userId}) foi bloqueado.`, type: 'success' });
-    console.log('Blocked User:', userId);
-  };
-
-  const handleModerationDeleteAd = (adId: string, adTitle: string) => {
-    handleAdminAdUpdate(adId, AdStatus.REJECTED);
-    setToast({ message: `Anúncio "${adTitle}" foi removido por violação.`, type: 'success' });
-  };
-
-  const handleReportAction = (reportId: string, action: 'resolved' | 'dismissed') => {
-    setReports(prev => prev.map(r => {
-      if (r.id === reportId) {
-        return { ...r, status: action };
-      }
-      return r;
-    }));
-    setToast({
-      message: action === 'dismissed' ? "Denúncia ignorada e removida da lista." : "Denúncia marcada como resolvida.",
-      type: action === 'dismissed' ? 'info' : 'success'
-    });
-  }
-
-  const handleDeleteAccount = () => {
-    if (window.confirm("Tem certeza absoluta? Isso apagará seus dados locais.")) {
-      localStorage.clear();
-      setUser(CURRENT_USER);
-      setMyAds(MY_ADS_DATA);
-      setFavorites(FAVORITES_DATA);
-      setBanners(DEFAULT_BANNERS);
-      setVehicleBanners(DEFAULT_VEHICLE_BANNERS);
-      setRealEstateBanners(DEFAULT_REAL_ESTATE_BANNERS);
-      setPartsServicesBanners(DEFAULT_PARTS_SERVICES_BANNERS);
-      setNotifications(MOCK_NOTIFICATIONS);
-      setReports(MOCK_REPORTS);
-      setFairActive(true);
-      setMaintenanceMode(false);
-      alert("Sua conta e dados locais foram redefinidos.");
-      handleLogout();
-    }
-  };
-
-  const handleSelectChat = (chat: MessageItem) => {
-    setSelectedChat(chat);
-    setPreviousScreen(Screen.MESSAGES);
-    setCurrentScreen(Screen.CHAT_DETAIL);
-  };
-
-  const handleStartChatFromAd = () => {
-    if (!selectedAd) return;
-    const newChat: MessageItem = {
-      id: `new_${Date.now()}`,
-      senderName: selectedAd.isOwner ? user.name : MOCK_SELLER.name,
-      avatarUrl: selectedAd.isOwner ? user.avatarUrl : MOCK_SELLER.avatarUrl,
-      lastMessage: "Tenho interesse no seu anúncio",
-      time: "Agora",
-      unreadCount: 0,
-      online: true,
-      adTitle: selectedAd.title
-    };
-    setSelectedChat(newChat);
-    setPreviousScreen(currentScreen);
-    setCurrentScreen(Screen.CHAT_DETAIL);
-  };
-
-  const navigateToAdDetails = () => {
-    if (!selectedAd) return;
-    setPreviousScreen(Screen.CHAT_DETAIL);
-    if (selectedAd.category === 'autos') setCurrentScreen(Screen.VEHICLE_DETAILS);
-    else if (selectedAd.category === 'imoveis') setCurrentScreen(Screen.REAL_ESTATE_DETAILS);
-    else if (selectedAd.category === 'pecas' || selectedAd.category === 'servicos') setCurrentScreen(Screen.PART_SERVICE_DETAILS);
-  };
-
-  // --- LOGIC: MAINTENANCE MODE INTERCEPTOR ---
   // Se manutenção estiver ativa E usuário NÃO for admin E não estiver na tela de login
   // Mostra tela de bloqueio
   if (maintenanceMode && !user.isAdmin && currentScreen !== Screen.LOGIN && currentScreen !== Screen.REGISTER && currentScreen !== Screen.FORGOT_PASSWORD) {

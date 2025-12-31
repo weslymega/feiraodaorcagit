@@ -6,7 +6,7 @@ import { AdItem, AdStatus, BannerItem, MessageItem, TransactionData, User, Notif
 export const APP_LOGOS = {
   // Logo Horizontal: Ícone quadrado com cauda vazada + Texto ao lado
   FULL: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 450 130'%3E%3Cg transform='translate(15, 15)'%3E%3C!-- Quadrado Azul --%3E%3Crect x='10' y='10' width='90' height='90' rx='20' fill='none' stroke='%23287ba8' stroke-width='14' /%3E%3C!-- Cauda da Baleia --%3E%3Cpath d='M 55 105 C 55 105, 60 70, 25 55 C 10 50, -10 50, 5 35 C 15 25, 45 40, 55 60 C 65 40, 95 25, 105 35 C 115 45, 95 50, 85 55 C 50 70, 55 105, 55 105 Z' fill='%230f172a' stroke='white' stroke-width='3' /%3E%3C/g%3E%3C!-- Texto --%3E%3Cg font-family='sans-serif'%3E%3Ctext x='140' y='55' font-size='28' font-weight='600' fill='%230f172a' letter-spacing='1'%3EFEIRÃO DA%3C/text%3E%3Ctext x='138' y='105' font-size='72' font-weight='800' fill='%23287ba8' letter-spacing='-2'%3EORCA%3C/text%3E%3C/g%3E%3C/svg%3E",
-  
+
   // Ícone Quadrado: Apenas o símbolo
   ICON: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect x='15' y='15' width='90' height='90' rx='20' fill='none' stroke='%23287ba8' stroke-width='14' /%3E%3Cpath d='M 60 110 C 60 110, 65 75, 30 60 C 15 55, -5 55, 10 40 C 20 30, 50 45, 60 65 C 70 45, 100 30, 110 40 C 120 50, 100 55, 90 60 C 55 75, 60 110, 60 110 Z' fill='%230f172a' stroke='white' stroke-width='3' /%3E%3C/svg%3E"
 };
@@ -22,6 +22,21 @@ export const ADMIN_USER: User = {
   bio: "Gerente do Sistema",
   isAdmin: true, // Permite acesso ao painel de administrador
   adsCount: 0,
+  verified: true
+};
+
+// --- MOCK SELLER FOR DEMO ---
+export const MOCK_SELLER: User = {
+  name: "Marcos Paulo",
+  email: "marcos@email.com",
+  avatarUrl: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=200",
+  balance: 0,
+  phone: "(61) 99999-8888",
+  location: "Águas Claras, DF",
+  bio: "Apaixonado por carros e motos. Vendo apenas veículos de procedência.",
+  rating: 4.8,
+  joinDate: "Ago 2022",
+  reviewsCount: 14,
   verified: true
 };
 
@@ -272,27 +287,27 @@ export const REPORTS_USER_GROWTH = [
 ];
 
 export const REPORTS_REVENUE_BY_PLAN = [
-  { 
-    id: 'premium', 
-    name: 'Diamante', 
-    count: 42, 
-    revenue: 4200, 
+  {
+    id: 'premium',
+    name: 'Diamante',
+    count: 42,
+    revenue: 4200,
     color: '#004AAD', // Primary
-    iconColor: 'bg-yellow-400' 
+    iconColor: 'bg-yellow-400'
   },
-  { 
-    id: 'advanced', 
-    name: 'Ouro', 
-    count: 85, 
-    revenue: 5100, 
+  {
+    id: 'advanced',
+    name: 'Ouro',
+    count: 85,
+    revenue: 5100,
     color: '#3B82F6', // Blue-500
     iconColor: 'bg-cyan-400'
   },
-  { 
-    id: 'basic', 
-    name: 'Prata', 
-    count: 120, 
-    revenue: 3600, 
+  {
+    id: 'basic',
+    name: 'Prata',
+    count: 120,
+    revenue: 3600,
     color: '#94A3B8', // Slate-400
     iconColor: 'bg-gray-300'
   }
@@ -651,8 +666,8 @@ export const POPULAR_CARS: AdItem[] = [
     mileage: 15000,
     vehicleType: 'GM - Chevrolet Onix',
     fairPresence: {
-        active: true,
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 4).toISOString() // 4 horas restantes
+      active: true,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 4).toISOString() // 4 horas restantes
     }
   },
   {
@@ -679,8 +694,8 @@ export const POPULAR_CARS: AdItem[] = [
     mileage: 42000,
     vehicleType: 'Toyota Corolla',
     fairPresence: {
-        active: true,
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 2).toISOString() // 2 horas restantes
+      active: true,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 2).toISOString() // 2 horas restantes
     }
   },
   {

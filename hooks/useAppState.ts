@@ -1,17 +1,17 @@
 
 import { useState, useEffect } from 'react';
 import { Screen, User, AdItem, MessageItem, BannerItem, NotificationItem, ReportItem } from '../types';
-import { 
-  CURRENT_USER, 
-  MY_ADS_DATA, 
-  FAVORITES_DATA, 
-  DEFAULT_BANNERS, 
-  DEFAULT_VEHICLE_BANNERS, 
-  DEFAULT_REAL_ESTATE_BANNERS, 
-  DEFAULT_PARTS_SERVICES_BANNERS, 
-  MOCK_ADMIN_VEHICLES, 
-  MOCK_NOTIFICATIONS, 
-  MOCK_REPORTS 
+import {
+  CURRENT_USER,
+  MY_ADS_DATA,
+  FAVORITES_DATA,
+  DEFAULT_BANNERS,
+  DEFAULT_VEHICLE_BANNERS,
+  DEFAULT_REAL_ESTATE_BANNERS,
+  DEFAULT_PARTS_SERVICES_BANNERS,
+  MOCK_ADMIN_VEHICLES,
+  MOCK_NOTIFICATIONS,
+  MOCK_REPORTS
 } from '../constants';
 
 // --- HELPER PARA CARREGAR DADOS SALVOS ---
@@ -90,3 +90,5 @@ export const useAppState = () => {
     toast, setToast
   };
 };
+
+export type AppState = ReturnType<typeof useAppState>;
