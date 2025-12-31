@@ -7,7 +7,7 @@ import {
     MESSAGES_DATA,
     POPULAR_CARS
 } from '../constants';
-import { MOCK_SELLER } from '../App';
+import { MOCK_SELLER } from '../src/constants';
 
 // Screens
 import { LoginScreen } from '../screens/LoginScreen';

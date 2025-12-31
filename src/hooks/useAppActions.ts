@@ -1,5 +1,6 @@
 import { Screen, User, AdItem, AdStatus, MessageItem, NotificationItem, ReportItem } from '../../types';
-import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, DEFAULT_BANNERS, DEFAULT_VEHICLE_BANNERS, DEFAULT_REAL_ESTATE_BANNERS, DEFAULT_PARTS_SERVICES_BANNERS, MOCK_NOTIFICATIONS, MOCK_REPORTS, MOCK_SELLER } from '../../constants';
+import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, DEFAULT_BANNERS, DEFAULT_VEHICLE_BANNERS, DEFAULT_REAL_ESTATE_BANNERS, DEFAULT_PARTS_SERVICES_BANNERS, MOCK_NOTIFICATIONS, MOCK_REPORTS } from '../../constants';
+import { MOCK_SELLER } from '../constants';
 import { AppState } from '../../hooks/useAppState';
 
 export const useAppActions = (state: AppState) => {
