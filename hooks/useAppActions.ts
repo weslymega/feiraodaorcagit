@@ -2,7 +2,7 @@
 import { Screen, User, AdItem, AdStatus, MessageItem, NotificationItem, ReportItem } from '../types';
 import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, DEFAULT_BANNERS, DEFAULT_VEHICLE_BANNERS, DEFAULT_REAL_ESTATE_BANNERS, DEFAULT_PARTS_SERVICES_BANNERS, MOCK_NOTIFICATIONS, MOCK_REPORTS } from '../constants';
 import { MOCK_SELLER } from '../src/constants';
-import { AppState } from './useAppState';
+import { AppState } from '../types/AppState';
 
 export const useAppActions = (state: AppState) => {
     const {
@@ -379,13 +379,49 @@ export const useAppActions = (state: AppState) => {
         else if (selectedAd.category === 'pecas' || selectedAd.category === 'servicos') setCurrentScreen(Screen.PART_SERVICE_DETAILS);
     };
 
+    const handleBackFromProfile = () => {
+        if (previousScreen === Screen.CHAT_DETAIL) {
+            setCurrentScreen(Screen.CHAT_DETAIL);
+            return;
+        }
+        if (selectedAd) {
+            if (selectedAd.isOwner) {
+                setPreviousScreen(Screen.MY_ADS);
+            } else {
+                setPreviousScreen(Screen.DASHBOARD);
+            }
+            if (selectedAd.category === 'autos') setCurrentScreen(Screen.VEHICLE_DETAILS);
+            else if (selectedAd.category === 'imoveis') setCurrentScreen(Screen.REAL_ESTATE_DETAILS);
+            else if (selectedAd.category === 'pecas' || selectedAd.category === 'servicos') setCurrentScreen(Screen.PART_SERVICE_DETAILS);
+            else setCurrentScreen(Screen.VEHICLE_DETAILS);
+        } else {
+            setCurrentScreen(Screen.DASHBOARD);
+        }
+    };
+
+    const handleBackFromDetails = () => {
+        setCurrentScreen(previousScreen);
+    };
+
+    const toggleFairActive = (active: boolean) => setFairActive(active);
+    const toggleMaintenanceMode = (active: boolean) => setMaintenanceMode(active);
+
+    const prepareCreateAd = (ad?: AdItem) => {
+        setAdToEdit(ad);
+        setCurrentScreen(Screen.CREATE_AD);
+    };
+
     return {
         handleLogin,
         handleLogout,
         handleRegister,
         navigateTo,
+        setCurrentScreen, // Added for flexibility but preferred to use named actions
+        setPreviousScreen,
         goBackToDashboard,
         goBackToPanel,
+        handleBackFromProfile,
+        handleBackFromDetails,
         handleSaveProfile,
         handleToggleRole,
         handleDeleteAd,
@@ -406,6 +442,21 @@ export const useAppActions = (state: AppState) => {
         handleDeleteAccount,
         handleSelectChat,
         handleStartChatFromAd,
-        navigateToAdDetails
+        navigateToAdDetails,
+        toggleFairActive,
+        toggleMaintenanceMode,
+        prepareCreateAd,
+        setBanners,
+        setVehicleBanners,
+        setRealEstateBanners,
+        setPartsServicesBanners,
+        setAdToEdit,
+        favorites, // FIX: Added favorites to fix blank screen navigation error
+        setToast, // Also adding setToast for completeness
+        adToEdit, // Also adding adToEdit for completeness
+        banners, // Also adding banners for completeness
+        vehicleBanners, // Also adding vehicleBanners for completeness
+        realEstateBanners, // Also adding realEstateBanners for completeness
+        partsServicesBanners // Also adding partsServicesBanners for completeness
     };
 };

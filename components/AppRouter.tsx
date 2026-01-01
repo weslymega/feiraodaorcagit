@@ -1,13 +1,22 @@
 
 import React from 'react';
-import { Screen, User, AdItem, AdStatus, MessageItem, BannerItem, NotificationItem, ReportItem } from '../types';
+import { Screen, AdItem, AdStatus } from '../types';
 import {
     HISTORY_DATA,
     HISTORY_CHART_DATA,
     MESSAGES_DATA,
-    POPULAR_CARS
+    POPULAR_CARS,
+    POPULAR_REAL_ESTATE,
+    POPULAR_SERVICES,
+    FEATURED_VEHICLES,
+    MOCK_ADMIN_REAL_ESTATE,
+    MOCK_ADMIN_PARTS_SERVICES,
+    APP_LOGOS,
+    MOCK_SELLER
 } from '../constants';
-import { MOCK_SELLER } from '../src/constants';
+
+import { AppState } from '../types/AppState';
+import { AppActions } from '../types/AppActions';
 
 // Screens
 import { LoginScreen } from '../screens/LoginScreen';
@@ -49,276 +58,262 @@ import { AdminBanners } from '../screens/AdminBanners';
 import { AdminSystemSettings } from '../screens/AdminSystemSettings';
 import { AdminContentModeration } from '../screens/AdminContentModeration';
 
+import { Wrench, Shield } from 'lucide-react';
+import { BottomNav, Toast } from '../components/Shared';
+
 interface AppRouterProps {
-    currentScreen: Screen;
-    user: User;
-    onLogin: (user: User) => void;
-    onForgotPassword: () => void;
-    onRegister: () => void;
-    onBackToLogin: () => void;
-    handleRegister: (data: Partial<User>) => void;
-    navigateTo: (screen: Screen) => void;
-    handleLogout: () => void;
-    handleAdClick: (ad: AdItem) => void;
-    fairAds: AdItem[];
-    banners: BannerItem[];
-    displayFeaturedAds: AdItem[];
-    dashboardVehicleAds: AdItem[];
-    fairActive: boolean;
-    handleToggleRole: () => void;
-    handleSaveProfile: (user: User) => void;
-    goBackToPanel: () => void;
-    myAds: AdItem[];
-    handleDeleteAd: (id: string) => void;
-    handleEditAd: (ad: AdItem) => void;
-    setAdToEdit: (ad: AdItem | undefined) => void;
-    goBackToDashboard: () => void;
-    handleCreateAdFinish: (data: Partial<AdItem>) => void;
-    adToEdit: AdItem | undefined;
-    allAds: AdItem[];
-    vehicleBanners: BannerItem[];
-    favorites: AdItem[];
-    handleToggleFavorite: (ad: AdItem) => void;
-    realEstateBanners: BannerItem[];
-    partsServicesBanners: BannerItem[];
-    viewingProfile: User | null;
-    previousScreen: Screen;
-    setCurrentScreen: (screen: Screen) => void;
-    selectedAd: AdItem | null;
-    setPreviousScreen: (screen: Screen) => void;
-    handleStartChatFromAd: () => void;
-    handleAddReport: (report: ReportItem) => void;
-    handleToggleFairPresence: (ad: AdItem) => void;
-    handleViewProfile: () => void;
-    handleRemoveFavorite: (id: string) => void;
-    handleSelectChat: (chat: MessageItem) => void;
-    selectedChat: MessageItem | null;
-    navigateToAdDetails: () => void;
-    handleViewProfileFromChat: () => void;
-    notifications: NotificationItem[];
-    handleDeleteAccount: () => void;
-    allAdminVehicleAds: AdItem[];
-    handleAdminAdUpdate: (id: string, status: AdStatus) => void;
-    setBanners: (banners: BannerItem[]) => void;
-    setVehicleBanners: (banners: BannerItem[]) => void;
-    realEstateBannersState: BannerItem[];
-    setRealEstateBanners: (banners: BannerItem[]) => void;
-    partsServicesBannersState: BannerItem[];
-    setPartsServicesBanners: (banners: BannerItem[]) => void;
-    onToggleFair: (active: boolean) => void;
-    maintenanceMode: boolean;
-    onToggleMaintenance: (active: boolean) => void;
-    handleModerationBlockUser: (id: string, name: string) => void;
-    handleModerationDeleteAd: (id: string, title: string) => void;
-    reports: ReportItem[];
-    handleReportAction: (id: string, action: 'resolved' | 'dismissed') => void;
-    allModerationAds: AdItem[];
-    handleAdminSaveAd: (ad: AdItem) => void;
+    state: AppState;
+    actions: AppActions;
 }
 
-export const AppRouter: React.FC<AppRouterProps> = ({
-    currentScreen,
-    user,
-    onLogin,
-    onForgotPassword,
-    onRegister,
-    onBackToLogin,
-    handleRegister,
-    navigateTo,
-    handleLogout,
-    handleAdClick,
-    fairAds,
-    banners,
-    displayFeaturedAds,
-    dashboardVehicleAds,
-    fairActive,
-    handleToggleRole,
-    handleSaveProfile,
-    goBackToPanel,
-    myAds,
-    handleDeleteAd,
-    handleEditAd,
-    setAdToEdit,
-    goBackToDashboard,
-    handleCreateAdFinish,
-    adToEdit,
-    allAds,
-    vehicleBanners,
-    favorites,
-    handleToggleFavorite,
-    realEstateBanners,
-    partsServicesBanners,
-    viewingProfile,
-    previousScreen,
-    setCurrentScreen,
-    selectedAd,
-    setPreviousScreen,
-    handleStartChatFromAd,
-    handleAddReport,
-    handleToggleFairPresence,
-    handleViewProfile,
-    handleRemoveFavorite,
-    handleSelectChat,
-    selectedChat,
-    navigateToAdDetails,
-    handleViewProfileFromChat,
-    notifications,
-    handleDeleteAccount,
-    allAdminVehicleAds,
-    handleAdminAdUpdate,
-    setBanners,
-    setVehicleBanners,
-    realEstateBannersState,
-    setRealEstateBanners,
-    partsServicesBannersState,
-    setPartsServicesBanners,
-    onToggleFair,
-    maintenanceMode,
-    onToggleMaintenance,
-    handleModerationBlockUser,
-    handleModerationDeleteAd,
-    reports,
-    handleReportAction,
-    allModerationAds,
-    handleAdminSaveAd
-}) => {
-    switch (currentScreen) {
-        case Screen.LOGIN:
-            return <LoginScreen onLogin={onLogin} onForgotPassword={onForgotPassword} onRegister={onRegister} />;
-        case Screen.REGISTER:
-            return <RegisterScreen onBack={onBackToLogin} onRegister={handleRegister} />;
-        case Screen.FORGOT_PASSWORD:
-            return <ForgotPassword onBack={onBackToLogin} />;
+export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
+    const {
+        currentScreen, user, maintenanceMode, myAds, adminMockAds,
+        fairActive, selectedAd, previousScreen, selectedChat,
+        viewingProfile, notifications, reports
+    } = state;
 
-        case Screen.DASHBOARD:
-            return (
-                <Dashboard
-                    user={user}
-                    onNavigate={navigateTo}
-                    onLogout={handleLogout}
-                    onAdClick={handleAdClick}
-                    adsAtFair={fairAds}
-                    banners={banners}
-                    featuredAds={displayFeaturedAds}
-                    recentVehicles={dashboardVehicleAds}
-                    fairActive={fairActive}
-                />
-            );
+    const {
+        handleLogin, handleLogout, handleRegister, navigateTo, handleAdClick,
+        goBackToDashboard, goBackToPanel, handleSaveProfile,
+        handleToggleRole, handleDeleteAd, handleEditAd,
+        handleCreateAdFinish, handleToggleFavorite, favorites,
+        handleStartChatFromAd, handleAddReport, handleToggleFairPresence,
+        handleViewProfile, handleRemoveFavorite, handleSelectChat,
+        navigateToAdDetails, handleViewProfileFromChat, handleDeleteAccount,
+        handleAdminAdUpdate, handleModerationBlockUser, handleModerationDeleteAd,
+        handleReportAction, handleAdminSaveAd,
+        handleBackFromProfile, handleBackFromDetails,
+        toggleFairActive, toggleMaintenanceMode, prepareCreateAd,
+        setBanners, setVehicleBanners, setRealEstateBanners, setPartsServicesBanners
+    } = actions;
 
-        case Screen.USER_PANEL:
-            return <UserPanel user={user} onNavigate={navigateTo} onLogout={handleLogout} onToggleRole={handleToggleRole} />;
-        case Screen.EDIT_PROFILE:
-            return <EditProfile user={user} onSave={handleSaveProfile} onBack={goBackToPanel} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} />;
-        case Screen.CHANGE_PASSWORD:
-            return <ChangePassword onBack={() => navigateTo(Screen.SECURITY)} />;
-        case Screen.MY_ADS:
-            return <MyAds ads={myAds} onBack={goBackToPanel} onDelete={handleDeleteAd} onEdit={handleEditAd} onCreateNew={() => { setAdToEdit(undefined); navigateTo(Screen.CREATE_AD); }} onAdClick={handleAdClick} />;
-        case Screen.CREATE_AD:
-            return <CreateAd user={user} onBack={() => { setAdToEdit(undefined); goBackToDashboard(); }} onFinish={handleCreateAdFinish} editingAd={adToEdit} />;
-        case Screen.VEHICLES_LIST:
-            return <VehiclesList ads={allAds} banners={vehicleBanners} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
-        case Screen.REAL_ESTATE_LIST:
-            return <RealEstateList ads={allAds} banners={realEstateBanners} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
-        case Screen.PARTS_SERVICES_LIST:
-            return <PartsServicesList ads={allAds} banners={partsServicesBanners} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
-        case Screen.FEATURED_VEHICLES_LIST:
-            return <FeaturedVehiclesScreen ads={displayFeaturedAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
-        case Screen.FAIR_LIST:
-            return <FairList ads={fairAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
+    // --- FILTRAGEM E COMPOSIÇÃO DE DADOS (Moved from App.tsx) ---
 
-        case Screen.PUBLIC_PROFILE:
-            const adsToShow = viewingProfile?.email === user.email ? myAds : POPULAR_CARS;
-            return (
-                <PublicProfile
-                    user={viewingProfile || MOCK_SELLER}
-                    ads={adsToShow}
-                    onBack={() => {
-                        if (previousScreen === Screen.CHAT_DETAIL) {
-                            setCurrentScreen(Screen.CHAT_DETAIL);
-                            return;
-                        }
-                        if (selectedAd) {
-                            if (selectedAd.isOwner) {
-                                setPreviousScreen(Screen.MY_ADS);
-                            } else {
-                                setPreviousScreen(Screen.DASHBOARD);
-                            }
-                            if (selectedAd.category === 'autos') setCurrentScreen(Screen.VEHICLE_DETAILS);
-                            else if (selectedAd.category === 'imoveis') setCurrentScreen(Screen.REAL_ESTATE_DETAILS);
-                            else if (selectedAd.category === 'pecas' || selectedAd.category === 'servicos') setCurrentScreen(Screen.PART_SERVICE_DETAILS);
-                            else setCurrentScreen(Screen.VEHICLE_DETAILS);
-                        } else {
-                            setCurrentScreen(Screen.DASHBOARD);
-                        }
-                    }}
-                    onAdClick={handleAdClick}
-                    onStartChat={handleStartChatFromAd}
-                    favorites={favorites}
-                    onToggleFavorite={handleToggleFavorite}
-                    onReport={handleAddReport}
-                />
-            );
+    // 1. Meus Anúncios Ativos
+    const activeMyAds = myAds.filter(ad => ad.status === AdStatus.ACTIVE);
 
-        case Screen.VEHICLE_DETAILS:
-            return selectedAd ? <VehicleDetails ad={selectedAd} onBack={() => setCurrentScreen(previousScreen)} onStartChat={handleStartChatFromAd} isFavorite={favorites.some(f => f.id === selectedAd.id)} onToggleFavorite={() => handleToggleFavorite(selectedAd)} onToggleFairPresence={() => handleToggleFairPresence(selectedAd)} onViewProfile={handleViewProfile} onReport={handleAddReport} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} />;
-        case Screen.REAL_ESTATE_DETAILS:
-            return selectedAd ? <RealEstateDetails ad={selectedAd} onBack={() => setCurrentScreen(previousScreen)} onStartChat={handleStartChatFromAd} onViewProfile={handleViewProfile} onReport={handleAddReport} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} />;
-        case Screen.PART_SERVICE_DETAILS:
-            return selectedAd ? <PartServiceDetails ad={selectedAd} onBack={() => setCurrentScreen(previousScreen)} onStartChat={handleStartChatFromAd} onViewProfile={handleViewProfile} onReport={handleAddReport} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} />;
+    // 2. Todos os Anúncios Ativos Globais
+    const combinedRawAds = [
+        ...activeMyAds,
+        ...FEATURED_VEHICLES,
+        ...POPULAR_CARS,
+        ...POPULAR_REAL_ESTATE,
+        ...POPULAR_SERVICES
+    ];
+    const allAds = Array.from(new Map(combinedRawAds.map(item => [item.id, item])).values());
 
-        case Screen.FAVORITES:
-            return <Favorites favorites={favorites} onBack={goBackToDashboard} onRemove={handleRemoveFavorite} onAdClick={handleAdClick} />;
-        case Screen.HISTORY:
-            return <History history={HISTORY_DATA} chartData={HISTORY_CHART_DATA} onBack={goBackToPanel} onAdClick={handleAdClick} />;
-        case Screen.SETTINGS:
-            return <Settings user={user} onBack={goBackToPanel} onLogout={handleLogout} onNavigate={navigateTo} />;
-        case Screen.MESSAGES:
-            return <Messages messages={MESSAGES_DATA} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />;
-        case Screen.CHAT_DETAIL:
-            return selectedChat ? (
-                <ChatDetail
-                    chat={selectedChat}
-                    onBack={() => setCurrentScreen(Screen.MESSAGES)}
-                    onAdClick={navigateToAdDetails}
-                    onViewProfile={handleViewProfileFromChat}
-                />
-            ) : (
-                <Messages messages={MESSAGES_DATA} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />
-            );
-        case Screen.ACCOUNT_DATA:
-            return <AccountData user={user} onBack={() => navigateTo(Screen.SETTINGS)} onEdit={() => navigateTo(Screen.EDIT_PROFILE)} />;
-        case Screen.NOTIFICATIONS:
-            return <Notifications onBack={goBackToDashboard} onGoToChat={() => navigateTo(Screen.MESSAGES)} items={notifications} />;
-        case Screen.PRIVACY:
-            return <Privacy onBack={() => navigateTo(Screen.SETTINGS)} />;
-        case Screen.SECURITY:
-            return <Security onBack={() => navigateTo(Screen.SETTINGS)} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} onDeleteAccount={handleDeleteAccount} />;
-        case Screen.ABOUT_APP:
-            return <AboutApp onBack={() => navigateTo(Screen.SETTINGS)} />;
-        case Screen.HELP_SUPPORT:
-            return <HelpSupport onBack={() => navigateTo(Screen.SETTINGS)} />;
+    // 3. Lista para o Dashboard
+    const dashboardVehicleAds = [...activeMyAds.filter(ad => ad.category === 'autos'), ...POPULAR_CARS];
 
-        // ADMIN ROUTES
-        case Screen.ADMIN_PANEL:
-            return user.isAdmin ? <AdminPanel onBack={() => navigateTo(Screen.SETTINGS)} onNavigate={navigateTo} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
-        case Screen.ADMIN_USERS:
-            return user.isAdmin ? <AdminUsers onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
-        case Screen.ADMIN_VEHICLES:
-            return user.isAdmin ? <AdminVehicleAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminVehicleAds} onUpdateAd={handleAdminAdUpdate} onNavigate={navigateTo} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
-        case Screen.ADMIN_REAL_ESTATE:
-            return user.isAdmin ? <AdminRealEstateAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
-        case Screen.ADMIN_PARTS_SERVICES:
-            return user.isAdmin ? <AdminPartsServicesAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
-        case Screen.ADMIN_REPORTS:
-            return user.isAdmin ? <AdminReports onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
-        case Screen.ADMIN_BANNERS:
-            return user.isAdmin ? <AdminBanners onBack={() => navigateTo(Screen.ADMIN_PANEL)} banners={banners} setBanners={setBanners} vehicleBanners={vehicleBanners} setVehicleBanners={setVehicleBanners} realEstateBanners={realEstateBannersState} setRealEstateBanners={setRealEstateBanners} partsServicesBanners={partsServicesBannersState} setPartsServicesBanners={setPartsServicesBanners} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
-        case Screen.ADMIN_SYSTEM_SETTINGS:
-            return user.isAdmin ? <AdminSystemSettings onBack={() => navigateTo(Screen.ADMIN_PANEL)} fairActive={fairActive} onToggleFair={onToggleFair} maintenanceMode={maintenanceMode} onToggleMaintenance={onToggleMaintenance} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
-        case Screen.ADMIN_CONTENT_MODERATION:
-            return user.isAdmin ? <AdminContentModeration onBack={() => navigateTo(Screen.ADMIN_PANEL)} onBlockUser={handleModerationBlockUser} onDeleteAd={handleModerationDeleteAd} reports={reports} onUpdateReport={handleReportAction} ads={allModerationAds} onSaveAd={handleAdminSaveAd} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+    // 4. Destaques
+    const displayFeaturedAds = [
+        ...activeMyAds.filter(ad => ad.isFeatured),
+        ...FEATURED_VEHICLES
+    ];
 
-        default:
-            return <LoginScreen onLogin={onLogin} onForgotPassword={onForgotPassword} onRegister={onRegister} />;
+    // 5. Veículos na Feira
+    const fairAds = allAds.filter(ad => {
+        if (!ad.fairPresence?.active) return false;
+        const expires = new Date(ad.fairPresence.expiresAt);
+        return expires > new Date();
+    });
+
+    // 6. Lista Completa para o Admin
+    const allAdminVehicleAds = [...myAds.filter(ad => ad.category === 'autos'), ...adminMockAds];
+
+    // 7. Lista UNIFICADA para MODERAÇÃO
+    const allModerationAds = [
+        ...myAds,
+        ...adminMockAds,
+        ...MOCK_ADMIN_REAL_ESTATE,
+        ...MOCK_ADMIN_PARTS_SERVICES,
+        ...FEATURED_VEHICLES,
+        ...POPULAR_CARS,
+        ...POPULAR_REAL_ESTATE,
+        ...POPULAR_SERVICES
+    ];
+
+    // --- LÓGICA DE MANUTENÇÃO (Moved from App.tsx) ---
+    if (maintenanceMode && !user.isAdmin && currentScreen !== Screen.LOGIN && currentScreen !== Screen.REGISTER && currentScreen !== Screen.FORGOT_PASSWORD) {
+        return (
+            <div className="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-6 text-center animate-in zoom-in duration-300">
+                <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-xl mb-8 relative">
+                    <img src={APP_LOGOS.ICON} alt="Orca Logo" className="w-20 h-20 opacity-50" />
+                    <div className="absolute -bottom-2 -right-2 bg-red-100 p-3 rounded-full border-4 border-gray-50">
+                        <Wrench className="w-8 h-8 text-red-600" />
+                    </div>
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Aplicativo em Manutenção</h1>
+                <p className="text-gray-600 max-w-xs mb-8 leading-relaxed">
+                    Estamos realizando melhorias no sistema. O Feirão da Orca voltará em breve com novidades!
+                </p>
+
+                <div className="w-full max-w-xs space-y-3">
+                    <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800">
+                        <p className="flex items-center justify-center gap-2 font-bold mb-1">
+                            <Shield className="w-4 h-4" /> Acesso Administrativo
+                        </p>
+                        Se você é administrador, faça login para acessar o painel.
+                    </div>
+                    <button
+                        onClick={handleLogout}
+                        className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors shadow-sm"
+                    >
+                        Voltar para o Login
+                    </button>
+                </div>
+            </div>
+        );
     }
+
+    const showBottomNav = currentScreen !== Screen.LOGIN && currentScreen !== Screen.REGISTER && currentScreen !== Screen.FORGOT_PASSWORD && currentScreen !== Screen.EDIT_PROFILE && currentScreen !== Screen.CHANGE_PASSWORD && currentScreen !== Screen.CREATE_AD && currentScreen !== Screen.VEHICLE_DETAILS && currentScreen !== Screen.REAL_ESTATE_DETAILS && currentScreen !== Screen.PART_SERVICE_DETAILS && currentScreen !== Screen.PUBLIC_PROFILE && currentScreen !== Screen.CHAT_DETAIL && currentScreen !== Screen.ADMIN_PANEL && currentScreen !== Screen.ADMIN_USERS && currentScreen !== Screen.ADMIN_VEHICLES && currentScreen !== Screen.ADMIN_REAL_ESTATE && currentScreen !== Screen.ADMIN_PARTS_SERVICES && currentScreen !== Screen.ADMIN_REPORTS && currentScreen !== Screen.ADMIN_BANNERS && currentScreen !== Screen.ADMIN_SYSTEM_SETTINGS && currentScreen !== Screen.ADMIN_CONTENT_MODERATION;
+
+    const unreadMessagesCount = MESSAGES_DATA.reduce((total, msg) => total + (msg.unreadCount || 0), 0);
+
+    const renderScreen = () => {
+        switch (currentScreen) {
+            case Screen.LOGIN:
+                return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />;
+            case Screen.REGISTER:
+                return <RegisterScreen onBack={() => navigateTo(Screen.LOGIN)} onRegister={handleRegister} />;
+            case Screen.FORGOT_PASSWORD:
+                return <ForgotPassword onBack={() => navigateTo(Screen.LOGIN)} />;
+
+            case Screen.DASHBOARD:
+                return (
+                    <Dashboard
+                        user={user}
+                        onNavigate={navigateTo}
+                        onLogout={handleLogout}
+                        onAdClick={handleAdClick}
+                        adsAtFair={fairAds}
+                        banners={state.banners}
+                        featuredAds={displayFeaturedAds}
+                        recentVehicles={dashboardVehicleAds}
+                        fairActive={fairActive}
+                    />
+                );
+
+            case Screen.USER_PANEL:
+                return <UserPanel user={user} onNavigate={navigateTo} onLogout={handleLogout} onToggleRole={handleToggleRole} />;
+            case Screen.EDIT_PROFILE:
+                return <EditProfile user={user} onSave={handleSaveProfile} onBack={goBackToPanel} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} />;
+            case Screen.CHANGE_PASSWORD:
+                return <ChangePassword onBack={() => navigateTo(Screen.SECURITY)} />;
+            case Screen.MY_ADS:
+                return <MyAds ads={myAds} onBack={goBackToPanel} onDelete={handleDeleteAd} onEdit={handleEditAd} onCreateNew={() => prepareCreateAd()} onAdClick={handleAdClick} />;
+            case Screen.CREATE_AD:
+                return <CreateAd user={user} onBack={() => { prepareCreateAd(undefined); goBackToDashboard(); }} onFinish={handleCreateAdFinish} editingAd={state.adToEdit} />;
+            case Screen.VEHICLES_LIST:
+                return <VehiclesList ads={allAds} banners={state.vehicleBanners} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
+            case Screen.REAL_ESTATE_LIST:
+                return <RealEstateList ads={allAds} banners={state.realEstateBanners} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
+            case Screen.PARTS_SERVICES_LIST:
+                return <PartsServicesList ads={allAds} banners={state.partsServicesBanners} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
+            case Screen.FEATURED_VEHICLES_LIST:
+                return <FeaturedVehiclesScreen ads={displayFeaturedAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
+            case Screen.FAIR_LIST:
+                return <FairList ads={fairAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
+
+            case Screen.PUBLIC_PROFILE:
+                const adsToShow = viewingProfile?.email === user.email ? myAds : POPULAR_CARS;
+                return (
+                    <PublicProfile
+                        user={viewingProfile || MOCK_SELLER}
+                        ads={adsToShow}
+                        onBack={handleBackFromProfile}
+                        onAdClick={handleAdClick}
+                        onStartChat={handleStartChatFromAd}
+                        favorites={favorites}
+                        onToggleFavorite={handleToggleFavorite}
+                        onReport={handleAddReport}
+                    />
+                );
+
+            case Screen.VEHICLE_DETAILS:
+                return selectedAd ? <VehicleDetails ad={selectedAd} onBack={handleBackFromDetails} onStartChat={handleStartChatFromAd} isFavorite={favorites.some(f => f.id === selectedAd.id)} onToggleFavorite={() => handleToggleFavorite(selectedAd)} onToggleFairPresence={() => handleToggleFairPresence(selectedAd)} onViewProfile={handleViewProfile} onReport={handleAddReport} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} />;
+            case Screen.REAL_ESTATE_DETAILS:
+                return selectedAd ? <RealEstateDetails ad={selectedAd} onBack={handleBackFromDetails} onStartChat={handleStartChatFromAd} onViewProfile={handleViewProfile} onReport={handleAddReport} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} />;
+            case Screen.PART_SERVICE_DETAILS:
+                return selectedAd ? <PartServiceDetails ad={selectedAd} onBack={handleBackFromDetails} onStartChat={handleStartChatFromAd} onViewProfile={handleViewProfile} onReport={handleAddReport} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} />;
+
+            case Screen.FAVORITES:
+                return <Favorites favorites={favorites} onBack={goBackToDashboard} onRemove={handleRemoveFavorite} onAdClick={handleAdClick} />;
+            case Screen.HISTORY:
+                return <History history={HISTORY_DATA} chartData={HISTORY_CHART_DATA} onBack={goBackToPanel} onAdClick={handleAdClick} />;
+            case Screen.SETTINGS:
+                return <Settings user={user} onBack={goBackToPanel} onLogout={handleLogout} onNavigate={navigateTo} />;
+            case Screen.MESSAGES:
+                return <Messages messages={MESSAGES_DATA} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />;
+            case Screen.CHAT_DETAIL:
+                return selectedChat ? (
+                    <ChatDetail
+                        chat={selectedChat}
+                        onBack={() => navigateTo(Screen.MESSAGES)}
+                        onAdClick={navigateToAdDetails}
+                        onViewProfile={handleViewProfileFromChat}
+                    />
+                ) : (
+                    <Messages messages={MESSAGES_DATA} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />
+                );
+            case Screen.ACCOUNT_DATA:
+                return <AccountData user={user} onBack={() => navigateTo(Screen.SETTINGS)} onEdit={() => navigateTo(Screen.EDIT_PROFILE)} />;
+            case Screen.NOTIFICATIONS:
+                return <Notifications onBack={goBackToDashboard} onGoToChat={() => navigateTo(Screen.MESSAGES)} items={notifications} />;
+            case Screen.PRIVACY:
+                return <Privacy onBack={() => navigateTo(Screen.SETTINGS)} />;
+            case Screen.SECURITY:
+                return <Security onBack={() => navigateTo(Screen.SETTINGS)} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} onDeleteAccount={handleDeleteAccount} />;
+            case Screen.ABOUT_APP:
+                return <AboutApp onBack={() => navigateTo(Screen.SETTINGS)} />;
+            case Screen.HELP_SUPPORT:
+                return <HelpSupport onBack={() => navigateTo(Screen.SETTINGS)} />;
+
+            // ADMIN ROUTES
+            case Screen.ADMIN_PANEL:
+                return user.isAdmin ? <AdminPanel onBack={() => navigateTo(Screen.SETTINGS)} onNavigate={navigateTo} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+            case Screen.ADMIN_USERS:
+                return user.isAdmin ? <AdminUsers onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+            case Screen.ADMIN_VEHICLES:
+                return user.isAdmin ? <AdminVehicleAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminVehicleAds} onUpdateAd={handleAdminAdUpdate} onNavigate={navigateTo} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+            case Screen.ADMIN_REAL_ESTATE:
+                return user.isAdmin ? <AdminRealEstateAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+            case Screen.ADMIN_PARTS_SERVICES:
+                return user.isAdmin ? <AdminPartsServicesAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+            case Screen.ADMIN_REPORTS:
+                return user.isAdmin ? <AdminReports onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+            case Screen.ADMIN_BANNERS:
+                return user.isAdmin ? <AdminBanners onBack={() => navigateTo(Screen.ADMIN_PANEL)} banners={state.banners} setBanners={setBanners} vehicleBanners={state.vehicleBanners} setVehicleBanners={setVehicleBanners} realEstateBanners={state.realEstateBanners} setRealEstateBanners={setRealEstateBanners} partsServicesBanners={state.partsServicesBanners} setPartsServicesBanners={setPartsServicesBanners} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+            case Screen.ADMIN_SYSTEM_SETTINGS:
+                return user.isAdmin ? <AdminSystemSettings onBack={() => navigateTo(Screen.ADMIN_PANEL)} fairActive={fairActive} onToggleFair={toggleFairActive} maintenanceMode={maintenanceMode} onToggleMaintenance={toggleMaintenanceMode} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+            case Screen.ADMIN_CONTENT_MODERATION:
+                return user.isAdmin ? <AdminContentModeration onBack={() => navigateTo(Screen.ADMIN_PANEL)} onBlockUser={handleModerationBlockUser} onDeleteAd={handleModerationDeleteAd} reports={reports} onUpdateReport={handleReportAction} ads={allModerationAds} onSaveAd={handleAdminSaveAd} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} />;
+
+            default:
+                return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />;
+        }
+    };
+
+    return (
+        <div className="bg-gray-50 min-h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-hidden relative border-x border-gray-100">
+            {state.toast && (
+                <Toast
+                    message={state.toast.message}
+                    type={state.toast.type}
+                    onClose={() => state.setToast(null)}
+                />
+            )}
+
+            {renderScreen()}
+
+            {showBottomNav && (
+                <BottomNav
+                    currentScreen={currentScreen}
+                    onNavigate={navigateTo}
+                    unreadCount={unreadMessagesCount}
+                />
+            )}
+        </div>
+    );
 };

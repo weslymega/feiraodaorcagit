@@ -90,5 +90,3 @@ export const useAppState = () => {
     toast, setToast
   };
 };
-
-export type AppState = ReturnType<typeof useAppState>;
