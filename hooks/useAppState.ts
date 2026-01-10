@@ -1,17 +1,15 @@
-
 import { useState, useEffect } from 'react';
-import { Screen, User, AdItem, MessageItem, BannerItem, NotificationItem, ReportItem } from '../types';
+import { Screen, User, AdItem, MessageItem, NotificationItem, ReportItem, FilterContext, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
 import {
   CURRENT_USER,
   MY_ADS_DATA,
   FAVORITES_DATA,
-  DEFAULT_BANNERS,
-  DEFAULT_VEHICLE_BANNERS,
-  DEFAULT_REAL_ESTATE_BANNERS,
-  DEFAULT_PARTS_SERVICES_BANNERS,
   MOCK_ADMIN_VEHICLES,
+  MOCK_ADMIN_REAL_ESTATE,
+  MOCK_ADMIN_PARTS_SERVICES,
   MOCK_NOTIFICATIONS,
-  MOCK_REPORTS
+  MOCK_REPORTS,
+  PROMO_BANNERS
 } from '../constants';
 
 // --- HELPER PARA CARREGAR DADOS SALVOS ---
@@ -29,28 +27,73 @@ export const useAppState = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.LOGIN);
   const [previousScreen, setPreviousScreen] = useState<Screen>(Screen.DASHBOARD);
 
+  // Temporary Filter Context
+  const [filterContext, setFilterContext] = useState<FilterContext | null>(null);
+
   // Initialize state from LocalStorage
   const [user, setUser] = useState<User>(() => loadFromStorage('orca_user', CURRENT_USER));
   const [myAds, setMyAds] = useState<AdItem[]>(() => loadFromStorage('orca_my_ads', MY_ADS_DATA));
   const [favorites, setFavorites] = useState<AdItem[]>(() => loadFromStorage('orca_favorites', FAVORITES_DATA));
-  const [banners, setBanners] = useState<BannerItem[]>(() => loadFromStorage('orca_banners', DEFAULT_BANNERS));
-  const [vehicleBanners, setVehicleBanners] = useState<BannerItem[]>(() => loadFromStorage('orca_vehicle_banners', DEFAULT_VEHICLE_BANNERS));
-  const [realEstateBanners, setRealEstateBanners] = useState<BannerItem[]>(() => loadFromStorage('orca_real_estate_banners', DEFAULT_REAL_ESTATE_BANNERS));
-  const [partsServicesBanners, setPartsServicesBanners] = useState<BannerItem[]>(() => loadFromStorage('orca_parts_services_banners', DEFAULT_PARTS_SERVICES_BANNERS));
+  // Removed the old realEstateAds declaration here as it's moved below
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => loadFromStorage('orca_notifications', MOCK_NOTIFICATIONS));
   const [reports, setReports] = useState<ReportItem[]>(() => loadFromStorage('orca_reports', MOCK_REPORTS));
 
   // Configurações do Sistema
   const [fairActive, setFairActive] = useState<boolean>(() => loadFromStorage('orca_fair_active', true));
+
   const [maintenanceMode, setMaintenanceMode] = useState<boolean>(() => loadFromStorage('orca_maintenance', false));
 
-  // Estado local para anúncios do admin (mocks)
+  // Dashboard Promotions State
+  const [dashboardPromotions, setDashboardPromotions] = useState<DashboardPromotion[]>(() => {
+    const saved = localStorage.getItem('orca_dashboard_promotions');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Error parsing dashboard promotions", e);
+      }
+    }
+
+    // Fallback and initial mapping from constants
+    // PROMO_BANNERS is already imported at the top
+    return (PROMO_BANNERS as any[]).map((promo, index) => ({
+      id: promo.id || `promo_${index}`,
+      image: promo.image,
+      title: promo.title,
+      subtitle: promo.subtitle,
+      link: promo.link || '#',
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(), // 30 days from now
+      active: true,
+      order: index,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }));
+  });
+
+  // Real Estate Promotions State
+  const [realEstatePromotions, setRealEstatePromotions] = useState<RealEstatePromotion[]>(() => {
+    return loadFromStorage<RealEstatePromotion[]>('orca_realestate_promotions', []);
+  });
+
+  // Parts & Services Promotions State
+  const [partsServicesPromotions, setPartsServicesPromotions] = useState<PartsServicesPromotion[]>(() => {
+    return loadFromStorage<PartsServicesPromotion[]>('orca_parts_services_promotions', []);
+  });
+
+  // Vehicles Promotions State
+  const [vehiclesPromotions, setVehiclesPromotions] = useState<VehiclesPromotion[]>(() => {
+    return loadFromStorage<VehiclesPromotion[]>('orca_vehicles_promotions', []);
+  });
+
+  // Estado local para anúncios do admin (mocks) - Mantido caso precise resetar, mas o fluxo principal usa as listas acima
   const [adminMockAds, setAdminMockAds] = useState<AdItem[]>(MOCK_ADMIN_VEHICLES);
 
   // States for flow
   const [selectedAd, setSelectedAd] = useState<AdItem | null>(null);
   const [adToEdit, setAdToEdit] = useState<AdItem | undefined>(undefined);
+  const [cameFromMyAds, setCameFromMyAds] = useState<boolean>(false);
   const [selectedChat, setSelectedChat] = useState<MessageItem | null>(null);
   const [viewingProfile, setViewingProfile] = useState<User | null>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' | 'error' } | null>(null);
@@ -59,34 +102,49 @@ export const useAppState = () => {
   useEffect(() => localStorage.setItem('orca_user', JSON.stringify(user)), [user]);
   useEffect(() => localStorage.setItem('orca_my_ads', JSON.stringify(myAds)), [myAds]);
   useEffect(() => localStorage.setItem('orca_favorites', JSON.stringify(favorites)), [favorites]);
-  useEffect(() => localStorage.setItem('orca_banners', JSON.stringify(banners)), [banners]);
-  useEffect(() => localStorage.setItem('orca_vehicle_banners', JSON.stringify(vehicleBanners)), [vehicleBanners]);
-  useEffect(() => localStorage.setItem('orca_real_estate_banners', JSON.stringify(realEstateBanners)), [realEstateBanners]);
-  useEffect(() => localStorage.setItem('orca_parts_services_banners', JSON.stringify(partsServicesBanners)), [partsServicesBanners]);
   useEffect(() => localStorage.setItem('orca_notifications', JSON.stringify(notifications)), [notifications]);
   useEffect(() => localStorage.setItem('orca_reports', JSON.stringify(reports)), [reports]);
   useEffect(() => localStorage.setItem('orca_fair_active', JSON.stringify(fairActive)), [fairActive]);
   useEffect(() => localStorage.setItem('orca_maintenance', JSON.stringify(maintenanceMode)), [maintenanceMode]);
+  useEffect(() => {
+    localStorage.setItem('orca_dashboard_promotions', JSON.stringify(dashboardPromotions));
+  }, [dashboardPromotions]);
+
+  useEffect(() => {
+    localStorage.setItem('orca_realestate_promotions', JSON.stringify(realEstatePromotions));
+  }, [realEstatePromotions]);
+
+  useEffect(() => {
+    localStorage.setItem('orca_parts_services_promotions', JSON.stringify(partsServicesPromotions));
+  }, [partsServicesPromotions]);
+
+  useEffect(() => {
+    localStorage.setItem('orca_vehicles_promotions', JSON.stringify(vehiclesPromotions));
+  }, [vehiclesPromotions]);
+
 
   return {
     currentScreen, setCurrentScreen,
     previousScreen, setPreviousScreen,
+    filterContext, setFilterContext,
     user, setUser,
     myAds, setMyAds,
     favorites, setFavorites,
-    banners, setBanners,
-    vehicleBanners, setVehicleBanners,
-    realEstateBanners, setRealEstateBanners,
-    partsServicesBanners, setPartsServicesBanners,
     notifications, setNotifications,
     reports, setReports,
     fairActive, setFairActive,
     maintenanceMode, setMaintenanceMode,
     adminMockAds, setAdminMockAds,
+
     selectedAd, setSelectedAd,
     adToEdit, setAdToEdit,
+    cameFromMyAds, setCameFromMyAds,
     selectedChat, setSelectedChat,
     viewingProfile, setViewingProfile,
-    toast, setToast
+    toast, setToast,
+    dashboardPromotions, setDashboardPromotions,
+    realEstatePromotions, setRealEstatePromotions,
+    partsServicesPromotions, setPartsServicesPromotions,
+    vehiclesPromotions, setVehiclesPromotions
   };
 };

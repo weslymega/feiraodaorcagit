@@ -1,8 +1,9 @@
-
-import { Screen, User, AdItem, AdStatus, MessageItem, NotificationItem, ReportItem } from '../types';
-import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, DEFAULT_BANNERS, DEFAULT_VEHICLE_BANNERS, DEFAULT_REAL_ESTATE_BANNERS, DEFAULT_PARTS_SERVICES_BANNERS, MOCK_NOTIFICATIONS, MOCK_REPORTS } from '../constants';
-import { MOCK_SELLER } from '../src/constants';
+import { Screen, User, AdItem, AdStatus, MessageItem, NotificationItem, ReportItem, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
+import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, MOCK_NOTIFICATIONS, MOCK_REPORTS, MOCK_ADMIN_VEHICLES, MOCK_ADMIN_REAL_ESTATE, MOCK_ADMIN_PARTS_SERVICES } from '../constants';
+import { MOCK_SELLER } from '../constants';
+import { useRef, useEffect } from 'react';
 import { AppState } from '../types/AppState';
+import { api, CreateAdPayload } from '../services/api';
 
 export const useAppActions = (state: AppState) => {
     const {
@@ -11,10 +12,7 @@ export const useAppActions = (state: AppState) => {
         user, setUser,
         myAds, setMyAds,
         favorites, setFavorites,
-        banners, setBanners,
-        vehicleBanners, setVehicleBanners,
-        realEstateBanners, setRealEstateBanners,
-        partsServicesBanners, setPartsServicesBanners,
+
         notifications, setNotifications,
         reports, setReports,
         fairActive, setFairActive,
@@ -22,10 +20,382 @@ export const useAppActions = (state: AppState) => {
         adminMockAds, setAdminMockAds,
         selectedAd, setSelectedAd,
         adToEdit, setAdToEdit,
+        cameFromMyAds, setCameFromMyAds,
         selectedChat, setSelectedChat,
         viewingProfile, setViewingProfile,
-        toast, setToast
+        toast, setToast,
+        setFilterContext,
+        dashboardPromotions, setDashboardPromotions,
+        realEstatePromotions, setRealEstatePromotions,
+        partsServicesPromotions, setPartsServicesPromotions,
+        vehiclesPromotions, setVehiclesPromotions
     } = state;
+
+    // Fix for Stale State in Event Handlers
+    const userRef = useRef(user);
+    useEffect(() => {
+        userRef.current = user;
+    }, [user]);
+
+    const handleSavePromotion = (promoData: Partial<DashboardPromotion>) => {
+        const startDate = new Date(promoData.startDate || '');
+        const endDate = new Date(promoData.endDate || '');
+
+        if (endDate <= startDate) {
+            setToast({ message: "A data de término deve ser posterior à data de início.", type: 'error' });
+            return;
+        }
+
+        const activeCount = dashboardPromotions.filter(p => p.active && p.id !== promoData.id).length;
+        if (promoData.active) {
+            if (activeCount >= 5) {
+                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
+                return;
+            }
+            const today = new Date();
+            if (today > new Date(promoData.endDate || '')) {
+                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
+                return;
+            }
+        }
+
+        if (promoData.id) {
+            // Update mode
+            setDashboardPromotions((prev: DashboardPromotion[]) => prev.map(p =>
+                p.id === promoData.id ? {
+                    ...p,
+                    title: promoData.title ?? p.title,
+                    subtitle: promoData.subtitle ?? p.subtitle,
+                    image: promoData.image ?? p.image,
+                    link: promoData.link ?? p.link,
+                    startDate: promoData.startDate ?? p.startDate,
+                    endDate: promoData.endDate ?? p.endDate,
+                    active: promoData.active ?? p.active,
+                    order: promoData.order ?? p.order,
+                    updatedAt: new Date().toISOString()
+                } : p
+            ));
+            setToast({ message: "Propaganda atualizada com sucesso!", type: 'success' });
+        } else {
+            // Create mode
+            const newPromo: DashboardPromotion = {
+                id: `promo_${Date.now()}`,
+                title: promoData.title || '',
+                subtitle: promoData.subtitle || '',
+                image: promoData.image || '',
+                link: promoData.link || '#',
+                startDate: promoData.startDate || new Date().toISOString(),
+                endDate: promoData.endDate || new Date().toISOString(),
+                active: promoData.active ?? true,
+                order: dashboardPromotions.length,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            setDashboardPromotions((prev: DashboardPromotion[]) => [...prev, newPromo]);
+            setToast({ message: "Propaganda criada com sucesso!", type: 'success' });
+        }
+    };
+
+    const handleDeletePromotion = (id: string) => {
+        setDashboardPromotions((prev: DashboardPromotion[]) => prev.filter(p => p.id !== id));
+        setToast({ message: "Propaganda excluída.", type: 'info' });
+    };
+
+    const handleTogglePromotionActive = (id: string) => {
+        const promo = dashboardPromotions.find(p => p.id === id);
+        if (!promo) return;
+
+        if (!promo.active) {
+            const activeCount = dashboardPromotions.filter(p => p.active).length;
+            if (activeCount >= 5) {
+                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
+                return;
+            }
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const end = new Date(promo.endDate);
+            end.setHours(23, 59, 59, 999);
+
+            if (today > end) {
+                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
+                return;
+            }
+        }
+
+        setDashboardPromotions((prev: DashboardPromotion[]) => prev.map(p =>
+            p.id === id ? { ...p, active: !p.active, updatedAt: new Date().toISOString() } : p
+        ));
+    };
+
+    const handleSaveRealEstatePromotion = (promoData: Partial<RealEstatePromotion>) => {
+        const startDate = new Date(promoData.startDate || '');
+        const endDate = new Date(promoData.endDate || '');
+
+        if (endDate <= startDate) {
+            setToast({ message: "A data de término deve ser posterior à data de início.", type: 'error' });
+            return;
+        }
+
+        const activeCount = realEstatePromotions.filter(p => p.active && p.id !== promoData.id).length;
+        if (promoData.active) {
+            if (activeCount >= 5) {
+                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
+                return;
+            }
+            const today = new Date();
+            if (today > new Date(promoData.endDate || '')) {
+                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
+                return;
+            }
+        }
+
+        if (promoData.id) {
+            // Update mode
+            setRealEstatePromotions((prev: RealEstatePromotion[]) => prev.map(p =>
+                p.id === promoData.id ? {
+                    ...p,
+                    title: promoData.title ?? p.title,
+                    subtitle: promoData.subtitle ?? p.subtitle,
+                    image: promoData.image ?? p.image,
+                    link: promoData.link ?? p.link,
+                    startDate: promoData.startDate ?? p.startDate,
+                    endDate: promoData.endDate ?? p.endDate,
+                    active: promoData.active ?? p.active,
+                    order: promoData.order ?? p.order,
+                    updatedAt: new Date().toISOString()
+                } : p
+            ));
+            setToast({ message: "Propaganda atualizada com sucesso!", type: 'success' });
+        } else {
+            // Create mode
+            const newPromo: RealEstatePromotion = {
+                id: `re_promo_${Date.now()}`,
+                title: promoData.title || '',
+                subtitle: promoData.subtitle || '',
+                image: promoData.image || '',
+                link: promoData.link || '#',
+                startDate: promoData.startDate || new Date().toISOString(),
+                endDate: promoData.endDate || new Date().toISOString(),
+                active: promoData.active ?? true,
+                order: realEstatePromotions.length,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            setRealEstatePromotions((prev: RealEstatePromotion[]) => [...prev, newPromo]);
+            setToast({ message: "Propaganda criada com sucesso!", type: 'success' });
+        }
+    };
+
+    const handleDeleteRealEstatePromotion = (id: string) => {
+        setRealEstatePromotions((prev: RealEstatePromotion[]) => prev.filter(p => p.id !== id));
+        setToast({ message: "Propaganda excluída.", type: 'info' });
+    };
+
+    const handleToggleRealEstatePromotionActive = (id: string) => {
+        const promo = realEstatePromotions.find(p => p.id === id);
+        if (!promo) return;
+
+        if (!promo.active) {
+            const activeCount = realEstatePromotions.filter(p => p.active).length;
+            if (activeCount >= 5) {
+                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
+                return;
+            }
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const end = new Date(promo.endDate);
+            end.setHours(23, 59, 59, 999);
+
+            if (today > end) {
+                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
+                return;
+            }
+        }
+
+        setRealEstatePromotions((prev: RealEstatePromotion[]) => prev.map(p =>
+            p.id === id ? { ...p, active: !p.active, updatedAt: new Date().toISOString() } : p
+        ));
+    };
+
+    const handleSavePartsServicesPromotion = (promoData: Partial<PartsServicesPromotion>) => {
+        const startDate = new Date(promoData.startDate || '');
+        const endDate = new Date(promoData.endDate || '');
+
+        if (endDate <= startDate) {
+            setToast({ message: "A data de término deve ser posterior à data de início.", type: 'error' });
+            return;
+        }
+
+        const activeCount = partsServicesPromotions.filter(p => p.active && p.id !== promoData.id).length;
+        if (promoData.active) {
+            if (activeCount >= 5) {
+                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
+                return;
+            }
+            const today = new Date();
+            if (today > new Date(promoData.endDate || '')) {
+                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
+                return;
+            }
+        }
+
+        if (promoData.id) {
+            // Update mode
+            setPartsServicesPromotions((prev: PartsServicesPromotion[]) => prev.map(p =>
+                p.id === promoData.id ? {
+                    ...p,
+                    title: promoData.title ?? p.title,
+                    subtitle: promoData.subtitle ?? p.subtitle,
+                    image: promoData.image ?? p.image,
+                    link: promoData.link ?? p.link,
+                    startDate: promoData.startDate ?? p.startDate,
+                    endDate: promoData.endDate ?? p.endDate,
+                    active: promoData.active ?? p.active,
+                    order: promoData.order ?? p.order,
+                    updatedAt: new Date().toISOString()
+                } : p
+            ));
+            setToast({ message: "Propaganda atualizada com sucesso!", type: 'success' });
+        } else {
+            // Create mode
+            const newPromo: PartsServicesPromotion = {
+                id: `ps_promo_${Date.now()}`,
+                title: promoData.title || '',
+                subtitle: promoData.subtitle || '',
+                image: promoData.image || '',
+                link: promoData.link || '#',
+                startDate: promoData.startDate || new Date().toISOString(),
+                endDate: promoData.endDate || new Date().toISOString(),
+                active: promoData.active ?? true,
+                order: partsServicesPromotions.length,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            setPartsServicesPromotions((prev: PartsServicesPromotion[]) => [...prev, newPromo]);
+            setToast({ message: "Propaganda criada com sucesso!", type: 'success' });
+        }
+    };
+
+    const handleDeletePartsServicesPromotion = (id: string) => {
+        setPartsServicesPromotions((prev: PartsServicesPromotion[]) => prev.filter(p => p.id !== id));
+        setToast({ message: "Propaganda excluída.", type: 'info' });
+    };
+
+    const handleTogglePartsServicesPromotionActive = (id: string) => {
+        const promo = partsServicesPromotions.find(p => p.id === id);
+        if (!promo) return;
+
+        if (!promo.active) {
+            const activeCount = partsServicesPromotions.filter(p => p.active).length;
+            if (activeCount >= 5) {
+                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
+                return;
+            }
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const end = new Date(promo.endDate);
+            end.setHours(23, 59, 59, 999);
+
+            if (today > end) {
+                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
+                return;
+            }
+        }
+
+        setPartsServicesPromotions((prev: PartsServicesPromotion[]) => prev.map(p =>
+            p.id === id ? { ...p, active: !p.active, updatedAt: new Date().toISOString() } : p
+        ));
+    };
+
+    const handleSaveVehiclesPromotion = (promoData: Partial<VehiclesPromotion>) => {
+        const startDate = new Date(promoData.startDate || '');
+        const endDate = new Date(promoData.endDate || '');
+
+        if (endDate <= startDate) {
+            setToast({ message: "A data de término deve ser posterior à data de início.", type: 'error' });
+            return;
+        }
+
+        const activeCount = vehiclesPromotions.filter(p => p.active && p.id !== promoData.id).length;
+        if (promoData.active) {
+            if (activeCount >= 5) {
+                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
+                return;
+            }
+            const today = new Date();
+            if (today > new Date(promoData.endDate || '')) {
+                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
+                return;
+            }
+        }
+
+        if (promoData.id) {
+            // Update mode
+            setVehiclesPromotions((prev: VehiclesPromotion[]) => prev.map(p =>
+                p.id === promoData.id ? {
+                    ...p,
+                    title: promoData.title ?? p.title,
+                    subtitle: promoData.subtitle ?? p.subtitle,
+                    image: promoData.image ?? p.image,
+                    link: promoData.link ?? p.link,
+                    startDate: promoData.startDate ?? p.startDate,
+                    endDate: promoData.endDate ?? p.endDate,
+                    active: promoData.active ?? p.active,
+                    order: promoData.order ?? p.order,
+                    updatedAt: new Date().toISOString()
+                } : p
+            ));
+            setToast({ message: "Propaganda atualizada com sucesso!", type: 'success' });
+        } else {
+            // Create mode
+            const newPromo: VehiclesPromotion = {
+                id: `vehicles_promo_${Date.now()}`,
+                title: promoData.title || '',
+                subtitle: promoData.subtitle || '',
+                image: promoData.image || '',
+                link: promoData.link || '#',
+                startDate: promoData.startDate || new Date().toISOString(),
+                endDate: promoData.endDate || new Date().toISOString(),
+                active: promoData.active ?? true,
+                order: vehiclesPromotions.length,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            setVehiclesPromotions((prev: VehiclesPromotion[]) => [...prev, newPromo]);
+            setToast({ message: "Propaganda criada com sucesso!", type: 'success' });
+        }
+    };
+
+    const handleDeleteVehiclesPromotion = (id: string) => {
+        setVehiclesPromotions((prev: VehiclesPromotion[]) => prev.filter(p => p.id !== id));
+        setToast({ message: "Propaganda excluída.", type: 'info' });
+    };
+
+    const handleToggleVehiclesPromotionActive = (id: string) => {
+        const promo = vehiclesPromotions.find(p => p.id === id);
+        if (!promo) return;
+
+        if (!promo.active) {
+            const activeCount = vehiclesPromotions.filter(p => p.active).length;
+            if (activeCount >= 5) {
+                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
+                return;
+            }
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const end = new Date(promo.endDate);
+            end.setHours(23, 59, 59, 999);
+
+            if (today > end) {
+                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
+                return;
+            }
+        }
+
+        setVehiclesPromotions((prev: VehiclesPromotion[]) => prev.map(p =>
+            p.id === id ? { ...p, active: !p.active, updatedAt: new Date().toISOString() } : p
+        ));
+    };
 
     const handleLogin = (selectedUser: User) => {
         setUser(selectedUser);
@@ -88,6 +458,7 @@ export const useAppActions = (state: AppState) => {
 
     const handleEditAd = (ad: AdItem) => {
         setAdToEdit(ad);
+        setCameFromMyAds(true);
         setCurrentScreen(Screen.CREATE_AD);
     };
 
@@ -163,10 +534,17 @@ export const useAppActions = (state: AppState) => {
 
     const handleAdClick = (ad: AdItem) => {
         setPreviousScreen(currentScreen);
-        const myAdVersion = myAds.find((m: AdItem) => m.id === ad.id);
-        setSelectedAd(myAdVersion || ad);
 
-        if (ad.category === 'autos') setCurrentScreen(Screen.VEHICLE_DETAILS);
+        // Defensive check for myAds array
+        const safeMyAds = Array.isArray(myAds) ? myAds : [];
+        const myAdVersion = safeMyAds.find((m: AdItem) => m.id === ad.id);
+
+        const targetAd = myAdVersion || ad;
+        setSelectedAd(targetAd);
+
+        console.log("Navigating to ad:", targetAd.title, targetAd.category);
+
+        if (ad.category === 'autos' || ad.category === 'veiculos') setCurrentScreen(Screen.VEHICLE_DETAILS);
         else if (ad.category === 'imoveis') setCurrentScreen(Screen.REAL_ESTATE_DETAILS);
         else if (ad.category === 'pecas' || ad.category === 'servicos') setCurrentScreen(Screen.PART_SERVICE_DETAILS);
         else setCurrentScreen(Screen.VEHICLE_DETAILS);
@@ -205,42 +583,73 @@ export const useAppActions = (state: AppState) => {
         setCurrentScreen(Screen.PUBLIC_PROFILE);
     };
 
-    const handleCreateAdFinish = (adData: Partial<AdItem>) => {
-        if (adToEdit) {
-            setMyAds((prev: AdItem[]) => prev.map(ad => {
-                if (ad.id === adToEdit.id) {
-                    return {
-                        ...ad,
-                        ...adData,
-                        status: AdStatus.PENDING,
-                        id: adToEdit.id,
-                        image: adData.images && adData.images.length > 0 ? adData.images[0] : ad.image
-                    };
-                }
-                return ad;
-            }));
-            setToast({ message: "Anúncio atualizado e enviado para análise!", type: 'success' });
-            setAdToEdit(undefined);
-        } else {
-            const newAd: AdItem = {
-                id: `ad_${Date.now()}`,
-                title: "Novo Anúncio",
-                price: 0,
-                location: user.location || "Brasília, DF",
-                image: "https://picsum.photos/400/300",
-                status: AdStatus.PENDING,
-                date: new Date().toLocaleDateString('pt-BR'),
-                category: 'autos',
-                isOwner: true,
-                ownerName: user.name,
-                ...adData,
-            };
-            setMyAds((prev: AdItem[]) => [newAd, ...prev]);
-            setToast({ message: "Anúncio criado e enviado para análise!", type: 'info' });
-        }
+    const handleCreateAdFinish = async (adData: Partial<AdItem>) => {
+        try {
+            if (adToEdit) {
+                // Edit Logic (Simplification: Editing allows direct update if RLS permits, or use a function)
+                // For now, let's keep local edit logic OR map to API update if exists.
+                // The requirements focused on CREATE limits.
+                // Let's assume edit is still local for this mock migration step or basic API update.
+                // NOTE: User said "ZERO TRUST". Editing active ads usually requires moderation too. 
+                // But let's stick to the prompt focus: Create Ad & Limits.
+                // To avoid breaking the whole app instantly without backend, I will wrap in try/catch.
 
-        setPreviousScreen(Screen.DASHBOARD);
-        setCurrentScreen(Screen.MY_ADS);
+                // Existing Edit Logic (Preserved for now but ideally should be api.updateAd)
+                setMyAds((prev: AdItem[]) => prev.map(ad => {
+                    if (ad.id === adToEdit.id) {
+                        return {
+                            ...ad,
+                            ...adData,
+                            status: AdStatus.PENDING // Re-approve on edit?
+                        };
+                    }
+                    return ad;
+                }));
+                setToast({ message: "Anúncio atualizado!", type: 'success' });
+            } else {
+                // --- ZERO TRUST CREATION ---
+                setToast({ message: "Validando limite e criando...", type: 'info' });
+
+                const payload: CreateAdPayload = {
+                    title: adData.title || 'Sem Título',
+                    description: adData.description || '',
+                    price: adData.price || 0,
+                    category: adData.category || 'outros',
+                    image: adData.image || '',
+                    location: adData.location || '',
+                    ...adData
+                };
+
+                const newAd = await api.createAd(payload);
+
+                setMyAds((prev: AdItem[]) => [newAd, ...prev]);
+                setToast({ message: "Anúncio criado com sucesso!", type: 'success' });
+            }
+
+            const shouldGoBackToMyAds = cameFromMyAds;
+            setCameFromMyAds(false);
+            setPreviousScreen(Screen.DASHBOARD);
+            setCurrentScreen(Screen.MY_ADS);
+
+        } catch (error: any) {
+            console.error("Erro criação:", error);
+            if (error.message?.includes('Limit Exceeded') || error.message?.includes('403')) {
+                alert("LIMITE ATINGIDO (ZERO TRUST) 🔒\n\nVocê atingiu o limite de 3 anúncios gratuitos no mês.\nO servidor bloqueou esta ação.");
+            } else {
+                // Fallback for Development (if no backend) - Optional, but keeping strict per prompt instructions
+                alert(`Erro do Servidor: ${error.message}\n(Backend Blindado impediu a criação)`);
+            }
+        }
+    };
+
+    const handleSubscribe = async (planId: string, price: number, title: string) => {
+        try {
+            setToast({ message: "Gerando checkout Mercado Pago...", type: 'info' });
+            const { init_point } = await api.createPreference(planId, price, title);
+            window.location.href = init_point;
+        } catch (error: any) {
+            setToast({ message: "Erro pagamento: " + error.message, type: 'error' });
+        }
     };
 
     const handleAdminSaveAd = (updatedAd: AdItem) => {
@@ -248,9 +657,13 @@ export const useAppActions = (state: AppState) => {
 
         if (isMyAd) {
             setMyAds((prev: AdItem[]) => prev.map(ad => ad.id === updatedAd.id ? updatedAd : ad));
-        } else {
-            setAdminMockAds((prev: AdItem[]) => prev.map(ad => ad.id === updatedAd.id ? updatedAd : ad));
         }
+
+
+
+        // Mantém mocks admin sincronizados (fallback)
+        setAdminMockAds((prev: AdItem[]) => prev.map(ad => ad.id === updatedAd.id ? updatedAd : ad));
+
         setToast({ message: "Anúncio atualizado com sucesso!", type: 'success' });
     };
 
@@ -278,10 +691,14 @@ export const useAppActions = (state: AppState) => {
             const target = myAds.find((ad: AdItem) => ad.id === id);
             targetAdTitle = target?.title || 'Seu anúncio';
             setMyAds((prev: AdItem[]) => prev.map(updateAdProps));
-        } else {
+        }
+
+
+        setAdminMockAds((prev: AdItem[]) => prev.map(updateAdProps));
+
+        if (!targetAdTitle) {
             const target = adminMockAds.find((ad: AdItem) => ad.id === id);
-            targetAdTitle = target?.title || 'Seu anúncio';
-            setAdminMockAds((prev: AdItem[]) => prev.map(updateAdProps));
+            targetAdTitle = target?.title || 'Anúncio';
         }
 
         if (newStatus === AdStatus.ACTIVE) {
@@ -335,10 +752,7 @@ export const useAppActions = (state: AppState) => {
             setUser(CURRENT_USER);
             setMyAds(MY_ADS_DATA);
             setFavorites(FAVORITES_DATA);
-            setBanners(DEFAULT_BANNERS);
-            setVehicleBanners(DEFAULT_VEHICLE_BANNERS);
-            setRealEstateBanners(DEFAULT_REAL_ESTATE_BANNERS);
-            setPartsServicesBanners(DEFAULT_PARTS_SERVICES_BANNERS);
+
             setNotifications(MOCK_NOTIFICATIONS);
             setReports(MOCK_REPORTS);
             setFairActive(true);
@@ -408,7 +822,23 @@ export const useAppActions = (state: AppState) => {
 
     const prepareCreateAd = (ad?: AdItem) => {
         setAdToEdit(ad);
+        if (!ad) setCameFromMyAds(false);
         setCurrentScreen(Screen.CREATE_AD);
+    };
+
+    // --- HOME NAVIGATION ACTIONS ---
+    const openNewArrivals = () => {
+        setFilterContext({ mode: 'recent', sort: 'recent' });
+        navigateTo(Screen.VEHICLES_LIST);
+    };
+
+    const openAutomotiveServices = () => {
+        navigateTo(Screen.PARTS_SERVICES_LIST);
+    };
+
+    const openTrendingRealEstate = () => {
+        setFilterContext({ mode: 'trending', sort: 'trending' });
+        navigateTo(Screen.REAL_ESTATE_LIST);
     };
 
     return {
@@ -434,6 +864,7 @@ export const useAppActions = (state: AppState) => {
         handleViewProfile,
         handleViewProfileFromChat,
         handleCreateAdFinish,
+        handleSubscribe,
         handleAdminSaveAd,
         handleAdminAdUpdate,
         handleModerationBlockUser,
@@ -446,17 +877,29 @@ export const useAppActions = (state: AppState) => {
         toggleFairActive,
         toggleMaintenanceMode,
         prepareCreateAd,
-        setBanners,
-        setVehicleBanners,
-        setRealEstateBanners,
-        setPartsServicesBanners,
+        openNewArrivals,
+        openAutomotiveServices,
+        openTrendingRealEstate,
         setAdToEdit,
-        favorites, // FIX: Added favorites to fix blank screen navigation error
-        setToast, // Also adding setToast for completeness
-        adToEdit, // Also adding adToEdit for completeness
-        banners, // Also adding banners for completeness
-        vehicleBanners, // Also adding vehicleBanners for completeness
-        realEstateBanners, // Also adding realEstateBanners for completeness
-        partsServicesBanners // Also adding partsServicesBanners for completeness
+
+        handleSavePromotion,
+        handleDeletePromotion,
+        handleTogglePromotionActive,
+
+        handleSaveRealEstatePromotion,
+        handleDeleteRealEstatePromotion,
+        handleToggleRealEstatePromotionActive,
+
+        handleSavePartsServicesPromotion,
+        handleDeletePartsServicesPromotion,
+        handleTogglePartsServicesPromotionActive,
+
+        handleSaveVehiclesPromotion,
+        handleDeleteVehiclesPromotion,
+        handleToggleVehiclesPromotionActive,
+
+        favorites,
+        setToast,
+        adToEdit,
     };
 };

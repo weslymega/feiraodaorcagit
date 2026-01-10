@@ -15,19 +15,19 @@ export enum Screen {
   EDIT_PROFILE = 'EDIT_PROFILE',
   CHANGE_PASSWORD = 'CHANGE_PASSWORD',
   CREATE_AD = 'CREATE_AD',
-  
+
   // Detalhes
   VEHICLE_DETAILS = 'VEHICLE_DETAILS',
   REAL_ESTATE_DETAILS = 'REAL_ESTATE_DETAILS',
   PART_SERVICE_DETAILS = 'PART_SERVICE_DETAILS',
-  
+
   // Listagens (Novas Telas)
   VEHICLES_LIST = 'VEHICLES_LIST',
   REAL_ESTATE_LIST = 'REAL_ESTATE_LIST',
   PARTS_SERVICES_LIST = 'PARTS_SERVICES_LIST',
   FEATURED_VEHICLES_LIST = 'FEATURED_VEHICLES_LIST', // Nova tela de destaques
   FAIR_LIST = 'FAIR_LIST', // Nova tela: Estou na Feira Agora
-  
+
   // Perfil Público
   PUBLIC_PROFILE = 'PUBLIC_PROFILE',
 
@@ -38,20 +38,28 @@ export enum Screen {
   ADMIN_REAL_ESTATE = 'ADMIN_REAL_ESTATE', // Nova rota de gerenciamento de imóveis
   ADMIN_PARTS_SERVICES = 'ADMIN_PARTS_SERVICES', // Nova rota de gerenciamento de peças e serviços
   ADMIN_REPORTS = 'ADMIN_REPORTS', // Nova rota de relatórios
-  ADMIN_BANNERS = 'ADMIN_BANNERS', // Nova rota de banners
   ADMIN_SYSTEM_SETTINGS = 'ADMIN_SYSTEM_SETTINGS', // Nova rota de configurações do sistema
   ADMIN_CONTENT_MODERATION = 'ADMIN_CONTENT_MODERATION', // Nova rota de moderação
+  ADMIN_DASHBOARD_PROMOTIONS = 'ADMIN_DASHBOARD_PROMOTIONS', // Nova rota de gerenciamento de propagandas do dashboard
+  ADMIN_REAL_ESTATE_PROMOTIONS = 'ADMIN_REAL_ESTATE_PROMOTIONS', // Nova rota de gerenciamento de propagandas de imóveis
+  ADMIN_PARTS_SERVICES_PROMOTIONS = 'ADMIN_PARTS_SERVICES_PROMOTIONS', // Nova rota de gerenciamento de propagandas de peças e serviços
+  ADMIN_VEHICLES_PROMOTIONS = 'ADMIN_VEHICLES_PROMOTIONS', // Nova rota de gerenciamento de propagandas de veículos
 
   ACCOUNT_DATA = 'ACCOUNT_DATA',
   NOTIFICATIONS = 'NOTIFICATIONS',
   PRIVACY = 'PRIVACY',
   SECURITY = 'SECURITY',
   ABOUT_APP = 'ABOUT_APP',
-  HELP_SUPPORT = 'HELP_SUPPORT'
+  HELP_SUPPORT = 'HELP_SUPPORT',
+  ABOUT_US = 'ABOUT_US',
+  TERMS_OF_USE = 'TERMS_OF_USE',
+  PRIVACY_POLICY = 'PRIVACY_POLICY'
 }
 
 export interface User {
   id?: string; // Adicionado ID opcional para facilitar gerenciamento
+  activePlan?: 'free' | 'basic' | 'advanced' | 'premium'; // Plano do usuário
+  monthlyUsage?: { month: string; count: number }; // Controle de uso mensal (YYYY-MM)
   name: string;
   email: string;
   avatarUrl: string;
@@ -87,19 +95,6 @@ export interface AdBoostConfig {
   nextBumpDate?: string;  // Data prevista para a próxima subida (ISO)
 }
 
-// Controle de Banner de Propaganda
-export interface BannerItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  category: string;
-  buttonText: string;
-  image: string; // URL ou Base64
-  gradient: string; // Classe tailwind ex: 'from-blue-900 to-blue-600'
-  expiresAt: string; // ISO Date
-  active: boolean;
-  link?: string;
-}
 
 // Controle de Presença na Feira
 export interface FairPresence {
@@ -117,12 +112,12 @@ export interface AdItem {
   images?: string[]; // Lista completa de imagens
   status: AdStatus;
   date?: string;
-  category?: 'autos' | 'imoveis' | 'produtos' | 'pecas' | 'servicos';
-  
+  category?: 'veiculos' | 'imoveis' | 'servicos' | 'autos' | 'pecas' | 'produtos'; // Mantendo antigos por compatibilidade temporária se necessário, mas priorizando novos
+
   isFeatured?: boolean; // Indicates if the ad is a "Destaque"
   boostPlan?: 'premium' | 'advanced' | 'basic' | 'gratis'; // Specific Plan Tier
   boostConfig?: AdBoostConfig; // Regras de data e bumps
-  
+
   fairPresence?: FairPresence; // Novo campo: Presença física na feira
 
   // New Field for Rent vs Sale
@@ -139,7 +134,7 @@ export interface AdItem {
   doors?: string;
   steering?: string;
   engine?: string;
-  
+
   // Real Estate Specifics
   realEstateType?: string; // e.g., 'Apartamento', 'Casa', 'Comercial'
   area?: number;
@@ -158,6 +153,14 @@ export interface AdItem {
   isOwner?: boolean;
   ipvaPaid?: boolean;
   ownerName?: string; // Para exibição no admin
+
+  // Fields for dynamic Home sections
+  createdAt?: string; // ISO string timestamp for filtering recent ads
+  views?: number; // Number of views for trending calculation
+  favoriteCount?: number; // Number of favorites for trending scoring
+  chatCount?: number; // Number of chats initiated for trending scoring
+  priceType?: 'fixed' | 'starting_at'; // For services: fixed price or "A partir de"
+  estimatedTime?: string; // For services: estimated time to complete
 }
 
 export interface MessageItem {
@@ -196,14 +199,42 @@ export interface NotificationItem {
 
 export interface ReportItem {
   id: string;
-  targetType: 'ad' | 'user' | 'comment';
-  targetName: string;
-  targetImage?: string;
-  targetId: string;
+  adId: string;
+  adTitle: string;
   reason: string;
   description: string;
+  reporterId: string;
   reporterName: string;
-  date: string;
-  severity: 'low' | 'medium' | 'high';
   status: 'pending' | 'resolved' | 'dismissed';
+  date: string;
 }
+
+// Temporary Filter Context for Navigation
+export interface FilterContext {
+  mode: 'recent' | 'trending' | 'category' | 'none';
+  category?: string;
+  partTypes?: string[];
+  sort?: 'recent' | 'price_asc' | 'price_desc' | 'trending';
+}
+
+export interface DashboardPromotion {
+  id: string;
+  image: string;
+
+  title?: string;
+  subtitle?: string;
+
+  link?: string; // opcional (externo ou interno)
+
+  startDate: string; // ISO
+  endDate: string;   // ISO
+
+  active: boolean;
+  order: number; // controle de exibição
+
+  createdAt: string;
+  updatedAt: string;
+}
+export interface RealEstatePromotion extends DashboardPromotion { }
+export interface PartsServicesPromotion extends DashboardPromotion { }
+export interface VehiclesPromotion extends DashboardPromotion { }

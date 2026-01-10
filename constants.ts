@@ -1,5 +1,5 @@
 
-import { AdItem, AdStatus, BannerItem, MessageItem, TransactionData, User, NotificationItem, ReportItem } from './types';
+import { AdItem, AdStatus, MessageItem, TransactionData, User, NotificationItem, ReportItem } from './types';
 
 // --- LOGOS DO APLICATIVO ---
 // Logos recriadas para corresponder exatamente à identidade visual solicitada
@@ -22,7 +22,9 @@ export const ADMIN_USER: User = {
   bio: "Gerente do Sistema",
   isAdmin: true, // Permite acesso ao painel de administrador
   adsCount: 0,
-  verified: true
+  verified: true,
+  activePlan: 'premium',
+  monthlyUsage: { month: '2024-03', count: 0 }
 };
 
 
@@ -37,7 +39,9 @@ export const REGULAR_USER: User = {
   bio: "Comprador de carros e motos.",
   isAdmin: false, // Acesso restrito
   adsCount: 2,
-  verified: true
+  verified: true,
+  activePlan: 'free',
+  monthlyUsage: { month: '2024-03', count: 2 }
 };
 
 // Mantido para compatibilidade, aponta para o Regular por padrão se necessário
@@ -58,150 +62,6 @@ export const MOCK_SELLER: User = {
   verified: true
 };
 
-// --- DEFAULT BANNERS ---
-export const DEFAULT_BANNERS: BannerItem[] = [
-  {
-    id: '1',
-    category: 'Automotivo',
-    title: 'Feirão de Seminovos',
-    subtitle: 'Taxas a partir de 0.99% a.m.',
-    buttonText: 'Ver Ofertas',
-    image: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-blue-900 to-blue-600',
-    expiresAt: '2025-12-31T00:00:00.000Z',
-    active: true
-  },
-  {
-    id: '2',
-    category: 'Imóveis',
-    title: 'Lançamento Noroeste',
-    subtitle: 'Aptos de alto padrão com 10% off',
-    buttonText: 'Agendar Visita',
-    image: 'https://images.unsplash.com/photo-1600596542815-60c37c6525fa?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-emerald-800 to-teal-600',
-    expiresAt: '2025-12-31T00:00:00.000Z',
-    active: true
-  },
-  {
-    id: '3',
-    category: 'App Day',
-    title: 'Semana do Cliente',
-    subtitle: 'Anuncie grátis por 7 dias',
-    buttonText: 'Anunciar Agora',
-    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f7a07d?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-purple-900 to-indigo-600',
-    expiresAt: '2025-12-31T00:00:00.000Z',
-    active: true
-  }
-];
-
-export const DEFAULT_VEHICLE_BANNERS: BannerItem[] = [
-  {
-    id: 'v_ban_1',
-    title: 'Festival de SUVs',
-    subtitle: 'As melhores taxas do ano',
-    category: 'Oferta',
-    buttonText: 'Ver Agora',
-    image: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-blue-900 to-slate-800',
-    expiresAt: '2025-12-31',
-    active: true
-  },
-  {
-    id: 'v_ban_2',
-    title: 'Venda seu Carro',
-    subtitle: 'Anuncie grátis hoje mesmo',
-    category: 'Anuncie',
-    buttonText: 'Começar',
-    image: 'https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-emerald-800 to-green-600',
-    expiresAt: '2025-12-31',
-    active: true
-  },
-  {
-    id: 'v_ban_3',
-    title: 'Laudo Cautelar',
-    subtitle: 'Segurança na sua compra',
-    category: 'Serviço',
-    buttonText: 'Saiba Mais',
-    image: 'https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-orange-700 to-red-600',
-    expiresAt: '2025-12-31',
-    active: true
-  }
-];
-
-export const DEFAULT_REAL_ESTATE_BANNERS: BannerItem[] = [
-  {
-    id: 'r_ban_1',
-    title: 'Feirão da Casa Própria',
-    subtitle: 'Financiamento facilitado',
-    category: 'Imóveis',
-    buttonText: 'Ver Opções',
-    image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-indigo-900 to-blue-800',
-    expiresAt: '2025-12-31',
-    active: true
-  },
-  {
-    id: 'r_ban_2',
-    title: 'Aluguel Sem Fiador',
-    subtitle: 'Mudança rápida e sem burocracia',
-    category: 'Aluguel',
-    buttonText: 'Saiba Mais',
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-purple-900 to-pink-800',
-    expiresAt: '2025-12-31',
-    active: true
-  },
-  {
-    id: 'r_ban_3',
-    title: 'Lançamentos Noroeste',
-    subtitle: 'Invista no melhor bairro de Brasília',
-    category: 'Lançamento',
-    buttonText: 'Ver Decorado',
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-emerald-900 to-green-700',
-    expiresAt: '2025-12-31',
-    active: true
-  }
-];
-
-export const DEFAULT_PARTS_SERVICES_BANNERS: BannerItem[] = [
-  {
-    id: 'p_ban_1',
-    title: 'Revisão de Férias',
-    subtitle: 'Garanta a segurança da sua viagem',
-    category: 'Serviço',
-    buttonText: 'Agendar',
-    image: 'https://images.unsplash.com/photo-1632823471441-28dc124119d5?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-orange-800 to-red-700',
-    expiresAt: '2025-12-31',
-    active: true
-  },
-  {
-    id: 'p_ban_2',
-    title: 'Pneus em Promoção',
-    subtitle: 'Compre 3 e leve 4',
-    category: 'Oferta',
-    buttonText: 'Aproveitar',
-    image: 'https://images.unsplash.com/photo-1578844251758-2f71da64522f?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-gray-900 to-gray-700',
-    expiresAt: '2025-12-31',
-    active: true
-  },
-  {
-    id: 'p_ban_3',
-    title: 'Estética Automotiva',
-    subtitle: 'Seu carro brilhando como novo',
-    category: 'Estética',
-    buttonText: 'Ver Planos',
-    image: 'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&q=80&w=800',
-    gradient: 'from-cyan-900 to-blue-800',
-    expiresAt: '2025-12-31',
-    active: true
-  }
-];
 
 // --- MOCK USERS LIST FOR ADMIN PANEL ---
 export const MOCK_USERS_LIST: User[] = [
@@ -358,41 +218,38 @@ export const MOCK_NOTIFICATIONS: NotificationItem[] = [
 export const MOCK_REPORTS: ReportItem[] = [
   {
     id: 'rep_1',
-    targetType: 'ad',
-    targetName: 'Fiat Uno Mille 1995 (Sem documento)',
-    targetImage: 'https://images.unsplash.com/photo-1549463518-e3256a599b53?auto=format&fit=crop&q=80&w=800',
-    targetId: 'v_rejected_1', // Matches an existing ad in MOCK_ADMIN_VEHICLES
-    reason: 'Veículo Irregular / Golpe',
-    description: 'Vendedor afirma não ter documento. Parece veículo roubado ou "np".',
+    reporterId: 'user_regular_01',
+    adId: 'v_rejected_1',
+    adTitle: 'Fiat Uno Mille 1995 (Sem documento)',
+    reason: 'Fraude / Golpe',
+    description: 'Veículo sem documentação e preço muito abaixo do mercado. Suspeita de golpe.',
     reporterName: 'João Cliente',
     date: 'Hoje, 10:45',
-    severity: 'high',
+
     status: 'pending'
   },
   {
     id: 'rep_2',
-    targetType: 'user',
-    targetName: 'Carlos Vendas Rápidas',
-    targetImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-    targetId: 'u5', // Matches Carlos Golpista in MOCK_USERS_LIST
+    reporterId: 'user_regular_01',
+    adId: 'u5',
+    adTitle: 'Carlos Vendas Rápidas',
     reason: 'Comportamento Abusivo',
-    description: 'Me xingou no chat após eu pedir um desconto.',
+    description: 'Vendedor enviando mensagens ofensivas no chat.',
     reporterName: 'Maria Silva',
     date: 'Ontem, 15:30',
-    severity: 'medium',
+
     status: 'pending'
   },
   {
     id: 'rep_3',
-    targetType: 'ad',
-    targetName: 'Desbloqueio de Multimidia (Serviço Ilegal)',
-    targetImage: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&q=80&w=800',
-    targetId: 'ps_rejected_1', // Matches an existing ad in MOCK_ADMIN_PARTS_SERVICES
-    reason: 'Conteúdo Proibido',
-    description: 'Oferecendo serviços de desbloqueio de central original, o que viola direitos autorais.',
+    reporterId: 'system_auto',
+    adId: 'ps_rejected_1',
+    adTitle: 'Desbloqueio de Multimidia (Serviço Ilegal)',
+    reason: 'Conteúdo Ilegal',
+    description: 'Serviço que viola os termos de uso e a legislação de trânsito.',
     reporterName: 'Sistema (Auto)',
     date: '12 Out, 09:00',
-    severity: 'high',
+
     status: 'pending'
   }
 ];
@@ -406,7 +263,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     location: 'Guará, DF',
     image: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.PENDING,
-    category: 'autos',
+    category: 'veiculos',
     ownerName: 'Ricardo Oliveira',
     date: 'Hoje, 10:30',
     year: 2023,
@@ -420,7 +277,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     location: 'Águas Claras, DF',
     image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.PENDING,
-    category: 'autos',
+    category: 'veiculos',
     ownerName: 'Fernanda Lima',
     date: 'Ontem, 15:20',
     year: 2024,
@@ -434,7 +291,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     location: 'Lago Sul, DF',
     image: 'https://images.unsplash.com/photo-1503376763036-066120622c74?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     ownerName: 'Marcos Paulo',
     date: '12 Ago 2023',
     year: 2023,
@@ -447,7 +304,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     location: 'Taguatinga, DF',
     image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     ownerName: 'Loja Seminovos',
     date: '10 Set 2023',
     year: 2023,
@@ -460,7 +317,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     location: 'Ceilândia, DF',
     image: 'https://images.unsplash.com/photo-1549463518-e3256a599b53?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.REJECTED,
-    category: 'autos',
+    category: 'veiculos',
     ownerName: 'Carlos Golpista',
     date: '05 Out 2023',
     year: 1995,
@@ -545,7 +402,7 @@ export const MOCK_ADMIN_PARTS_SERVICES: AdItem[] = [
     location: 'Taguatinga Norte, DF',
     image: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.PENDING,
-    category: 'pecas',
+    category: 'servicos',
     partType: 'Som e Vídeo Automotivo',
     condition: 'Novo',
     ownerName: 'AudioCar Shop',
@@ -559,7 +416,7 @@ export const MOCK_ADMIN_PARTS_SERVICES: AdItem[] = [
     location: 'Ceilândia, DF',
     image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&q=80&w=800', // Placeholder
     status: AdStatus.PENDING,
-    category: 'pecas',
+    category: 'servicos',
     partType: 'Peças Automotivas',
     condition: 'Usado',
     ownerName: 'Borracharia do Zé',
@@ -603,7 +460,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     location: 'Lago Sul, DF',
     image: 'https://images.unsplash.com/photo-1503376763036-066120622c74?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     isFeatured: true,
     boostPlan: 'premium',
     year: 2023,
@@ -617,7 +474,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     location: 'Park Way, DF',
     image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     isFeatured: true,
     boostPlan: 'premium',
     year: 2024,
@@ -631,7 +488,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     location: 'Sudoeste, DF',
     image: 'https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     isFeatured: true,
     boostPlan: 'advanced',
     year: 2023,
@@ -645,7 +502,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     location: 'Noroeste, DF',
     image: 'https://images.unsplash.com/photo-1584345604476-8ec5e12e42dd?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     isFeatured: true,
     boostPlan: 'basic',
     year: 2022,
@@ -662,10 +519,14 @@ export const POPULAR_CARS: AdItem[] = [
     location: 'Taguatinga, DF',
     image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     year: 2023,
     mileage: 15000,
     vehicleType: 'GM - Chevrolet Onix',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(), // 12 horas atrás
+    views: 45,
+    favoriteCount: 8,
+    chatCount: 3,
     fairPresence: {
       active: true,
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 4).toISOString() // 4 horas restantes
@@ -678,10 +539,14 @@ export const POPULAR_CARS: AdItem[] = [
     location: 'SIA, DF',
     image: 'https://images.unsplash.com/photo-1626850257375-3413cb60321a?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     year: 2024,
     mileage: 0,
-    vehicleType: 'Fiat Strada'
+    vehicleType: 'Fiat Strada',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(), // 36 horas atrás
+    views: 72,
+    favoriteCount: 12,
+    chatCount: 5
   },
   {
     id: 'c3',
@@ -690,10 +555,14 @@ export const POPULAR_CARS: AdItem[] = [
     location: 'Asa Norte, DF',
     image: 'https://images.unsplash.com/photo-1623869675781-80aa31012a5a?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     year: 2022,
     mileage: 42000,
     vehicleType: 'Toyota Corolla',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 24 horas atrás
+    views: 120,
+    favoriteCount: 20,
+    chatCount: 8,
     fairPresence: {
       active: true,
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 2).toISOString() // 2 horas restantes
@@ -706,10 +575,14 @@ export const POPULAR_CARS: AdItem[] = [
     location: 'Lago Sul, DF',
     image: 'https://images.unsplash.com/photo-1627454820574-fb40e691b00e?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     year: 2023,
     mileage: 12500,
-    vehicleType: 'Jeep Compass'
+    vehicleType: 'Jeep Compass',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), // 3 dias atrás
+    views: 95,
+    favoriteCount: 15,
+    chatCount: 6
   },
   {
     id: 'c5',
@@ -718,10 +591,14 @@ export const POPULAR_CARS: AdItem[] = [
     location: 'Guará, DF',
     image: 'https://images.unsplash.com/photo-1549463518-e3256a599b53?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     year: 2022,
     mileage: 28000,
-    vehicleType: 'VW - Volkswagen Nivus'
+    vehicleType: 'VW - Volkswagen Nivus',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(), // 18 horas atrás
+    views: 60,
+    favoriteCount: 10,
+    chatCount: 4
   },
   {
     id: 'c6',
@@ -730,10 +607,14 @@ export const POPULAR_CARS: AdItem[] = [
     location: 'Sobradinho, DF',
     image: 'https://images.unsplash.com/photo-1609529669235-c07e4e1bd6e9?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     year: 2021,
     mileage: 45000,
-    vehicleType: 'Fiat Toro'
+    vehicleType: 'Fiat Toro',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(), // 4 dias atrás
+    views: 48,
+    favoriteCount: 7,
+    chatCount: 2
   },
   {
     id: 'c7',
@@ -742,10 +623,14 @@ export const POPULAR_CARS: AdItem[] = [
     location: 'Noroeste, DF',
     image: 'https://images.unsplash.com/photo-1555215696-99ac45e43d34?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     year: 2023,
     mileage: 8000,
-    vehicleType: 'BMW X1'
+    vehicleType: 'BMW X1',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(), // 6 horas atrás
+    views: 150,
+    favoriteCount: 25,
+    chatCount: 12
   },
   {
     id: 'c8',
@@ -754,10 +639,14 @@ export const POPULAR_CARS: AdItem[] = [
     location: 'Park Way, DF',
     image: 'https://images.unsplash.com/photo-1566008885218-90abf9200ddb?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     year: 2024,
     mileage: 1000,
-    vehicleType: 'Ford Ranger'
+    vehicleType: 'Ford Ranger',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), // 3 horas atrás
+    views: 88,
+    favoriteCount: 14,
+    chatCount: 7
   }
 ];
 
@@ -770,8 +659,14 @@ export const POPULAR_SERVICES: AdItem[] = [
     image: 'https://images.unsplash.com/photo-1632823471441-28dc124119d5?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
     category: 'servicos',
-    partType: 'Estética Automotiva',
-    condition: 'Novo'
+    partType: 'Estética',
+    condition: 'Novo',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(), // 8 horas atrás
+    priceType: 'starting_at',
+    estimatedTime: '2-4 horas',
+    views: 35,
+    favoriteCount: 5,
+    chatCount: 2
   },
   {
     id: 's2',
@@ -781,8 +676,14 @@ export const POPULAR_SERVICES: AdItem[] = [
     image: 'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
     category: 'servicos',
-    partType: 'Lavagem e Detalhamento',
-    condition: 'Novo'
+    partType: 'Polimento',
+    condition: 'Novo',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(), // 20 horas atrás
+    priceType: 'fixed',
+    estimatedTime: '6-8 horas',
+    views: 68,
+    favoriteCount: 12,
+    chatCount: 6
   },
   {
     id: 's3',
@@ -793,7 +694,13 @@ export const POPULAR_SERVICES: AdItem[] = [
     status: AdStatus.ACTIVE,
     category: 'servicos',
     partType: 'Som e Acessórios',
-    condition: 'Novo'
+    condition: 'Novo',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 horas atrás
+    priceType: 'fixed',
+    estimatedTime: '1-2 horas',
+    views: 42,
+    favoriteCount: 8,
+    chatCount: 4
   },
   {
     id: 's4',
@@ -803,8 +710,14 @@ export const POPULAR_SERVICES: AdItem[] = [
     image: 'https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
     category: 'servicos',
-    partType: 'Mecânica Geral',
-    condition: 'Novo'
+    partType: 'Mecânica',
+    condition: 'Novo',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(), // 30 horas atrás
+    priceType: 'starting_at',
+    estimatedTime: '3-5 horas',
+    views: 95,
+    favoriteCount: 18,
+    chatCount: 10
   },
   {
     id: 's5',
@@ -815,7 +728,13 @@ export const POPULAR_SERVICES: AdItem[] = [
     status: AdStatus.ACTIVE,
     category: 'servicos',
     partType: 'Lavagem',
-    condition: 'Novo'
+    condition: 'Novo',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 10).toISOString(), // 10 horas atrás
+    priceType: 'fixed',
+    estimatedTime: '30-45 min',
+    views: 120,
+    favoriteCount: 22,
+    chatCount: 14
   },
   {
     id: 's6',
@@ -826,7 +745,13 @@ export const POPULAR_SERVICES: AdItem[] = [
     status: AdStatus.ACTIVE,
     category: 'servicos',
     partType: 'Manutenção',
-    condition: 'Novo'
+    condition: 'Novo',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 15).toISOString(), // 15 horas atrás
+    priceType: 'fixed',
+    estimatedTime: '1-2 horas',
+    views: 55,
+    favoriteCount: 9,
+    chatCount: 5
   }
 ];
 
@@ -969,7 +894,7 @@ export const MY_ADS_DATA: AdItem[] = [
     location: 'Brasília, DF',
     image: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     plate: 'JIP-1234',
     year: 2020,
     mileage: 108000,
@@ -1019,7 +944,7 @@ export const FAVORITES_DATA: AdItem[] = [
     location: 'Belo Horizonte, MG',
     image: 'https://images.unsplash.com/photo-1584345604476-8ec5e12e42dd?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     year: 2022,
     mileage: 12000,
     fuel: 'Gasolina',
@@ -1047,7 +972,7 @@ export const FAVORITES_DATA: AdItem[] = [
     location: 'São Paulo, SP',
     image: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.ACTIVE,
-    category: 'autos',
+    category: 'veiculos',
     vehicleType: 'Volkswagen Gol'
   }
 ];
@@ -1061,7 +986,7 @@ export const HISTORY_DATA: AdItem[] = [
     image: 'https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?auto=format&fit=crop&q=80&w=800',
     status: AdStatus.BOUGHT,
     date: '12 de Agosto, 2023',
-    category: 'autos',
+    category: 'veiculos',
     vehicleType: 'Honda Civic'
   }
 ];
@@ -1117,4 +1042,131 @@ export const HISTORY_CHART_DATA: TransactionData[] = [
   { name: 'Mai', value: 1890 },
   { name: 'Jun', value: 2390 },
   { name: 'Jul', value: 3490 },
+];
+
+// --- PROMOTIONAL BANNERS FOR CAROUSEL ---
+export interface PromoBanner {
+  id: string;
+  title: string;
+  subtitle?: string;
+  image: string;
+  ctaText: string;
+  link?: string;
+  backgroundColor?: string;
+}
+
+export const PROMO_BANNERS: PromoBanner[] = [
+  {
+    id: 'promo_1',
+    title: 'FEIRÃO DE SEMINOVOS',
+    subtitle: 'TAXAS A PARTIR DE 0.99% A.M.',
+    image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'VER OFERTAS',
+    backgroundColor: 'bg-primary'
+  },
+  {
+    id: 'promo_2',
+    title: 'FINANCIAMENTO FÁCIL',
+    subtitle: 'APROVAÇÃO EM ATÉ 24 HORAS',
+    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'SIMULAR AGORA',
+    backgroundColor: 'bg-accent'
+  }
+];
+
+export const REAL_ESTATE_PROMO_BANNERS: PromoBanner[] = [
+  {
+    id: 're_promo_1',
+    title: 'LUXO E CONFORTO',
+    subtitle: 'VIVA O SEU SONHO',
+    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'VER IMÓVEIS',
+    backgroundColor: 'bg-primary'
+  },
+  {
+    id: 're_promo_2',
+    title: 'VALORIZE SEU IMÓVEL',
+    subtitle: 'CORRETORES ESPECIALISTAS',
+    image: 'https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'FALAR COM CONSULTOR',
+    backgroundColor: 'bg-accent'
+  },
+  {
+    id: 're_promo_3',
+    title: 'OPORTUNIDADE ÚNICA',
+    subtitle: 'INVESTIMENTO NO NOROESTE',
+    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'SABER MAIS',
+    backgroundColor: 'bg-primary'
+  },
+  {
+    id: 're_promo_4',
+    title: 'ENCONTRE SEU LAR',
+    subtitle: 'PERFEITO PARA SUA FAMÍLIA',
+    image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'BUSCAR AGORA',
+    backgroundColor: 'bg-accent'
+  }
+];
+
+export const PARTS_SERVICES_PROMO_BANNERS: PromoBanner[] = [
+  {
+    id: 'ps_promo_1',
+    title: 'REVISÃO COMPLETA',
+    subtitle: 'SEGURANÇA PARA SUA VIAGEM',
+    image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'AGENDAR AGORA',
+    backgroundColor: 'bg-primary'
+  },
+  {
+    id: 'ps_promo_2',
+    title: 'ESTÉTICA AUTOMOTIVA',
+    subtitle: 'BRILHO QUE IMPRESSIONA',
+    image: 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'VER SERVIÇOS',
+    backgroundColor: 'bg-accent'
+  },
+  {
+    id: 'ps_promo_3',
+    title: 'PEÇAS ORIGINAIS',
+    subtitle: 'O MELHOR PARA SEU CARRO',
+    image: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'CONSULTAR ESTOQUE',
+    backgroundColor: 'bg-primary'
+  },
+  {
+    id: 'ps_promo_4',
+    title: 'SOM E ACESSÓRIOS',
+    subtitle: 'TECNOLOGIA E CONFORTO',
+    image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'SABER MAIS',
+    backgroundColor: 'bg-accent'
+  }
+];
+
+export const VEHICLES_PROMO_BANNERS: PromoBanner[] = [
+  {
+    id: 'v_promo_1',
+    title: 'FEIRÃO DE SEMINOVOS',
+    subtitle: 'TAXAS A PARTIR DE 0.99% A.M.',
+    image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'VER OFERTAS',
+    backgroundColor: 'bg-primary'
+  },
+  {
+    id: 'v_promo_2',
+    title: 'FINANCIAMENTO FÁCIL',
+    subtitle: 'APROVAÇÃO EM ATÉ 24 HORAS',
+    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'SIMULAR AGORA',
+    backgroundColor: 'bg-accent'
+  },
+  {
+    id: 'v_promo_3',
+    title: 'TROCA COM TROCO',
+    subtitle: 'AVALIAÇÃO JUSTA DO SEU USADO',
+    image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800',
+    ctaText: 'AVALIAR MEU CARRO',
+    backgroundColor: 'bg-primary'
+  }
 ];

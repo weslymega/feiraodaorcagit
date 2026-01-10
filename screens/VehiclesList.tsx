@@ -2,16 +2,22 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Filter, Search, Heart, Car, ChevronRight, X, Check, Gauge, Calendar, DollarSign, Fuel, Palette, Zap, Tag, Loader2, Edit3, ListFilter, Trophy, Star } from 'lucide-react';
 import { Header, PriceTag } from '../components/Shared';
-import { AdItem, BannerItem } from '../types';
+import { AdItem, FilterContext, AdStatus, VehiclesPromotion, Screen } from '../types';
 import { fipeApi, FipeItem } from '../services/fipeApi';
+import { VEHICLES_PROMO_BANNERS } from '../constants';
+import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
+import { Footer } from '../components/Footer';
 
 interface VehiclesListProps {
   ads: AdItem[];
-  banners: BannerItem[]; // New prop for dynamic banners
   onBack: () => void;
   onAdClick: (ad: AdItem) => void;
   favorites: AdItem[];
   onToggleFavorite: (ad: AdItem) => void;
+  filterContext?: FilterContext | null;
+  onClearFilter?: () => void;
+  promotions?: VehiclesPromotion[];
+  onNavigate?: (screen: Screen) => void;
 }
 
 // Grupos de Veículos (Categorias)
@@ -42,14 +48,14 @@ const FUEL_OPTIONS = ['Flex', 'Gasolina', 'Diesel', 'Elétrico', 'Híbrido'];
 // Gera anos de 2026 até 1950
 const YEARS = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => 2026 - i);
 
-export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack, onAdClick, favorites, onToggleFavorite }) => {
+export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate }) => {
   const [selectedGroup, setSelectedGroup] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-  
+  const [isRecentFilterActive, setIsRecentFilterActive] = useState(false);
+
   // Filter Modal State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  
+
   // FIPE API Data States
   const [fipeBrands, setFipeBrands] = useState<FipeItem[]>([]);
   const [fipeModels, setFipeModels] = useState<FipeItem[]>([]);
@@ -58,7 +64,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
 
   // Filter Values
   const [filters, setFilters] = useState({
-    brand: '', 
+    brand: '',
     baseModel: '', // Primeiro nome (Ex: Onix)
     version: '',   // Nome completo (Ex: Onix Hatch LT 1.0)
     minPrice: '',
@@ -66,15 +72,11 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
     minYear: '',
     maxYear: '',
     maxMileage: '',
-    transmission: '', 
-    fuel: '', 
+    transmission: '',
+    fuel: '',
     color: ''
   });
 
-  // Filter Active Banners
-  const activeBanners = useMemo(() => {
-      return banners.filter(b => b.active && new Date(b.expiresAt) > new Date());
-  }, [banners]);
 
   // Load Brands on Mount
   useEffect(() => {
@@ -87,19 +89,21 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
     loadBrands();
   }, []);
 
-  // Banner Rotation Logic
+  // Handle Filter Context
   useEffect(() => {
-    if (activeBanners.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentBannerIndex((prev) => (prev + 1) % activeBanners.length);
-    }, 5000); 
-    return () => clearInterval(interval);
-  }, [activeBanners.length]);
+    if (filterContext?.mode === 'recent') {
+      setIsRecentFilterActive(true);
+      // Reset other filters just in case
+      setSelectedGroup('todos');
+      if (onClearFilter) onClearFilter();
+    }
+  }, [filterContext]);
+
 
   // Handle Brand Change & Load Models
   const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const brandName = e.target.value;
-    
+
     setFilters(prev => ({ ...prev, brand: brandName, baseModel: '', version: '' }));
     setFipeModels([]); // Reset models
 
@@ -115,7 +119,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
   };
 
   // --- DERIVED LISTS FOR DROPDOWNS ---
-  
+
   // Extrai lista única de primeiros nomes dos modelos (Ex: [Argo, Cronos, Palio...])
   const uniqueBaseModels = useMemo(() => {
     if (fipeModels.length === 0) return [];
@@ -165,18 +169,25 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
 
   // -----------------------
 
-  const searchSuggestions = searchTerm.length >= 2 
-    ? ads.filter(ad => 
-        ad.category === 'autos' && 
-        ad.title.toLowerCase().includes(searchTerm.toLowerCase())
-      ).slice(0, 6) 
+  const searchSuggestions = searchTerm.length >= 2
+    ? ads.filter(ad =>
+      ad.category === 'autos' &&
+      ad.title.toLowerCase().includes(searchTerm.toLowerCase())
+    ).slice(0, 6)
     : [];
 
   const filteredAds = useMemo(() => {
     // 1. Filtragem Inicial
     const filtered = ads.filter(ad => {
-      // Categoria
-      if (ad.category !== 'autos') return false;
+      // Filter Recent Logic
+      if (isRecentFilterActive) {
+        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+        const adDate = ad.createdAt ? new Date(ad.createdAt) : new Date(ad.date || '');
+        if (isNaN(adDate.getTime()) || adDate < fortyEightHoursAgo) return false;
+      }
+
+      // Status (Relaxed for mocks)
+      if (ad.status !== AdStatus.ACTIVE) return false;
 
       // Grupo
       if (selectedGroup !== 'todos') {
@@ -196,14 +207,14 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
         const cleanFilterBrand = filters.brand.toLowerCase();
         const brandParts = cleanFilterBrand.split(/[\s-]+/).filter(p => p.length > 1);
         const adText = ((ad.vehicleType || '') + ' ' + ad.title + ' ' + (ad.description || '')).toLowerCase();
-        
-        const matchesBrand = brandParts.length > 0 
-            ? brandParts.some(part => adText.includes(part))
-            : adText.includes(cleanFilterBrand);
+
+        const matchesBrand = brandParts.length > 0
+          ? brandParts.some(part => adText.includes(part))
+          : adText.includes(cleanFilterBrand);
 
         if (!matchesBrand) return false;
       }
-      
+
       if (filters.baseModel) {
         const cleanBase = filters.baseModel.toLowerCase();
         const adText = ((ad.vehicleType || '') + ' ' + ad.title).toLowerCase();
@@ -214,10 +225,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
         const cleanVersion = filters.version.toLowerCase();
         const adText = ((ad.vehicleType || '') + ' ' + ad.title).toLowerCase();
         const versionParts = cleanVersion.split(' ').filter(p => p.length > 2 && p.toLowerCase() !== filters.baseModel.toLowerCase());
-        
+
         if (versionParts.length > 0) {
-           const matchesVersion = versionParts.some(part => adText.includes(part));
-           if (!matchesVersion) return false; 
+          const matchesVersion = versionParts.some(part => adText.includes(part));
+          if (!matchesVersion) return false;
         }
       }
 
@@ -226,13 +237,13 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
       const filterMaxPrice = parseFormattedNumber(filters.maxPrice);
       if (filterMinPrice > 0 && adPrice < filterMinPrice) return false;
       if (filterMaxPrice > 0 && adPrice > filterMaxPrice) return false;
-      
+
       if (filters.minYear && (ad.year || 0) < Number(filters.minYear)) return false;
       if (filters.maxYear && (ad.year || 0) > Number(filters.maxYear)) return false;
-      
+
       const filterMaxMileage = parseFormattedNumber(filters.maxMileage);
       if (filterMaxMileage > 0 && (ad.mileage || 0) > filterMaxMileage) return false;
-      
+
       if (filters.transmission && ad.gearbox !== filters.transmission) return false;
       if (filters.fuel && ad.fuel !== filters.fuel) return false;
       if (filters.color && ad.color !== filters.color) return false;
@@ -261,7 +272,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
 
   // Filters that are counted for the badge (excluding Brand/Model since they are visible)
   const activeFiltersCount = [
-    filters.minPrice, filters.maxPrice, filters.minYear, filters.maxYear, 
+    filters.minPrice, filters.maxPrice, filters.minYear, filters.maxYear,
     filters.maxMileage, filters.transmission, filters.fuel, filters.color
   ].filter(Boolean).length;
 
@@ -276,17 +287,16 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <Header 
-        title="Veículos" 
+      <Header
+        title="Veículos"
         onBack={onBack}
         rightElement={
-          <button 
+          <button
             onClick={() => setIsFilterOpen(true)}
-            className={`px-4 py-2 rounded-full transition-colors flex items-center gap-2 ${
-              activeFiltersCount > 0 
-                ? 'bg-primary text-white shadow-md' 
-                : 'bg-white text-primary border border-primary/20 hover:bg-blue-50'
-            }`}
+            className={`px-4 py-2 rounded-full transition-colors flex items-center gap-2 ${activeFiltersCount > 0
+              ? 'bg-primary text-white shadow-md'
+              : 'bg-white text-primary border border-primary/20 hover:bg-blue-50'
+              }`}
           >
             <span className="text-sm font-bold">Filtros</span>
             {activeFiltersCount > 0 && (
@@ -302,9 +312,9 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
       <div className="px-4 mb-3 relative z-40">
         <div className="relative">
           <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-          <input 
-            type="text" 
-            placeholder="Buscar por nome..." 
+          <input
+            type="text"
+            placeholder="Buscar por nome..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
@@ -318,9 +328,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
               <button
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className={`w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left ${
-                  index !== searchSuggestions.length - 1 ? 'border-b border-gray-50' : ''
-                }`}
+                className={`w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left ${index !== searchSuggestions.length - 1 ? 'border-b border-gray-50' : ''
+                  }`}
               >
                 <img src={ad.image} alt={ad.title} className="w-10 h-10 rounded-lg object-cover bg-gray-100" />
                 <div className="flex-1 min-w-0">
@@ -336,121 +345,104 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
         )}
       </div>
 
-      {/* PROMOTIONAL BANNER SECTION */}
-      {activeBanners.length > 0 && (
-        <div className="px-4 mb-4 mt-2 relative z-30">
-          <div className="h-32 rounded-2xl relative overflow-hidden shadow-sm border border-gray-100">
-            <div 
-              className="flex h-full transition-transform duration-700 ease-in-out"
-              style={{ transform: `translateX(-${currentBannerIndex * 100}%)` }}
-            >
-              {activeBanners.map((banner) => {
-                const isFullImage = banner.gradient === 'none';
-                return (
-                  <div 
-                    key={banner.id} 
-                    className={`min-w-full h-full ${isFullImage ? 'bg-gray-200' : `bg-gradient-to-r ${banner.gradient}`} relative flex items-center`}
-                  >
-                    {!isFullImage && (
-                      <div className="relative z-10 w-2/3 pl-5 pr-2 py-3 text-white flex flex-col justify-center h-full">
-                        <span className="inline-block bg-white/20 backdrop-blur-sm text-[9px] font-bold px-2 py-0.5 rounded w-fit mb-1 border border-white/10">
-                          {banner.category}
-                        </span>
-                        <h2 className="text-lg font-bold leading-tight mb-1 line-clamp-2">{banner.title}</h2>
-                        <p className="text-[10px] opacity-90 font-medium text-blue-50 line-clamp-1">{banner.subtitle}</p>
-                      </div>
-                    )}
-                    
-                    <div className={`absolute right-0 top-0 bottom-0 ${isFullImage ? 'w-full' : 'w-1/2'} h-full`}>
-                      <img 
-                        src={banner.image} 
-                        alt={banner.title} 
-                        className={`w-full h-full object-cover ${!isFullImage ? 'opacity-90' : ''}`}
-                        style={!isFullImage ? { maskImage: 'linear-gradient(to left, black 50%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to left, black 50%, transparent 100%)' } : {}}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {/* Indicators */}
-            {activeBanners.length > 1 && (
-              <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-20">
-                {activeBanners.map((_, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`h-1 rounded-full transition-all duration-300 ${
-                      idx === currentBannerIndex ? 'bg-white w-3' : 'bg-white/40 w-1'
-                    }`} 
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* IN-LINE QUICK FILTERS (Brand & Model) */}
       <div className="px-4 mb-4 space-y-3 relative z-30 animate-in slide-in-from-top-2">
-         {/* ... filters content ... */}
-         <div className="grid grid-cols-2 gap-3">
-            {/* Brand Select */}
-            <div className="relative">
-              <select 
-                value={filters.brand}
-                onChange={handleBrandChange}
-                disabled={isLoadingBrands}
-                className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm disabled:opacity-50"
-              >
-                <option value="">Marca</option>
-                {fipeBrands.map(b => (
-                  <option key={b.codigo} value={b.nome}>{b.nome}</option>
-                ))}
-              </select>
-              {isLoadingBrands ? (
-                  <div className="absolute right-3 top-3.5"><Loader2 className="w-4 h-4 text-primary animate-spin"/></div>
-              ) : (
-                  <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
-              )}
-            </div>
-            
-            {/* Model Select */}
-            <div className="relative">
-              <select 
-                value={filters.baseModel}
-                onChange={(e) => setFilters(prev => ({...prev, baseModel: e.target.value, version: ''}))}
-                disabled={!filters.brand || uniqueBaseModels.length === 0}
-                className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm disabled:opacity-50"
-              >
-                <option value="">Modelo</option>
-                {uniqueBaseModels.map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-              {isLoadingModels ? (
-                  <div className="absolute right-3 top-3.5"><Loader2 className="w-4 h-4 text-primary animate-spin"/></div>
-              ) : (
-                  <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
-              )}
-            </div>
-         </div>
-
-         {/* Version Select (Conditionally displayed) */}
-         {filters.baseModel && (
-            <div className="relative animate-in fade-in">
-              <select 
-                value={filters.version}
-                onChange={(e) => setFilters(prev => ({...prev, version: e.target.value}))}
-                className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm"
-              >
-                <option value="">Todas as versões</option>
-                {availableVersions.map(m => (
-                  <option key={m.codigo} value={m.nome}>{m.nome}</option>
-                ))}
-              </select>
+        {/* ... filters content ... */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Brand Select */}
+          <div className="relative">
+            <select
+              value={filters.brand}
+              onChange={handleBrandChange}
+              disabled={isLoadingBrands}
+              className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm disabled:opacity-50"
+            >
+              <option value="">Marca</option>
+              {fipeBrands.map(b => (
+                <option key={b.codigo} value={b.nome}>{b.nome}</option>
+              ))}
+            </select>
+            {isLoadingBrands ? (
+              <div className="absolute right-3 top-3.5"><Loader2 className="w-4 h-4 text-primary animate-spin" /></div>
+            ) : (
               <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
-            </div>
-         )}
+            )}
+          </div>
+
+          {/* Model Select */}
+          <div className="relative">
+            <select
+              value={filters.baseModel}
+              onChange={(e) => setFilters(prev => ({ ...prev, baseModel: e.target.value, version: '' }))}
+              disabled={!filters.brand || uniqueBaseModels.length === 0}
+              className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm disabled:opacity-50"
+            >
+              <option value="">Modelo</option>
+              {uniqueBaseModels.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            {isLoadingModels ? (
+              <div className="absolute right-3 top-3.5"><Loader2 className="w-4 h-4 text-primary animate-spin" /></div>
+            ) : (
+              <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
+            )}
+          </div>
+        </div>
+
+        {/* Version Select (Conditionally displayed) */}
+        {filters.baseModel && (
+          <div className="relative animate-in fade-in">
+            <select
+              value={filters.version}
+              onChange={(e) => setFilters(prev => ({ ...prev, version: e.target.value }))}
+              className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm"
+            >
+              <option value="">Todas as versões</option>
+              {availableVersions.map(m => (
+                <option key={m.codigo} value={m.nome}>{m.nome}</option>
+              ))}
+            </select>
+            <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
+          </div>
+        )}
+      </div>
+
+      {/* Promotional Carousel */}
+      <div className="mb-3">
+        <PromoCarousel
+          banners={useMemo(() => {
+            const isPromotionVisible = (promo: VehiclesPromotion): boolean => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const start = new Date(promo.startDate);
+              start.setHours(0, 0, 0, 0);
+              const end = new Date(promo.endDate);
+              end.setHours(23, 59, 59, 999);
+              return promo.active && today >= start && today <= end;
+            };
+
+            const visiblePromotions = promotions
+              .filter(isPromotionVisible)
+              .sort((a, b) => a.order - b.order)
+              .map(p => ({
+                id: p.id,
+                title: p.title || '',
+                subtitle: p.subtitle,
+                image: p.image,
+                ctaText: 'VER MAIS',
+                link: p.link
+              }));
+
+            return visiblePromotions.length > 0 ? visiblePromotions : VEHICLES_PROMO_BANNERS;
+          }, [promotions])}
+          onPromoClick={(promo) => {
+            if (promo.link && promo.link !== '#') {
+              window.open(promo.link, '_blank');
+            }
+          }}
+        />
       </div>
 
       {/* Groups / Categories */}
@@ -459,11 +451,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
           <button
             key={group.id}
             onClick={() => setSelectedGroup(group.id)}
-            className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${
-              selectedGroup === group.id 
-                ? 'bg-primary text-white shadow-md shadow-blue-200' 
-                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-            }`}
+            className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${selectedGroup === group.id
+              ? 'bg-primary text-white shadow-md shadow-blue-200'
+              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              }`}
           >
             {group.label}
           </button>
@@ -475,47 +466,47 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
         {filteredAds.length > 0 ? (
           filteredAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);
-            
+
             // Visual Styles for Boosted Ads
             let borderClass = 'border-gray-100';
             let badge = null;
 
             if (ad.boostPlan === 'premium') {
-                borderClass = 'border-yellow-400 ring-1 ring-yellow-400/30';
-                badge = (
-                    <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20">
-                        <Zap className="w-3 h-3 fill-current" /> Turbo Máx
-                    </div>
-                );
+              borderClass = 'border-yellow-400 ring-1 ring-yellow-400/30';
+              badge = (
+                <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20">
+                  <Zap className="w-3 h-3 fill-current" /> Turbo Máx
+                </div>
+              );
             } else if (ad.boostPlan === 'advanced') {
-                borderClass = 'border-cyan-400';
-                badge = (
-                    <div className="absolute top-3 left-3 bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20">
-                        <Trophy className="w-3 h-3 fill-current" /> Turbo Ágil
-                    </div>
-                );
+              borderClass = 'border-cyan-400';
+              badge = (
+                <div className="absolute top-3 left-3 bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20">
+                  <Trophy className="w-3 h-3 fill-current" /> Turbo Ágil
+                </div>
+              );
             } else if (ad.boostPlan === 'basic' || ad.isFeatured) {
-                badge = (
-                    <div className="absolute top-3 left-3 bg-gradient-to-r from-gray-500 to-slate-600 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20">
-                        <Star className="w-3 h-3 fill-current" /> Destaque
-                    </div>
-                );
+              badge = (
+                <div className="absolute top-3 left-3 bg-gradient-to-r from-gray-500 to-slate-600 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20">
+                  <Star className="w-3 h-3 fill-current" /> Destaque
+                </div>
+              );
             }
 
             return (
-              <div 
-                key={ad.id} 
+              <div
+                key={ad.id}
                 onClick={() => onAdClick(ad)}
                 className={`bg-white rounded-2xl shadow-sm border overflow-hidden cursor-pointer active:scale-[0.99] transition-all group ${borderClass}`}
               >
                 <div className="relative h-48 w-full">
                   <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
-                  
+
                   {/* Badge de Destaque (Se houver) */}
                   {badge}
 
                   <div className="absolute top-3 right-3 flex gap-2 z-30">
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleFavorite(ad);
@@ -529,7 +520,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
                     {ad.year} • {ad.mileage}km
                   </div>
                 </div>
-                
+
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-gray-900 text-lg line-clamp-1">{ad.title}</h3>
@@ -548,9 +539,9 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
             <Car className="w-12 h-12 mb-2 text-gray-300" />
             <p>Nenhum veículo encontrado.</p>
             {activeFiltersCount > 0 && (
-               <button onClick={clearFilters} className="mt-4 text-primary font-bold text-sm underline">
-                 Limpar Filtros
-               </button>
+              <button onClick={clearFilters} className="mt-4 text-primary font-bold text-sm underline">
+                Limpar Filtros
+              </button>
             )}
           </div>
         )}
@@ -560,192 +551,191 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, banners, onBack
       {isFilterOpen && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
-          
+
           <div className="bg-white w-full max-w-md rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col max-h-[85vh]">
-             {/* Modal Header */}
-             <div className="px-6 pt-4 pb-4 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-[30px]">
-               <div className="flex items-center gap-2">
-                 <h2 className="text-xl font-bold text-gray-900">Filtros Avançados</h2>
-                 {activeFiltersCount > 0 && (
-                    <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">{activeFiltersCount}</span>
-                 )}
-               </div>
-               <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
-                 <X className="w-5 h-5 text-gray-600" />
-               </button>
-             </div>
+            {/* Modal Header */}
+            <div className="px-6 pt-4 pb-4 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-[30px]">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-gray-900">Filtros Avançados</h2>
+                {activeFiltersCount > 0 && (
+                  <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">{activeFiltersCount}</span>
+                )}
+              </div>
+              <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
 
-             {/* Modal Body - Scrollable */}
-             <div className="p-6 space-y-8 overflow-y-auto pb-28">
-                
-                {/* ... existing filter content ... */}
-                {/* Preço */}
-                <section>
-                   <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
-                     <DollarSign className="w-4 h-4 text-primary" /> Faixa de Preço (R$)
-                   </label>
-                   <div className="grid grid-cols-2 gap-3">
-                      <div className="relative">
-                        <span className="absolute left-3 top-3.5 text-gray-400 text-sm">Min</span>
-                        <input 
-                          type="text" inputMode="numeric" placeholder="0,00"
-                          value={filters.minPrice}
-                          onChange={(e) => handlePriceChange(e.target.value, 'minPrice')}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium"
-                        />
-                      </div>
-                      <div className="relative">
-                        <span className="absolute left-3 top-3.5 text-gray-400 text-sm">Max</span>
-                        <input 
-                          type="text" inputMode="numeric" placeholder="Sem limite"
-                          value={filters.maxPrice}
-                          onChange={(e) => handlePriceChange(e.target.value, 'maxPrice')}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium"
-                        />
-                      </div>
-                   </div>
-                </section>
+            {/* Modal Body - Scrollable */}
+            <div className="p-6 space-y-8 overflow-y-auto pb-28">
 
-                {/* Ano */}
-                <section>
-                   <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
-                     <Calendar className="w-4 h-4 text-primary" /> Ano do Modelo
-                   </label>
-                   <div className="grid grid-cols-2 gap-3">
-                      <select 
-                        value={filters.minYear}
-                        onChange={(e) => setFilters(p => ({...p, minYear: e.target.value}))}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white appearance-none"
-                      >
-                        <option value="">De (Todos)</option>
-                        {YEARS.map(year => <option key={`min-${year}`} value={year}>{year}</option>)}
-                      </select>
-                      
-                      <select 
-                        value={filters.maxYear}
-                        onChange={(e) => setFilters(p => ({...p, maxYear: e.target.value}))}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white appearance-none"
-                      >
-                        <option value="">Até (Todos)</option>
-                        {YEARS.map(year => <option key={`max-${year}`} value={year}>{year}</option>)}
-                      </select>
-                   </div>
-                </section>
-
-                {/* Quilometragem */}
-                <section>
-                   <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
-                     <Gauge className="w-4 h-4 text-primary" /> KM Máxima
-                   </label>
-                   <input 
-                        type="text" inputMode="numeric" placeholder="Ex: 80.000" 
-                        value={filters.maxMileage}
-                        onChange={(e) => handleMileageChange(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium"
+              {/* ... existing filter content ... */}
+              {/* Preço */}
+              <section>
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
+                  <DollarSign className="w-4 h-4 text-primary" /> Faixa de Preço (R$)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="relative">
+                    <span className="absolute left-3 top-3.5 text-gray-400 text-sm">Min</span>
+                    <input
+                      type="text" inputMode="numeric" placeholder="0,00"
+                      value={filters.minPrice}
+                      onChange={(e) => handlePriceChange(e.target.value, 'minPrice')}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium"
                     />
-                </section>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-3.5 text-gray-400 text-sm">Max</span>
+                    <input
+                      type="text" inputMode="numeric" placeholder="Sem limite"
+                      value={filters.maxPrice}
+                      onChange={(e) => handlePriceChange(e.target.value, 'maxPrice')}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium"
+                    />
+                  </div>
+                </div>
+              </section>
 
-                {/* Combustível */}
-                <section>
-                   <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
-                     <Fuel className="w-4 h-4 text-primary" /> Combustível
-                   </label>
-                   <div className="flex flex-wrap gap-2">
-                     {FUEL_OPTIONS.map(type => {
-                       const isSelected = filters.fuel === type;
-                       return (
-                         <button
-                           key={type}
-                           onClick={() => setFilters(p => ({...p, fuel: isSelected ? '' : type}))}
-                           className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all active:scale-95 flex items-center gap-2 ${
-                             isSelected 
-                               ? 'bg-blue-50 border-primary text-primary shadow-sm' 
-                               : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                           }`}
-                         >
-                           {type === 'Elétrico' && <Zap className="w-3 h-3" />}
-                           {type}
-                         </button>
-                       );
-                     })}
-                   </div>
-                </section>
+              {/* Ano */}
+              <section>
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
+                  <Calendar className="w-4 h-4 text-primary" /> Ano do Modelo
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    value={filters.minYear}
+                    onChange={(e) => setFilters(p => ({ ...p, minYear: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white appearance-none"
+                  >
+                    <option value="">De (Todos)</option>
+                    {YEARS.map(year => <option key={`min-${year}`} value={year}>{year}</option>)}
+                  </select>
 
-                {/* Câmbio */}
-                <section>
-                   <label className="text-sm font-bold text-gray-700 mb-3 block">Câmbio</label>
-                   <div className="flex bg-gray-100 p-1 rounded-xl">
-                     {['Automático', 'Manual'].map(type => {
-                       const isSelected = filters.transmission === type;
-                       return (
-                         <button
-                           key={type}
-                           onClick={() => setFilters(p => ({...p, transmission: isSelected ? '' : type}))}
-                           className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                             isSelected 
-                               ? 'bg-white text-primary shadow-sm' 
-                               : 'text-gray-500 hover:text-gray-700'
-                           }`}
-                         >
-                           {type}
-                         </button>
-                       );
-                     })}
-                   </div>
-                </section>
+                  <select
+                    value={filters.maxYear}
+                    onChange={(e) => setFilters(p => ({ ...p, maxYear: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white appearance-none"
+                  >
+                    <option value="">Até (Todos)</option>
+                    {YEARS.map(year => <option key={`max-${year}`} value={year}>{year}</option>)}
+                  </select>
+                </div>
+              </section>
 
-                {/* Cor */}
-                <section>
-                   <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
-                     <Palette className="w-4 h-4 text-primary" /> Cor
-                   </label>
-                   <div className="grid grid-cols-3 gap-2">
-                     {COLORS.map(color => {
-                       const isSelected = filters.color === color.name;
-                       return (
-                         <button
-                           key={color.name}
-                           onClick={() => setFilters(p => ({...p, color: isSelected ? '' : color.name}))}
-                           className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
-                             isSelected 
-                               ? 'bg-blue-50 border-primary text-primary shadow-sm ring-1 ring-primary/20' 
-                               : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                           }`}
-                         >
-                           {!color.icon ? (
-                             <div 
-                               className={`w-3 h-3 rounded-full ${color.border ? 'border border-gray-300' : ''}`} 
-                               style={{ backgroundColor: color.hex }}
-                             />
-                           ) : (
-                             <Palette className="w-3 h-3 text-gray-400" />
-                           )}
-                           <span className="truncate">{color.name}</span>
-                         </button>
-                       );
-                     })}
-                   </div>
-                </section>
-             </div>
+              {/* Quilometragem */}
+              <section>
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
+                  <Gauge className="w-4 h-4 text-primary" /> KM Máxima
+                </label>
+                <input
+                  type="text" inputMode="numeric" placeholder="Ex: 80.000"
+                  value={filters.maxMileage}
+                  onChange={(e) => handleMileageChange(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium"
+                />
+              </section>
 
-             {/* Footer Actions (Fixed) */}
-             <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 rounded-b-[30px] flex gap-3 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-                <button 
-                  onClick={clearFilters}
-                  className="px-6 py-4 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-200"
-                >
-                  Limpar
-                </button>
-                <button 
-                  onClick={() => setIsFilterOpen(false)}
-                  className="flex-1 py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-transform flex items-center justify-center gap-2"
-                >
-                  Ver {filteredAds.length} resultados
-                </button>
-             </div>
+              {/* Combustível */}
+              <section>
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
+                  <Fuel className="w-4 h-4 text-primary" /> Combustível
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {FUEL_OPTIONS.map(type => {
+                    const isSelected = filters.fuel === type;
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => setFilters(p => ({ ...p, fuel: isSelected ? '' : type }))}
+                        className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all active:scale-95 flex items-center gap-2 ${isSelected
+                          ? 'bg-blue-50 border-primary text-primary shadow-sm'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                      >
+                        {type === 'Elétrico' && <Zap className="w-3 h-3" />}
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Câmbio */}
+              <section>
+                <label className="text-sm font-bold text-gray-700 mb-3 block">Câmbio</label>
+                <div className="flex bg-gray-100 p-1 rounded-xl">
+                  {['Automático', 'Manual'].map(type => {
+                    const isSelected = filters.transmission === type;
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => setFilters(p => ({ ...p, transmission: isSelected ? '' : type }))}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${isSelected
+                          ? 'bg-white text-primary shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Cor */}
+              <section>
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
+                  <Palette className="w-4 h-4 text-primary" /> Cor
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {COLORS.map(color => {
+                    const isSelected = filters.color === color.name;
+                    return (
+                      <button
+                        key={color.name}
+                        onClick={() => setFilters(p => ({ ...p, color: isSelected ? '' : color.name }))}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${isSelected
+                          ? 'bg-blue-50 border-primary text-primary shadow-sm ring-1 ring-primary/20'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                      >
+                        {!color.icon ? (
+                          <div
+                            className={`w-3 h-3 rounded-full ${color.border ? 'border border-gray-300' : ''}`}
+                            style={{ backgroundColor: color.hex }}
+                          />
+                        ) : (
+                          <Palette className="w-3 h-3 text-gray-400" />
+                        )}
+                        <span className="truncate">{color.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+
+            {/* Footer Actions (Fixed) */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 rounded-b-[30px] flex gap-3 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+              <button
+                onClick={clearFilters}
+                className="px-6 py-4 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-200"
+              >
+                Limpar
+              </button>
+              <button
+                onClick={() => setIsFilterOpen(false)}
+                className="flex-1 py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-transform flex items-center justify-center gap-2"
+              >
+                Ver {filteredAds.length} resultados
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      <Footer onNavigate={onNavigate} />
 
     </div>
   );
