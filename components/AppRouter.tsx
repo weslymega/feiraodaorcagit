@@ -75,7 +75,7 @@ interface AppRouterProps {
 
 export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
     const {
-        currentScreen, user, maintenanceMode, myAds, adminMockAds,
+        currentScreen, setCurrentScreen, user, maintenanceMode, myAds, adminMockAds,
         fairActive, selectedAd, previousScreen, selectedChat,
         viewingProfile, notifications, reports,
         dashboardPromotions, realEstatePromotions, partsServicesPromotions, vehiclesPromotions
@@ -104,48 +104,51 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
     } = actions;
 
     const handleBackFromDetails = () => {
-        if (previousScreen && previousScreen !== currentScreen) {
-            navigateTo(previousScreen);
+        if (previousScreen &&
+            previousScreen !== currentScreen &&
+            previousScreen !== Screen.LOGIN &&
+            previousScreen !== Screen.REGISTER) {
+            // Use setCurrentScreen directly to avoid updating history in a loop
+            setCurrentScreen(previousScreen);
         } else {
             goBackToDashboard();
         }
     };
 
     const handleBackFromProfile = () => {
-        if (previousScreen && previousScreen !== currentScreen) {
-            navigateTo(previousScreen);
+        if (previousScreen &&
+            previousScreen !== currentScreen &&
+            previousScreen !== Screen.LOGIN &&
+            previousScreen !== Screen.REGISTER) {
+            setCurrentScreen(previousScreen);
         } else {
             goBackToDashboard();
         }
     };
 
-    // --- FILTRAGEM E COMPOSIÇÃO DE DADOS (Moved from App.tsx) ---
+    // --- FILTRAGEM E COMPOSIÇÃO DE DADOS (REAL DATA from Supabase) ---
 
-    // 1. Meus Anúncios Ativos
+    // Desestruturar ads reais do estado
+    const { activeRealAds } = state;
+
+    // 1. Meus Anúncios Ativos (já filtrados no hook ou aqui)
     const activeMyAds = myAds.filter(ad => ad.status === AdStatus.ACTIVE);
 
-    // 2. Todos os Anúncios Ativos Globais
-    // 2. Todos os Anúncios Ativos Globais
-    const combinedRawAds = [
-        ...activeMyAds,
-        ...adminMockAds.filter(ad => ad.status === AdStatus.ACTIVE)
-    ];
-    const allAds = Array.from(new Map(combinedRawAds.map(item => [item.id, item])).values());
+    // 2. Todos os Anúncios Ativos Globais (Vindo do Supabase)
+    const allAds = activeRealAds;
 
-    // 3. Lista para o Dashboard
-    const dashboardVehicleAds = [...POPULAR_CARS];
+    // 3. Lista para o Dashboard (Veículos)
+    const dashboardVehicleAds = activeRealAds.filter(ad =>
+        (ad.category === 'veiculos' || ad.category === 'autos')
+    ).slice(0, 20);
 
-    // 4. Destaques (Mocks + Reais Pagos)
-    const displayFeaturedAds = [
-        ...FEATURED_VEHICLES,
-        ...activeMyAds.filter(ad =>
-            (ad.category === 'veiculos' || ad.category === 'autos') &&
-            (ad.isFeatured || (ad.boostPlan && ad.boostPlan !== 'gratis'))
-        )
-    ];
+    // 4. Destaques (Reais Pagos/Destaques)
+    const displayFeaturedAds = activeRealAds.filter(ad =>
+        (ad.isFeatured || (ad.boostPlan && ad.boostPlan !== 'gratis'))
+    );
 
     // 5. Veículos na Feira
-    const fairAds = POPULAR_CARS.filter(ad => {
+    const fairAds = activeRealAds.filter(ad => {
         if (!ad.fairPresence?.active) return false;
         const expires = new Date(ad.fairPresence.expiresAt);
         return expires > new Date();
@@ -153,42 +156,43 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
 
     // 6. Lista Completa para o Admin - Veículos
     const allAdminVehicleAds = [
-        ...myAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos'),
-        ...adminMockAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos')
+        ...activeRealAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos'),
+        ...myAds.filter(ad => (ad.category === 'veiculos' || ad.category === 'autos') && !activeRealAds.find(r => r.id === ad.id))
     ];
 
     // 7. Lista Completa para o Admin - Imóveis
     const allAdminRealEstateAds = [
-        ...myAds.filter(ad => ad.category === 'imoveis'),
-        ...adminMockAds.filter(ad => ad.category === 'imoveis')
+        ...activeRealAds.filter(ad => ad.category === 'imoveis'),
+        ...myAds.filter(ad => ad.category === 'imoveis' && !activeRealAds.find(r => r.id === ad.id))
     ];
 
     // 8. Lista UNIFICADA para MODERAÇÃO
     const allModerationAds = [
-        ...myAds,
-        ...adminMockAds
+        ...activeRealAds,
+        ...myAds.filter(ad => !activeRealAds.find(r => r.id === ad.id))
     ];
 
     // 9. Lista Completa para o Admin - Peças e Serviços
     const allAdminPartsServicesAds = [
-        ...myAds.filter(ad => ad.category === 'pecas' || ad.category === 'servicos'),
-        ...adminMockAds.filter(ad => ad.category === 'pecas' || ad.category === 'servicos')
+        ...activeRealAds.filter(ad => ad.category === 'pecas' || ad.category === 'servicos'),
+        ...myAds.filter(ad => (ad.category === 'pecas' || ad.category === 'servicos') && !activeRealAds.find(r => r.id === ad.id))
     ];
 
-    // 10. Lista Destaque para Dashboard (Imóveis - Mocks + Reais Pagos)
-    const dashboardRealEstateAds = [
-        ...POPULAR_REAL_ESTATE,
-        ...activeMyAds.filter(ad =>
-            ad.category === 'imoveis' &&
-            (ad.isFeatured || (ad.boostPlan && ad.boostPlan !== 'gratis'))
-        )
-    ];
+    // 10. Lista Destaque para Dashboard (Imóveis)
+    const dashboardRealEstateAds = activeRealAds.filter(ad =>
+        ad.category === 'imoveis' &&
+        (ad.isFeatured || (ad.boostPlan && ad.boostPlan !== 'gratis'))
+    ).slice(0, 5);
 
-    // 11. Lista para Página de Peças e Serviços (Novos + Mocks) - UNIFICADA por categoria 'servicos'
-    const serviceAds = [
-        ...POPULAR_SERVICES.filter(ad => ad.category === 'servicos'),
-        ...activeMyAds.filter(ad => ad.category === 'servicos')
-    ];
+    // Fallback se não tiver destaques, mostrar recentes
+    if (dashboardRealEstateAds.length === 0) {
+        dashboardRealEstateAds.push(...activeRealAds.filter(ad => ad.category === 'imoveis').slice(0, 5));
+    }
+
+    // 11. Lista para Página de Peças e Serviços
+    const serviceAds = activeRealAds.filter(ad =>
+        ad.category === 'servicos' || ad.category === 'pecas'
+    );
 
     // --- LÓGICA DE MANUTENÇÃO (Moved from App.tsx) ---
     if (maintenanceMode && !user.isAdmin && currentScreen !== Screen.LOGIN && currentScreen !== Screen.REGISTER && currentScreen !== Screen.FORGOT_PASSWORD) {
@@ -263,19 +267,28 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
             case Screen.CHANGE_PASSWORD:
                 return <ChangePassword onBack={() => navigateTo(Screen.SECURITY)} />;
             case Screen.MY_ADS:
-                return <MyAds ads={myAds} onBack={goBackToPanel} onDelete={handleDeleteAd} onEdit={handleEditAd} onCreateNew={() => prepareCreateAd()} onAdClick={handleAdClick} />;
+                return (
+                    <MyAds
+                        ads={myAds}
+                        onBack={() => {
+                            goBackToPanel();
+                            state.setMyAdsInitialTab('ativos');
+                        }}
+                        onDelete={handleDeleteAd}
+                        onEdit={handleEditAd}
+                        onCreateNew={() => prepareCreateAd()}
+                        onAdClick={handleAdClick}
+                        initialTab={state.myAdsInitialTab}
+                    />
+                );
             case Screen.CREATE_AD:
                 return <CreateAd user={user} onBack={() => { (state.cameFromMyAds) ? navigateTo(Screen.MY_ADS) : goBackToDashboard(); state.setAdToEdit(undefined); state.setCameFromMyAds(false); }} onFinish={handleCreateAdFinish} editingAd={state.adToEdit} />;
             case Screen.VEHICLES_LIST:
-                // Include Real Approved Ads + Mocks
-                const vehicleListAds = [
-                    ...FEATURED_VEHICLES,
-                    ...POPULAR_CARS,
-                    ...activeMyAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos')
-                ];
+                // Include Only Real Approved Ads
+                const vehicleListAds = activeRealAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos');
                 return <VehiclesList ads={vehicleListAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => state.setFilterContext(null)} promotions={vehiclesPromotions} onNavigate={navigateTo} />;
             case Screen.REAL_ESTATE_LIST:
-                const realEstateListAds = [...POPULAR_REAL_ESTATE, ...activeMyAds.filter(ad => ad.category === 'imoveis')];
+                const realEstateListAds = activeRealAds.filter(ad => ad.category === 'imoveis');
                 return <RealEstateList ads={realEstateListAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => state.setFilterContext(null)} promotions={realEstatePromotions} onNavigate={navigateTo} />;
             case Screen.PARTS_SERVICES_LIST:
                 return <PartsServicesList ads={serviceAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => state.setFilterContext(null)} promotions={partsServicesPromotions} />;
@@ -285,7 +298,11 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
                 return <FairList ads={fairAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
 
             case Screen.PUBLIC_PROFILE:
-                const adsToShow = viewingProfile?.email === user.email ? myAds : POPULAR_CARS;
+                // Show real ads of the seller, or my ads. 
+                const adsToShow = viewingProfile?.id === user.id
+                    ? myAds
+                    : activeRealAds.filter(ad => ad.userId === viewingProfile?.id);
+
                 return (
                     <PublicProfile
                         user={viewingProfile || MOCK_SELLER}

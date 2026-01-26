@@ -104,6 +104,7 @@ export interface FairPresence {
 
 export interface AdItem {
   id: string;
+  userId: string; // ID do dono do anúncio
   title: string;
   price: number;
   fipePrice?: number; // New Field for FIPE Reference
@@ -153,6 +154,7 @@ export interface AdItem {
   isOwner?: boolean;
   ipvaPaid?: boolean;
   ownerName?: string; // Para exibição no admin
+  ownerAvatar?: string | null;
 
   // Fields for dynamic Home sections
   createdAt?: string; // ISO string timestamp for filtering recent ads

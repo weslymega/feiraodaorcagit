@@ -12,36 +12,24 @@ interface PersonalizedFeedProps {
 export const PersonalizedFeedSection: React.FC<PersonalizedFeedProps> = ({ ads, onAdClick, onNavigate, onViewAll }) => {
     // Logic to filter and mix ads
     const feedAds = useMemo(() => {
-        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-
-        // Get viewed ads from localStorage
-        const viewedAdsRaw = localStorage.getItem('viewed_ads');
-        const viewedAds = viewedAdsRaw ? JSON.parse(viewedAdsRaw) : [];
-
-        // Filter eligible ads
+        // Filter eligible ads - Simplified for more volume
         const eligibleAds = ads.filter(ad => {
             // Status validity
             if (ad.status !== AdStatus.ACTIVE) return false;
 
-            // Date validity (last 48h)
-            const adDate = ad.createdAt ? new Date(ad.createdAt) : new Date(ad.date || '');
-            if (isNaN(adDate.getTime()) || adDate < fortyEightHoursAgo) return false;
-
-            // Not viewed
-            if (viewedAds.includes(ad.id)) return false;
-
+            // Optional: Filter by category here if needed, but we do it below
             return true;
         });
 
         // Categorize
         const autos = eligibleAds.filter(ad => ad.category === 'autos' || ad.category === 'veiculos');
-        // Create final list with ONLY vehicles
+
+        // Create final list with more vehicles (increased from 10 to 20)
         const selectedAds = [
-            ...autos.slice(0, 10) // Take up to 10 vehicles
+            ...autos.slice(0, 20)
         ];
 
-        // Shuffle or sort by date? User said "Discovery dinâmico", usually implies recent.
-        // Let's sort by date descending
+        // Sort by date descending
         return selectedAds.sort((a, b) => {
             const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
             const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;

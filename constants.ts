@@ -49,13 +49,13 @@ export const CURRENT_USER = REGULAR_USER;
 
 // --- MOCK SELLER FOR DEMO ---
 export const MOCK_SELLER: User = {
-  name: "Marcos Paulo",
-  email: "marcos@email.com",
-  avatarUrl: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=200",
+  name: "Vendedor",
+  email: "vendedor@email.com",
+  avatarUrl: null,
   balance: 0,
   phone: "(61) 99999-8888",
-  location: "Águas Claras, DF",
-  bio: "Apaixonado por carros e motos. Vendo apenas veículos de procedência.",
+  location: "Brasília, DF",
+  bio: "Usuário do Feirão da Orca.",
   rating: 4.8,
   joinDate: "Ago 2022",
   reviewsCount: 14,
@@ -149,6 +149,7 @@ export const REPORTS_USER_GROWTH = [
 
 export const REPORTS_REVENUE_BY_PLAN = [
   {
+    userId: 'u_mock',
     id: 'premium',
     name: 'Diamante',
     count: 42,
@@ -157,6 +158,7 @@ export const REPORTS_REVENUE_BY_PLAN = [
     iconColor: 'bg-yellow-400'
   },
   {
+    userId: 'u_mock',
     id: 'advanced',
     name: 'Ouro',
     count: 85,
@@ -165,6 +167,7 @@ export const REPORTS_REVENUE_BY_PLAN = [
     iconColor: 'bg-cyan-400'
   },
   {
+    userId: 'u_mock',
     id: 'basic',
     name: 'Prata',
     count: 120,
@@ -257,6 +260,7 @@ export const MOCK_REPORTS: ReportItem[] = [
 // --- MOCK ADMIN VEHICLES LIST ---
 export const MOCK_ADMIN_VEHICLES: AdItem[] = [
   {
+    userId: 'u_mock',
     id: 'v_pending_1',
     title: 'Volkswagen Jetta GLI 350 TSI',
     price: 215000.00,
@@ -271,6 +275,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     boostPlan: 'advanced' // Simulating a paid plan
   },
   {
+    userId: 'u_mock',
     id: 'v_pending_2',
     title: 'Honda HR-V Touring 1.5 Turbo',
     price: 184900.00,
@@ -285,6 +290,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     boostPlan: 'gratis' // Simulating free plan
   },
   {
+    userId: 'u_mock',
     id: 'v_active_1',
     title: 'Porsche Macan T 2.0 Turbo',
     price: 520000.00,
@@ -298,6 +304,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     mileage: 5000
   },
   {
+    userId: 'u_mock',
     id: 'v_active_2',
     title: 'Chevrolet Onix 1.0 Turbo',
     price: 84900.00,
@@ -311,6 +318,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     mileage: 15000
   },
   {
+    userId: 'u_mock',
     id: 'v_rejected_1',
     title: 'Fiat Uno Mille 1995 (Sem documento)',
     price: 5000.00,
@@ -328,6 +336,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
 // --- MOCK ADMIN REAL ESTATE LIST ---
 export const MOCK_ADMIN_REAL_ESTATE: AdItem[] = [
   {
+    userId: 'u_mock',
     id: 'r_pending_1',
     title: 'Apartamento de luxo - 4 Quartos',
     price: 1200000.00,
@@ -345,6 +354,7 @@ export const MOCK_ADMIN_REAL_ESTATE: AdItem[] = [
     description: 'Apartamento vazado, nascente, acabamento de alto padrão. Prédio com cobertura coletiva.'
   },
   {
+    userId: 'u_mock',
     id: 'r_pending_2',
     title: 'Casa em Condomínio Fechado',
     price: 850000.00,
@@ -362,6 +372,7 @@ export const MOCK_ADMIN_REAL_ESTATE: AdItem[] = [
     description: 'Casa térrea, recém reformada, área de lazer completa.'
   },
   {
+    userId: 'u_mock',
     id: 'r_active_1',
     title: 'Kitnet Mobiliada Sudoeste',
     price: 320000.00,
@@ -378,6 +389,7 @@ export const MOCK_ADMIN_REAL_ESTATE: AdItem[] = [
     parking: 1
   },
   {
+    userId: 'u_mock',
     id: 'r_rejected_1',
     title: 'Lote irregular em área de preservação',
     price: 50000.00,
@@ -396,6 +408,7 @@ export const MOCK_ADMIN_REAL_ESTATE: AdItem[] = [
 // --- MOCK ADMIN PARTS & SERVICES LIST ---
 export const MOCK_ADMIN_PARTS_SERVICES: AdItem[] = [
   {
+    userId: 'u_mock',
     id: 'ps_pending_1',
     title: 'Kit Som Automotivo JBL Completo',
     price: 1500.00,
@@ -410,6 +423,7 @@ export const MOCK_ADMIN_PARTS_SERVICES: AdItem[] = [
     description: 'Kit completo com caixa, módulo e cornetas. Produto novo na caixa com garantia.'
   },
   {
+    userId: 'u_mock',
     id: 'ps_pending_2',
     title: 'Jogo de Rodas Aro 17 (Usadas)',
     price: 800.00,
@@ -424,6 +438,7 @@ export const MOCK_ADMIN_PARTS_SERVICES: AdItem[] = [
     description: 'Rodas originais VW, com alguns arranhões de uso. Pneus meia vida inclusos.'
   },
   {
+    userId: 'u_mock',
     id: 'ps_active_1',
     title: 'Higienização Interna Completa',
     price: 250.00,
@@ -437,6 +452,7 @@ export const MOCK_ADMIN_PARTS_SERVICES: AdItem[] = [
     description: 'Lavagem detalhada de bancos, teto e carpetes. Remoção de manchas e odores.'
   },
   {
+    userId: 'u_mock',
     id: 'ps_rejected_1',
     title: 'Desbloqueio de Multimidia (Serviço Ilegal)',
     price: 100.00,
@@ -454,6 +470,7 @@ export const MOCK_ADMIN_PARTS_SERVICES: AdItem[] = [
 // --- NEW FEATURED VEHICLES ---
 export const FEATURED_VEHICLES: AdItem[] = [
   {
+    userId: 'u_mock',
     id: 'f1',
     title: 'Porsche Macan T 2.0 Turbo',
     price: 520000.00,
@@ -468,6 +485,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     vehicleType: 'SUV Premium'
   },
   {
+    userId: 'u_mock',
     id: 'f2',
     title: 'Toyota Hilux GR-Sport',
     price: 345000.00,
@@ -482,6 +500,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     vehicleType: 'Picape'
   },
   {
+    userId: 'u_mock',
     id: 'f3',
     title: 'Audi A3 Sedan S Line',
     price: 229900.00,
@@ -496,6 +515,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     vehicleType: 'Sedã'
   },
   {
+    userId: 'u_mock',
     id: 'f4',
     title: 'Ford Mustang Mach 1',
     price: 485000.00,
@@ -513,6 +533,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
 
 export const POPULAR_CARS: AdItem[] = [
   {
+    userId: 'u_mock',
     id: 'c1',
     title: 'Chevrolet Onix 1.0 Turbo',
     price: 84900.00,
@@ -533,6 +554,7 @@ export const POPULAR_CARS: AdItem[] = [
     }
   },
   {
+    userId: 'u_mock',
     id: 'c2',
     title: 'Fiat Strada Volcano',
     price: 112000.00,
@@ -549,6 +571,7 @@ export const POPULAR_CARS: AdItem[] = [
     chatCount: 5
   },
   {
+    userId: 'u_mock',
     id: 'c3',
     title: 'Toyota Corolla XEi',
     price: 145000.00,
@@ -569,6 +592,7 @@ export const POPULAR_CARS: AdItem[] = [
     }
   },
   {
+    userId: 'u_mock',
     id: 'c4',
     title: 'Jeep Compass Longitude',
     price: 158900.00,
@@ -585,6 +609,7 @@ export const POPULAR_CARS: AdItem[] = [
     chatCount: 6
   },
   {
+    userId: 'u_mock',
     id: 'c5',
     title: 'Volkswagen Nivus Highline',
     price: 129990.00,
@@ -601,6 +626,7 @@ export const POPULAR_CARS: AdItem[] = [
     chatCount: 4
   },
   {
+    userId: 'u_mock',
     id: 'c6',
     title: 'Fiat Toro Ranch Diesel',
     price: 165000.00,
@@ -617,6 +643,7 @@ export const POPULAR_CARS: AdItem[] = [
     chatCount: 2
   },
   {
+    userId: 'u_mock',
     id: 'c7',
     title: 'BMW X1 sDrive20i',
     price: 285000.00,
@@ -633,6 +660,7 @@ export const POPULAR_CARS: AdItem[] = [
     chatCount: 12
   },
   {
+    userId: 'u_mock',
     id: 'c8',
     title: 'Ford Ranger Limited',
     price: 310000.00,
@@ -652,6 +680,7 @@ export const POPULAR_CARS: AdItem[] = [
 
 export const POPULAR_SERVICES: AdItem[] = [
   {
+    userId: 'u_mock',
     id: 's1',
     title: 'Martelinho de Ouro Express',
     price: 150.00,
@@ -669,6 +698,7 @@ export const POPULAR_SERVICES: AdItem[] = [
     chatCount: 2
   },
   {
+    userId: 'u_mock',
     id: 's2',
     title: 'Polimento Cristalizado 3M',
     price: 350.00,
@@ -686,6 +716,7 @@ export const POPULAR_SERVICES: AdItem[] = [
     chatCount: 6
   },
   {
+    userId: 'u_mock',
     id: 's3',
     title: 'Instalação de Som JBL',
     price: 200.00,
@@ -703,6 +734,7 @@ export const POPULAR_SERVICES: AdItem[] = [
     chatCount: 4
   },
   {
+    userId: 'u_mock',
     id: 's4',
     title: 'Revisão Completa + Troca de Óleo',
     price: 450.00,
@@ -720,6 +752,7 @@ export const POPULAR_SERVICES: AdItem[] = [
     chatCount: 10
   },
   {
+    userId: 'u_mock',
     id: 's5',
     title: 'Lavagem Ecológica a Seco',
     price: 60.00,
@@ -737,6 +770,7 @@ export const POPULAR_SERVICES: AdItem[] = [
     chatCount: 14
   },
   {
+    userId: 'u_mock',
     id: 's6',
     title: 'Higienização de Ar Condicionado',
     price: 120.00,
@@ -757,6 +791,7 @@ export const POPULAR_SERVICES: AdItem[] = [
 
 export const POPULAR_REAL_ESTATE: AdItem[] = [
   {
+    userId: 'u_mock',
     id: 'r1',
     title: 'Apto 2 Quartos - Águas Claras',
     price: 520000.00,
@@ -773,6 +808,7 @@ export const POPULAR_REAL_ESTATE: AdItem[] = [
     features: ['Elevador', 'Garagem', 'Academia', 'Piscina']
   },
   {
+    userId: 'u_mock',
     id: 'r2',
     title: 'Casa em Condomínio',
     price: 1250000.00,
@@ -789,6 +825,7 @@ export const POPULAR_REAL_ESTATE: AdItem[] = [
     features: ['Churrasqueira', 'Piscina', 'Jardim', 'Portaria 24h']
   },
   {
+    userId: 'u_mock',
     id: 'r3',
     title: 'Kitnet Mobiliada',
     price: 180000.00,
@@ -805,6 +842,7 @@ export const POPULAR_REAL_ESTATE: AdItem[] = [
     features: ['Elevador', 'Ar Condicionado']
   },
   {
+    userId: 'u_mock',
     id: 'r4',
     title: 'Mansão Lago Sul',
     price: 3500000.00,
@@ -821,6 +859,7 @@ export const POPULAR_REAL_ESTATE: AdItem[] = [
     features: ['Piscina', 'Churrasqueira', 'Varanda', 'Academia', 'Ar Condicionado']
   },
   {
+    userId: 'u_mock',
     id: 'r5',
     title: 'Aluguel Apto 1 Quarto',
     price: 1800.00,
@@ -837,6 +876,7 @@ export const POPULAR_REAL_ESTATE: AdItem[] = [
     features: ['Portaria 24h', 'Elevador']
   },
   {
+    userId: 'u_mock',
     id: 'r6',
     title: 'Aluguel Casa 3 Quartos',
     price: 3500.00,
@@ -853,6 +893,7 @@ export const POPULAR_REAL_ESTATE: AdItem[] = [
     features: ['Varanda', 'Garagem']
   },
   {
+    userId: 'u_mock',
     id: 'r7',
     title: 'Sala Comercial',
     price: 220000.00,
@@ -869,6 +910,7 @@ export const POPULAR_REAL_ESTATE: AdItem[] = [
     features: ['Elevador', 'Portaria 24h']
   },
   {
+    userId: 'u_mock',
     id: 'r8',
     title: 'Flat Life Resort',
     price: 380000.00,
@@ -888,6 +930,7 @@ export const POPULAR_REAL_ESTATE: AdItem[] = [
 
 export const MY_ADS_DATA: AdItem[] = [
   {
+    userId: 'u_mock',
     id: '1',
     title: 'Nissan Versa 1.0 12V Flexstart 4P Mec. 2020',
     price: 49900.00,
@@ -911,6 +954,7 @@ export const MY_ADS_DATA: AdItem[] = [
     vehicleType: 'Nissan Versa'
   },
   {
+    userId: 'u_mock',
     id: '2',
     title: 'Apartamento 2 Quartos - Centro',
     price: 450000.00,
@@ -926,6 +970,7 @@ export const MY_ADS_DATA: AdItem[] = [
     area: 70
   },
   {
+    userId: 'u_mock',
     id: '3',
     title: 'iPhone 13 Pro Max',
     price: 4500.00,
@@ -938,6 +983,7 @@ export const MY_ADS_DATA: AdItem[] = [
 
 export const FAVORITES_DATA: AdItem[] = [
   {
+    userId: 'u_mock',
     id: '101',
     title: 'Ford Mustang GT 2022',
     price: 480000.00,
@@ -952,6 +998,7 @@ export const FAVORITES_DATA: AdItem[] = [
     vehicleType: 'Ford Mustang'
   },
   {
+    userId: 'u_mock',
     id: '102',
     title: 'Apartamento 2 Quartos',
     price: 450000.00,
@@ -966,6 +1013,7 @@ export const FAVORITES_DATA: AdItem[] = [
     area: 80
   },
   {
+    userId: 'u_mock',
     id: '103',
     title: 'Volkswagen Gol 1.6',
     price: 55900.00,
@@ -979,6 +1027,7 @@ export const FAVORITES_DATA: AdItem[] = [
 
 export const HISTORY_DATA: AdItem[] = [
   {
+    userId: 'u_mock',
     id: '201',
     title: 'Honda Civic EX 2021',
     price: 135000.00,

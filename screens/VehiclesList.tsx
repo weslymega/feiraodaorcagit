@@ -171,7 +171,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   const searchSuggestions = searchTerm.length >= 2
     ? ads.filter(ad =>
-      ad.category === 'autos' &&
+      ad.category === 'veiculos' &&
       ad.title.toLowerCase().includes(searchTerm.toLowerCase())
     ).slice(0, 6)
     : [];

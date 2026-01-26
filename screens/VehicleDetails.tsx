@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Heart, Share2, Calculator, MapPin, MessageSquare, Phone, User as UserIcon, ChevronRight, QrCode, Printer, Download, Map, Clock, Camera, Flag, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Heart, Share2, Calculator, MapPin, MessageSquare, Phone, User as UserIcon, ChevronRight, QrCode, Printer, Download, Map, Clock, Camera, Flag, AlertTriangle, CheckCircle } from 'lucide-react';
 import { AdItem, ReportItem } from '../types';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
@@ -137,9 +137,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
   };
 
   const getFipeComparison = () => {
-    if (!ad.fipePrice || !ad.price) return null; // Added check for ad.price
-    const diff = ad.price - ad.fipePrice;
-    const percentage = Math.abs((diff / ad.fipePrice) * 100);
+    const price = Number(ad.price);
+    const fipePrice = Number(ad.fipePrice);
+
+    if (!fipePrice || !price || fipePrice <= 0) return null;
+
+    const diff = price - fipePrice;
+    const percentage = Math.abs((diff / fipePrice) * 100);
 
     if (isNaN(percentage)) return null;
 
@@ -273,15 +277,15 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
             className="flex items-center gap-4 bg-white border border-gray-100 shadow-sm p-4 rounded-2xl mb-8 cursor-pointer hover:bg-gray-50 transition-colors group active:scale-[0.98]"
           >
             <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm group-hover:border-primary transition-colors">
-              {ad.isOwner ? (
-                <UserIcon className="w-7 h-7 text-gray-400" />
+              {ad.ownerAvatar ? (
+                <img src={ad.ownerAvatar} alt={ad.ownerName || "Vendedor"} className="w-full h-full object-cover" />
               ) : (
-                <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=100" alt="Vendedor" className="w-full h-full object-cover" />
+                <UserIcon className="w-7 h-7 text-gray-400" />
               )}
             </div>
             <div className="flex-1">
               <p className="font-bold text-gray-900 text-lg group-hover:text-primary transition-colors">
-                {ad.isOwner ? "Eu (Vendedor)" : "Marcos Paulo"}
+                {ad.isOwner ? "Eu (Vendedor)" : (ad.ownerName || "Vendedor")}
               </p>
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -321,6 +325,20 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
             <h3 className="font-bold text-gray-900 mb-3 text-lg">Sobre este veículo</h3>
             <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100"><p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap font-medium">{ad.description || "Nenhuma descrição fornecida pelo vendedor."}</p></div>
           </div>
+
+          {ad.additionalInfo && ad.additionalInfo.length > 0 && (
+            <div className="mb-8">
+              <h3 className="font-bold text-gray-900 mb-3 text-lg">Destaques do Vendedor</h3>
+              <div className="flex flex-wrap gap-2">
+                {ad.additionalInfo.map((info, idx) => (
+                  <span key={idx} className="bg-green-50 text-green-700 px-3 py-2 rounded-xl text-sm font-bold border border-green-100 flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4" />
+                    {info}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mb-8">
             <h3 className="font-bold text-gray-900 mb-3 text-lg">Opcionais</h3>

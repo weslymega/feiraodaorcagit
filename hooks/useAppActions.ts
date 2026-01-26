@@ -3,7 +3,7 @@ import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, MOCK_NOTIFICATIONS, MOCK_REP
 import { MOCK_SELLER } from '../constants';
 import { useRef, useEffect } from 'react';
 import { AppState } from '../types/AppState';
-import { api, CreateAdPayload } from '../services/api';
+import { api, CreateAdPayload, supabase } from '../services/api';
 
 export const useAppActions = (state: AppState) => {
     const {
@@ -404,25 +404,44 @@ export const useAppActions = (state: AppState) => {
 
     const handleLogout = () => setCurrentScreen(Screen.LOGIN);
 
-    const handleRegister = (newUserData: Partial<User>) => {
-        const newUser: User = {
-            id: `user_${Date.now()}`,
-            name: newUserData.name || 'Novo Usuário',
-            email: newUserData.email || '',
-            avatarUrl: "https://i.pravatar.cc/150?u=new_user",
-            balance: 0,
-            adsCount: 0,
-            phone: "",
-            location: "Brasília, DF",
-            bio: "Novo no Feirão da Orca",
-            joinDate: new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-            verified: false,
-            isAdmin: false,
-            ...newUserData
-        };
-        setUser(newUser);
-        setToast({ message: "Conta criada com sucesso! Bem-vindo!", type: 'success' });
-        setCurrentScreen(Screen.DASHBOARD);
+    const handleRegister = async (newUserData: any) => {
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email: newUserData.email,
+                password: newUserData.password,
+                options: {
+                    data: {
+                        name: newUserData.name,
+                        full_name: newUserData.name,
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            if (data.user) {
+                const newUser: User = {
+                    id: data.user.id,
+                    name: newUserData.name || 'Novo Usuário',
+                    email: newUserData.email || '',
+                    avatarUrl: "https://i.pravatar.cc/150?u=" + data.user.id,
+                    balance: 0,
+                    adsCount: 0,
+                    phone: "",
+                    location: "Brasília, DF",
+                    bio: "Novo no Feirão da Orca",
+                    joinDate: new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+                    verified: false,
+                    isAdmin: false,
+                };
+                setUser(newUser);
+                setToast({ message: "Conta criada com sucesso! Bem-vindo!", type: 'success' });
+                setCurrentScreen(Screen.DASHBOARD);
+            }
+        } catch (error: any) {
+            console.error("Erro registro:", error);
+            setToast({ message: "Erro ao criar conta: " + error.message, type: 'error' });
+        }
     };
 
     const navigateTo = (screen: Screen) => {
@@ -550,15 +569,47 @@ export const useAppActions = (state: AppState) => {
         else setCurrentScreen(Screen.VEHICLE_DETAILS);
     };
 
-    const handleViewProfile = () => {
+    const handleViewProfile = async () => {
         if (!selectedAd) return;
-        if (selectedAd.isOwner) {
-            setViewingProfile({ ...user, rating: 5.0, joinDate: "Mar 2023", verified: true });
-        } else {
-            setViewingProfile(MOCK_SELLER);
+
+        try {
+            if (selectedAd.isOwner) {
+                setViewingProfile({
+                    ...user,
+                    rating: 5.0,
+                    joinDate: user.joinDate || "Mar 2023",
+                    verified: true,
+                    location: user.location || "Brasília, DF",
+                    bio: user.bio || "Usuário do Feirão da Orca"
+                });
+            } else {
+                // Fetch real public profile
+                const publicProfile = await api.getPublicProfile(selectedAd.userId);
+
+                if (publicProfile) {
+                    setViewingProfile(publicProfile);
+                } else {
+                    // Generic fallback if fetch fails
+                    setViewingProfile({
+                        id: selectedAd.userId,
+                        name: selectedAd.ownerName || 'Vendedor',
+                        email: '',
+                        avatarUrl: null,
+                        balance: 0,
+                        location: selectedAd.location || 'Brasil',
+                        bio: 'Usuário do Feirão da Orca',
+                        joinDate: 'Recente',
+                        verified: false,
+                        adsCount: 0
+                    } as User);
+                }
+            }
+        } catch (err) {
+            console.error("Error navigating to profile:", err);
+        } finally {
+            setPreviousScreen(currentScreen);
+            setCurrentScreen(Screen.PUBLIC_PROFILE);
         }
-        setPreviousScreen(currentScreen);
-        setCurrentScreen(Screen.PUBLIC_PROFILE);
     };
 
     const handleViewProfileFromChat = () => {
@@ -620,14 +671,39 @@ export const useAppActions = (state: AppState) => {
                     ...adData
                 };
 
-                const newAd = await api.createAd(payload);
+                try {
+                    const newAd = await api.createAd(payload);
 
-                setMyAds((prev: AdItem[]) => [newAd, ...prev]);
-                setToast({ message: "Anúncio criado com sucesso!", type: 'success' });
+                    setMyAds((prev: AdItem[]) => [newAd, ...prev]);
+                    setToast({ message: "Anúncio criado com sucesso!", type: 'success' });
+                } catch (backendError: any) {
+                    // Check if error is related to connection/availability (not limit reached)
+                    // "failed to send a request to the edge function" is standard supabase-js error for connection failure
+                    if (backendError.message?.includes('failed to send a request') || backendError.message?.includes('fetch failed')) {
+                        console.warn("Backend unavailable, falling back to local creation.");
+
+                        // Fallback: Create local mock ad
+                        const localAd: AdItem = {
+                            id: `local_${Date.now()}`,
+                            ...payload,
+                            status: AdStatus.PENDING,
+                            createdAt: new Date().toISOString(),
+                            // user.id might not be in payload, ensure owner is set
+                            isOwner: true
+                        } as AdItem;
+
+                        setMyAds((prev: AdItem[]) => [localAd, ...prev]);
+                        setToast({ message: "Backend offline. Anúncio criado localmente (modo dev).", type: 'warning' });
+                    } else {
+                        throw backendError; // Re-throw for outer catch to handle (e.g. Limit Exceeded)
+                    }
+                }
             }
 
+            const { setMyAdsInitialTab } = state;
             const shouldGoBackToMyAds = cameFromMyAds;
             setCameFromMyAds(false);
+            setMyAdsInitialTab('pendentes');
             setPreviousScreen(Screen.DASHBOARD);
             setCurrentScreen(Screen.MY_ADS);
 

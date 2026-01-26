@@ -129,7 +129,7 @@ const PaymentProcessingView: React.FC<{ onNext: () => void }> = ({ onNext }) => 
 export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd, user }) => {
   const initialStep = useMemo(() => {
     if (!editingAd) return CreateStep.CATEGORY;
-    if (editingAd.category === 'autos') return CreateStep.VEHICLE_TYPE;
+    if (editingAd.category === 'veiculos') return CreateStep.VEHICLE_TYPE;
     if (editingAd.category === 'imoveis') return CreateStep.REAL_ESTATE_TYPE;
     if (editingAd.category === 'servicos' || editingAd.category === 'pecas') return CreateStep.PARTS_TYPE;
     return CreateStep.DESCRIPTION;
@@ -221,7 +221,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   }, [step, editingAd]);
 
   useEffect(() => {
-    if (formData.category === 'autos' && step === CreateStep.SPECS) {
+    if (formData.category === 'veiculos' && step === CreateStep.SPECS) {
       loadBrands();
     }
   }, [formData.category, step]);
@@ -310,7 +310,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
   useEffect(() => {
     if (step === CreateStep.SUCCESS) {
-      const adTitle = formData.category === 'autos' ? formData.vehicleType : (formData.realEstateType || 'Anúncio');
+      const adTitle = formData.category === 'veiculos' ? formData.vehicleType : (formData.realEstateType || 'Anúncio');
       const dataString = `https://feiraodaorca.app/ad/view?title=${encodeURIComponent(adTitle)}&price=${formData.price}&cat=${formData.category}`;
       const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(dataString)}&color=004AAD&bgcolor=ffffff&margin=10`;
       setQrCodeUrl(url);
@@ -338,7 +338,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     let next: CreateStep;
     switch (step) {
       case CreateStep.CATEGORY:
-        if (formData.category === 'autos') next = CreateStep.VEHICLE_TYPE;
+        if (formData.category === 'veiculos') next = CreateStep.VEHICLE_TYPE;
         else if (formData.category === 'imoveis') next = CreateStep.REAL_ESTATE_TYPE;
         else if (formData.category === 'servicos') next = CreateStep.PARTS_TYPE;
         else next = CreateStep.CATEGORY;
@@ -354,7 +354,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
         break;
       case CreateStep.PARTS_CONDITION: next = CreateStep.PHOTOS; break;
       case CreateStep.PHOTOS:
-        if (formData.category === 'autos') next = CreateStep.PLATE;
+        if (formData.category === 'veiculos') next = CreateStep.PLATE;
         else if (formData.category === 'imoveis') next = CreateStep.REAL_ESTATE_SPECS;
         else if (formData.category === 'servicos') next = CreateStep.DESCRIPTION;
         else next = CreateStep.DESCRIPTION;
@@ -505,7 +505,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
   const handleFinish = () => {
     let title = 'Anúncio';
-    if (formData.category === 'autos') { title = `${formData.brandName || editingAd?.title.split(' ')[0]} ${formData.modelName} ${formData.year || ''}`.trim() || formData.vehicleType; }
+    if (formData.category === 'veiculos') { title = `${formData.brandName || editingAd?.title.split(' ')[0]} ${formData.modelName} ${formData.year || ''}`.trim() || formData.vehicleType; }
     else if (formData.category === 'imoveis') { title = `${formData.realEstateType || 'Imóvel'} - ${formData.area}m²`; }
     else if (formData.category === 'servicos') { title = `${formData.partType || 'Peça/Serviço'} ${formData.condition ? `(${formData.condition})` : ''}`; }
     if (!title || title.trim() === '') title = editingAd?.title || 'Anúncio sem título';
@@ -543,7 +543,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     } as any);
   };
 
-  const renderCategory = () => (<StepContainer title="Categoria" progress={0.05} onNext={nextStep} nextDisabled={!formData.category} onBack={goBack}><h1 className="text-2xl font-bold text-gray-900 leading-tight mb-6">O que você vai anunciar?</h1><div className="flex flex-col gap-4">{[{ id: 'autos', label: 'Veículos', icon: <Car className="w-6 h-6" />, desc: 'Carros, motos e caminhões' }, { id: 'imoveis', label: 'Imóveis', icon: <Home className="w-6 h-6" />, desc: 'Casas, apartamentos, terrenos' }, { id: 'servicos', label: 'Peças e Serviços', icon: <Wrench className="w-6 h-6" />, desc: 'Peças, som e serviços automotivos' }].map((cat) => (<button key={cat.id} onClick={() => setFormData(p => ({ ...p, category: cat.id }))} className={`flex items-center gap-4 p-5 border-2 rounded-2xl transition-all text-left group active:scale-[0.99] ${formData.category === cat.id ? 'border-primary bg-blue-50/50 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}><div className={`p-3 rounded-xl transition-colors ${formData.category === cat.id ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-blue-50 group-hover:text-primary'}`}>{cat.icon}</div><div className="flex-1"><span className={`font-bold text-lg block ${formData.category === cat.id ? 'text-gray-900' : 'text-gray-700'}`}>{cat.label}</span><span className="text-sm text-gray-400 font-medium">{cat.desc}</span></div><div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.category === cat.id ? 'border-primary' : 'border-gray-200'}`}>{formData.category === cat.id && <div className="w-3 h-3 bg-primary rounded-full" />}</div></button>))}</div></StepContainer>);
+  const renderCategory = () => (<StepContainer title="Categoria" progress={0.05} onNext={nextStep} nextDisabled={!formData.category} onBack={goBack}><h1 className="text-2xl font-bold text-gray-900 leading-tight mb-6">O que você vai anunciar?</h1><div className="flex flex-col gap-4">{[{ id: 'veiculos', label: 'Veículos', icon: <Car className="w-6 h-6" />, desc: 'Carros, motos e caminhões' }, { id: 'imoveis', label: 'Imóveis', icon: <Home className="w-6 h-6" />, desc: 'Casas, apartamentos, terrenos' }, { id: 'servicos', label: 'Peças e Serviços', icon: <Wrench className="w-6 h-6" />, desc: 'Peças, som e serviços automotivos' }].map((cat) => (<button key={cat.id} onClick={() => setFormData(p => ({ ...p, category: cat.id }))} className={`flex items-center gap-4 p-5 border-2 rounded-2xl transition-all text-left group active:scale-[0.99] ${formData.category === cat.id ? 'border-primary bg-blue-50/50 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}><div className={`p-3 rounded-xl transition-colors ${formData.category === cat.id ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-blue-50 group-hover:text-primary'}`}>{cat.icon}</div><div className="flex-1"><span className={`font-bold text-lg block ${formData.category === cat.id ? 'text-gray-900' : 'text-gray-700'}`}>{cat.label}</span><span className="text-sm text-gray-400 font-medium">{cat.desc}</span></div><div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.category === cat.id ? 'border-primary' : 'border-gray-200'}`}>{formData.category === cat.id && <div className="w-3 h-3 bg-primary rounded-full" />}</div></button>))}</div></StepContainer>);
 
   const renderPhotos = () => (
     <StepContainer title="Fotos" progress={0.3} onNext={nextStep} nextDisabled={formData.images.length === 0} onBack={goBack}>

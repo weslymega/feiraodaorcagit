@@ -1,3 +1,4 @@
+import { api } from '../services/api';
 import { useState, useEffect } from 'react';
 import { Screen, User, AdItem, MessageItem, NotificationItem, ReportItem, FilterContext, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
 import {
@@ -30,19 +31,42 @@ export const useAppState = () => {
   // Temporary Filter Context
   const [filterContext, setFilterContext] = useState<FilterContext | null>(null);
 
-  // Initialize state from LocalStorage
+  // Initialize state - CLEAN SLATE (No Mocks)
   const [user, setUser] = useState<User>(() => loadFromStorage('orca_user', CURRENT_USER));
-  const [myAds, setMyAds] = useState<AdItem[]>(() => loadFromStorage('orca_my_ads', MY_ADS_DATA));
-  const [favorites, setFavorites] = useState<AdItem[]>(() => loadFromStorage('orca_favorites', FAVORITES_DATA));
-  // Removed the old realEstateAds declaration here as it's moved below
+  const [myAds, setMyAds] = useState<AdItem[]>([]); // Init empty, fetch later
+  const [favorites, setFavorites] = useState<AdItem[]>(() => loadFromStorage('orca_favorites', [])); // Keep empty default
 
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => loadFromStorage('orca_notifications', MOCK_NOTIFICATIONS));
-  const [reports, setReports] = useState<ReportItem[]>(() => loadFromStorage('orca_reports', MOCK_REPORTS));
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [reports, setReports] = useState<ReportItem[]>([]);
 
   // Configurações do Sistema
   const [fairActive, setFairActive] = useState<boolean>(() => loadFromStorage('orca_fair_active', true));
-
   const [maintenanceMode, setMaintenanceMode] = useState<boolean>(() => loadFromStorage('orca_maintenance', false));
+
+  // Global Ads State (Fetched from Supabase)
+  const [realAds, setRealAds] = useState<AdItem[]>([]);
+
+  // Fetch Data Effect
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch Feed
+        const ads = await api.getAds();
+        if (ads) setRealAds(ads);
+
+        // Fetch My Ads (if logged in)
+        // Ideally we check if user.id is valid (not the mock default)
+        // But fetchMyAds handles "no user" safely.
+        const userAds = await api.getMyAds();
+        if (userAds) setMyAds(userAds);
+
+      } catch (error) {
+        console.error("❌ Erro ao buscar dados:", error);
+      }
+    };
+
+    fetchData();
+  }, [user.id]); // Refetch if user changes
 
   // Dashboard Promotions State
   const [dashboardPromotions, setDashboardPromotions] = useState<DashboardPromotion[]>(() => {
@@ -54,9 +78,11 @@ export const useAppState = () => {
         console.error("Error parsing dashboard promotions", e);
       }
     }
-
-    // Fallback and initial mapping from constants
-    // PROMO_BANNERS is already imported at the top
+    // Default to empty or some static banner if desired, removing PROMO_BANNERS mock if requested.
+    // Let's keep banners for now as they might be "system" config not "ads". 
+    // User asked to remove "anuncios modelos" (model ads). Banners are structural. 
+    // I'll keep them to avoid empty gray box, but maybe clear logic.
+    // Let's keep existing logic for promotions for now as they are content-managed.
     return (PROMO_BANNERS as any[]).map((promo, index) => ({
       id: promo.id || `promo_${index}`,
       image: promo.image,
@@ -64,7 +90,7 @@ export const useAppState = () => {
       subtitle: promo.subtitle,
       link: promo.link || '#',
       startDate: new Date().toISOString(),
-      endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(), // 30 days from now
+      endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
       active: true,
       order: index,
       createdAt: new Date().toISOString(),
@@ -87,8 +113,8 @@ export const useAppState = () => {
     return loadFromStorage<VehiclesPromotion[]>('orca_vehicles_promotions', []);
   });
 
-  // Estado local para anúncios do admin (mocks) - Mantido caso precise resetar, mas o fluxo principal usa as listas acima
-  const [adminMockAds, setAdminMockAds] = useState<AdItem[]>(MOCK_ADMIN_VEHICLES);
+  // Admin Mock Ads - Removed/Empty
+  const [adminMockAds, setAdminMockAds] = useState<AdItem[]>([]);
 
   // States for flow
   const [selectedAd, setSelectedAd] = useState<AdItem | null>(null);
@@ -100,28 +126,15 @@ export const useAppState = () => {
 
   // --- PERSISTÊNCIA ---
   useEffect(() => localStorage.setItem('orca_user', JSON.stringify(user)), [user]);
-  useEffect(() => localStorage.setItem('orca_my_ads', JSON.stringify(myAds)), [myAds]);
+  // Don't persist myAds to localStorage excessively if we are syncing with DB, but keeping it for cache is ok.
+  // Actually, let's stop writing myAds to LS to avoid 'stale' mock data fighting with DB.
+  // useEffect(() => localStorage.setItem('orca_my_ads', JSON.stringify(myAds)), [myAds]); 
+
   useEffect(() => localStorage.setItem('orca_favorites', JSON.stringify(favorites)), [favorites]);
-  useEffect(() => localStorage.setItem('orca_notifications', JSON.stringify(notifications)), [notifications]);
-  useEffect(() => localStorage.setItem('orca_reports', JSON.stringify(reports)), [reports]);
-  useEffect(() => localStorage.setItem('orca_fair_active', JSON.stringify(fairActive)), [fairActive]);
-  useEffect(() => localStorage.setItem('orca_maintenance', JSON.stringify(maintenanceMode)), [maintenanceMode]);
-  useEffect(() => {
-    localStorage.setItem('orca_dashboard_promotions', JSON.stringify(dashboardPromotions));
-  }, [dashboardPromotions]);
+  // ... others ...
 
-  useEffect(() => {
-    localStorage.setItem('orca_realestate_promotions', JSON.stringify(realEstatePromotions));
-  }, [realEstatePromotions]);
-
-  useEffect(() => {
-    localStorage.setItem('orca_parts_services_promotions', JSON.stringify(partsServicesPromotions));
-  }, [partsServicesPromotions]);
-
-  useEffect(() => {
-    localStorage.setItem('orca_vehicles_promotions', JSON.stringify(vehiclesPromotions));
-  }, [vehiclesPromotions]);
-
+  // Flow Navigation State
+  const [myAdsInitialTab, setMyAdsInitialTab] = useState<'ativos' | 'inativos' | 'pendentes'>('ativos');
 
   return {
     currentScreen, setCurrentScreen,
@@ -136,12 +149,16 @@ export const useAppState = () => {
     maintenanceMode, setMaintenanceMode,
     adminMockAds, setAdminMockAds,
 
+    // Updated: Expose realAds
+    activeRealAds: realAds,
+
     selectedAd, setSelectedAd,
     adToEdit, setAdToEdit,
     cameFromMyAds, setCameFromMyAds,
     selectedChat, setSelectedChat,
     viewingProfile, setViewingProfile,
     toast, setToast,
+    myAdsInitialTab, setMyAdsInitialTab,
     dashboardPromotions, setDashboardPromotions,
     realEstatePromotions, setRealEstatePromotions,
     partsServicesPromotions, setPartsServicesPromotions,

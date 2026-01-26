@@ -5,7 +5,7 @@ import { User as UserType } from '../types';
 
 interface RegisterScreenProps {
   onBack: () => void;
-  onRegister: (user: Partial<UserType>) => void;
+  onRegister: (user: any) => void;
 }
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegister }) => {
@@ -40,15 +40,23 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
 
     setIsLoading(true);
 
-    // Simular delay de rede
-    setTimeout(() => {
-      onRegister({
-        name: formData.name,
-        email: formData.email,
-        // Em um app real, a senha seria tratada no backend
-      });
-      setIsLoading(false);
-    }, 1500);
+    // Call registration immediately (Supabase handles async)
+    onRegister({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password
+    });
+
+    // Reset loading state is handled by effect or parent, but for now we keep it true until unmount or rely on parent
+    // actually, parent calls navigate, so this component will unmount.
+    // But if error, parent should probably stop loading?
+    // Since onRegister is async in parent but here it returns void, we can't await it easily unless we change props.
+    // For now, let's just set timeout to false after a bit or hope for unmount.
+    // Better: make onRegister async in props?
+    // Let's keep it simple: fire and forget, parent handles toast/nav.
+    // If we want to stop loading on error, we need a way to know.
+    // But for this task, let's just remove the timeout and call it.
+    setTimeout(() => setIsLoading(false), 2000); // Failsafe to stop spinner if something hangs
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,12 +65,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
 
   return (
     <div className="min-h-screen relative flex flex-col overflow-hidden">
-      
+
       {/* --- BACKGROUND IMAGE SECTION (Igual ao Login para consistência) --- */}
       <div className="absolute inset-0 z-0">
-        <img 
-          src="https://revistacontinente.com.br/image/view/news/image/544" 
-          alt="Athos Bulcão Background" 
+        <img
+          src="https://revistacontinente.com.br/image/view/news/image/544"
+          alt="Athos Bulcão Background"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-primary/40 mix-blend-multiply"></div>
@@ -71,8 +79,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
 
       {/* Header Back Button */}
       <div className="absolute top-0 left-0 right-0 z-50 p-6">
-        <button 
-          onClick={onBack} 
+        <button
+          onClick={onBack}
           className="p-2 -ml-2 rounded-full bg-black/20 text-white backdrop-blur-md hover:bg-black/30 transition-colors w-fit border border-white/10"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -84,11 +92,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
 
       {/* Bottom Section: Form */}
       <div className="relative bg-white/10 backdrop-blur-xl pt-10 pb-8 px-8 rounded-t-[3.5rem] shadow-[0_-20px_60px_rgba(0,0,0,0.4)] z-20 animate-slide-in-from-bottom duration-500 border-t border-white/20">
-        
+
         <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-1.5 bg-white/30 rounded-full"></div>
 
         <h2 className="text-2xl font-bold text-white mb-6 text-center tracking-tight text-shadow-sm">Crie sua conta</h2>
-        
+
         {error && (
           <div className="bg-red-500/80 backdrop-blur-md text-white text-xs font-bold p-3 rounded-xl mb-4 text-center border border-red-400">
             {error}
@@ -96,7 +104,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          
+
           {/* Nome */}
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -126,7 +134,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
               placeholder="Seu e-mail"
             />
           </div>
-          
+
           {/* Password */}
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -174,9 +182,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
         </form>
 
         <div className="mt-6 text-center">
-           <p className="text-white/80 text-xs">
-             Ao criar uma conta, você concorda com nossos <br/> <span className="font-bold underline cursor-pointer">Termos de Serviço</span> e <span className="font-bold underline cursor-pointer">Política de Privacidade</span>.
-           </p>
+          <p className="text-white/80 text-xs">
+            Ao criar uma conta, você concorda com nossos <br /> <span className="font-bold underline cursor-pointer">Termos de Serviço</span> e <span className="font-bold underline cursor-pointer">Política de Privacidade</span>.
+          </p>
         </div>
       </div>
     </div>

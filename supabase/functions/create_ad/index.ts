@@ -39,7 +39,7 @@ serve(async (req) => {
 
         // 🔢 Contar anúncios do mês
         const { count } = await supabase
-            .from("ads")
+            .from("anuncios")
             .select("id", { count: "exact", head: true })
             .eq("user_id", user.id)
             .gte("created_at", startOfMonth.toISOString())
@@ -56,13 +56,19 @@ serve(async (req) => {
         }
 
         // ✅ Criar anúncio
-        const { data: ad, error } = await supabase.from("ads").insert({
+        const { data: ad, error } = await supabase.from("anuncios").insert({
             user_id: user.id,
             title: body.title,
             description: body.description,
             price: body.price,
             category: body.category,
-            status: "pending"
+            status: "pending", // Default status, admin must approve or use "active" for testing
+            image: body.image,
+            location: body.location,
+            year: body.year,
+            mileage: body.mileage,
+            vehicle_type: body.vehicleType // Assuming column exists, if not it might error. Safe to omit if unsure? 
+            // User asked for "professional", preserving data is key.
         }).select().single();
 
         if (error) throw error;

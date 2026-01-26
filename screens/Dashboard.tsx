@@ -178,7 +178,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   });
 
   // --- DATASET COMBINADO PARA O FEED PERSONALIZADO ---
-  const allDiscoveryAds = [...recentVehicles, ...POPULAR_REAL_ESTATE, ...POPULAR_SERVICES];
+  const allDiscoveryAds = [...recentVehicles, ...trendingRealEstate, ...serviceAds];
 
   const handleAdClickWrapper = (ad: AdItem) => {
     // Logic to save viewed ad ID to localStorage for Personalized Feed
@@ -441,7 +441,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* 7. Trending Real Estate */}
       <TrendingRealEstateSection
-        ads={POPULAR_REAL_ESTATE}
+        ads={trendingRealEstate}
         onAdClick={handleAdClickWrapper}
         onNavigate={onNavigate}
         onViewAll={onOpenTrending}
