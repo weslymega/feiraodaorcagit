@@ -46,6 +46,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                     />
                 </div>
 
+                {/* Mercado Pago Logo - Versão Original Sem Adições */}
+                <div className="flex justify-center mt-6 mb-10">
+                    <img
+                        src="https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadopago/logo__small.png"
+                        alt="Mercado Pago"
+                        className="h-12 w-auto"
+                    />
+                </div>
+
                 {/* Frase Principal */}
                 <p className="max-w-2xl text-base md:text-lg font-medium leading-relaxed mb-10 text-gray-600">
                     A plataforma que conecta Brasília. Encontre veículos, imóveis, peças e serviços com a segurança e a confiança que você merece. Valorizando o que é nosso.

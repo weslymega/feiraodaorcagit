@@ -47,11 +47,18 @@ enum CreateStep {
 
 const ACTION_BTN_CLASS = "bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98]";
 
+const TURBO_PLAN_DISPLAY_NAMES: Record<string, string> = {
+  Simples: "Turbo Básico",
+  Premium: "Turbo Ágil",
+  Topo: "Turbo Máximo"
+};
+
 const BOOST_PLANS = [
-  { id: 'premium', title: 'Turbo Máximo', priceInstallment: '50,00', installments: 2, totalPrice: '100,00', rawPrice: 100, features: ['O anúncio volta ao topo 10 vezes ao longo de 30 dias', 'Permaneça no topo das recomendações com o impulsionamento por 30 dias', 'Visibilidade máxima com o anúncio na primeira página com mais de 10 mil acessos/dia por 30 dias'], recommended: true, icon: <Zap className="w-6 h-6 text-cyan-500 fill-current" />, color: 'border-primary' },
-  { id: 'advanced', title: 'Turbo Ágil', priceInstallment: '30,00', installments: 2, totalPrice: '60,00', rawPrice: 60, features: ['O anúncio volta ao topo 5 vezes ao longo de 15 dias', 'Permaneça no topo das recomendações com o impulsionamento por 15 dias'], recommended: false, icon: <Trophy className="w-6 h-6 text-yellow-500 fill-current" />, color: 'border-gray-200' },
-  { id: 'basic', title: 'Turbo Básico', priceInstallment: '15,00', installments: 2, totalPrice: '30,00', rawPrice: 30, features: ['O anúncio volta ao topo 3 vezes ao longo de 7 dias', 'Destaque-se na lista de carros'], recommended: false, icon: <Star className="w-6 h-6 text-gray-400" />, color: 'border-gray-200' }
+  { id: 'premium', name: 'Topo', priceInstallment: '50,00', installments: 2, totalPrice: '100,00', rawPrice: 100, features: ['O anúncio volta ao topo 10 vezes ao longo de 30 dias', 'Permaneça no topo das recomendações com o impulsionamento por 30 dias', 'Visibilidade máxima com o anúncio na primeira página com mais de 10 mil acessos/dia por 30 dias'], recommended: true, icon: <Zap className="w-6 h-6 text-cyan-500 fill-current" />, color: 'border-primary' },
+  { id: 'advanced', name: 'Premium', priceInstallment: '30,00', installments: 2, totalPrice: '60,00', rawPrice: 60, features: ['O anúncio volta ao topo 5 vezes ao longo de 15 dias', 'Permaneça no topo das recomendações com o impulsionamento por 15 dias'], recommended: false, icon: <Trophy className="w-6 h-6 text-yellow-500 fill-current" />, color: 'border-gray-200' },
+  { id: 'basic', name: 'Simples', priceInstallment: '15,00', installments: 2, totalPrice: '30,00', rawPrice: 30, features: ['O anúncio volta ao topo 3 vezes ao longo de 7 dias', 'Destaque-se na lista de carros'], recommended: false, icon: <Star className="w-6 h-6 text-gray-400" />, color: 'border-gray-200' }
 ];
+
 
 interface StepContainerProps {
   title: string;
@@ -800,7 +807,10 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
             <div key={plan.id} onClick={() => setFormData(p => ({ ...p, boostPlan: plan.id as any }))} className={`relative bg-white rounded-2xl p-5 border-2 transition-all cursor-pointer shadow-sm ${formData.boostPlan === plan.id ? `${plan.color} ring-1 ring-offset-2 ring-primary/20` : 'border-gray-100 hover:border-gray-200'}`}>
               {plan.recommended && (<div className="absolute top-0 right-0 bg-gradient-to-l from-yellow-400 to-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-xl rounded-tr-xl shadow-sm">RECOMENDADO</div>)}
               <div className="flex justify-between items-start mb-2"><div className={`p-2 rounded-full border-2 bg-white ${plan.color}`}>{plan.icon}</div><div className="text-right"><p className="text-2xl font-bold text-gray-900 leading-none">R$ {plan.totalPrice}</p><p className="text-xs text-gray-500 mt-1">{plan.installments}x de R$ {plan.priceInstallment}</p></div></div>
-              <h3 className="font-bold text-gray-900 text-lg mb-2">{plan.title}</h3>
+              <h3 className="font-bold text-gray-900 text-lg mb-2">
+                {TURBO_PLAN_DISPLAY_NAMES[plan.name] ?? plan.name}
+              </h3>
+
               <ul className="space-y-2 mb-4">{plan.features.map((feat, idx) => (<li key={idx} className="flex items-start gap-2 text-sm text-gray-600"><Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" /><span className="leading-tight">{feat}</span></li>))}</ul>
               <div className={`w-full py-3 rounded-xl font-bold text-center text-sm transition-colors flex items-center justify-center gap-2 ${formData.boostPlan === plan.id ? 'bg-primary text-white shadow-md' : 'bg-gray-50 text-gray-600'}`}>{formData.boostPlan === plan.id ? <><CheckCircle className="w-4 h-4" /> Selecionado</> : 'Selecionar'}</div>
             </div>

@@ -561,7 +561,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
     };
 
     return (
-        <div className="bg-gray-50 min-h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-hidden relative border-x border-gray-100">
+        <div className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-y-auto relative border-x border-gray-100">
             {/* App Loading Overlay - Bloqueia interação até carregamento completo */}
             <AppLoadingOverlay
                 isActive={(!isAppReady || !authInitialized)}
