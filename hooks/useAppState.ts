@@ -1,5 +1,5 @@
 import { api, supabase } from '../services/api';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Screen, User, AdItem, MessageItem, ChatMessage, NotificationItem, ReportItem, FilterContext, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
 import {
   CURRENT_USER,
@@ -91,11 +91,30 @@ export const useAppState = () => {
   }, []);
 
   // 1.1 Auth State Change Listener (Single Source of Truth)
+  // Guard to prevent duplicate SIGNED_IN processing (fixes infinite loop)
+  const isAuthenticatingRef = useRef<boolean>(false);
+  const currentUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("🔐 Auth State Change:", event, session?.user?.id);
 
       if (event === 'SIGNED_IN' && session?.user) {
+        // GUARD: Prevent duplicate processing if we're already authenticated with this user
+        if (isAuthenticatingRef.current && currentUserIdRef.current === session.user.id) {
+          console.log("⚠️ Ignoring duplicate SIGNED_IN for same user:", session.user.id);
+          return;
+        }
+
+        // GUARD: Prevent concurrent processing
+        if (isAuthenticatingRef.current) {
+          console.log("⚠️ Already processing auth, ignoring duplicate SIGNED_IN");
+          return;
+        }
+
+        isAuthenticatingRef.current = true;
+        currentUserIdRef.current = session.user.id;
+
         // Fetch Profile details safely
         let profile = null;
         try {
@@ -121,16 +140,18 @@ export const useAppState = () => {
         };
 
         setUser(authenticatedUser);
-
-        // ONLY navigate if we are currently in auth screens or loading
-        // This prevents resetting the user to dashboard if they are already browsing elsewhere (e.g. strict refresh)
-        // BUT for this specific task requirement ("email/password login"), we enforce dashboard redirect on login event.
-        // We check currentScreen via the state variable available in closure, but be careful with stale closures.
-        // Since this runs on mount, it captures initial state. 
-        // Best practice: Always redirect to Dashboard on explicit SIGNED_IN event to ensure consistency.
         setCurrentScreen(Screen.DASHBOARD);
 
+        // Reset guard after successful processing
+        setTimeout(() => {
+          isAuthenticatingRef.current = false;
+        }, 1000); // Small delay to prevent rapid re-triggers
+
       } else if (event === 'SIGNED_OUT') {
+        // Reset guards on logout
+        isAuthenticatingRef.current = false;
+        currentUserIdRef.current = null;
+
         setUser(CURRENT_USER); // Reset to default/guest
         setCurrentScreen(Screen.LOGIN);
       }
