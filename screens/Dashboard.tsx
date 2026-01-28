@@ -270,7 +270,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="min-h-screen bg-gray-50 pb-24 animate-in fade-in duration-300">
 
       {/* 1. Top Header */}
-      <div className="bg-white px-4 pt-4 pb-2 sticky top-0 z-30 shadow-sm">
+      <div className="bg-white px-4 pt-4 pb-2 sticky top-0 z-40 shadow-sm">
         <div className="flex justify-between items-center mb-4">
 
           {/* Logo Replacement */}

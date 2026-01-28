@@ -70,6 +70,7 @@ import { BottomNav, Toast } from '../components/Shared';
 import { AppLoadingOverlay } from './AppLoadingOverlay';
 import { ErrorBoundary } from './ErrorBoundary';
 import { PaymentStatusFeedback } from './PaymentStatusFeedback';
+import ScrollToTop from './ScrollToTop';
 
 interface AppRouterProps {
     state: AppState;
@@ -109,10 +110,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         handleForgotPassword
     } = actions;
 
-    // Auto-scroll to top when screen changes
-    React.useEffect(() => {
-        window.scrollTo(0, 0);
-    }, [currentScreen]);
+
 
     const handleBackFromDetails = () => {
         if (previousScreen &&
@@ -561,7 +559,8 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
     };
 
     return (
-        <div className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-y-auto relative border-x border-gray-100">
+        <div id="app-main-container" className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-y-auto relative border-x border-gray-100">
+            <ScrollToTop currentScreen={currentScreen} />
             {/* App Loading Overlay - Bloqueia interação até carregamento completo */}
             <AppLoadingOverlay
                 isActive={(!isAppReady || !authInitialized)}

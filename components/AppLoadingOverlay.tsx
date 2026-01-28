@@ -11,7 +11,7 @@ export const AppLoadingOverlay: React.FC<AppLoadingOverlayProps> = ({ isActive, 
 
     return (
         <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[9999] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-70 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500"
             style={{ pointerEvents: 'all' }}
         >
             <div className="relative flex items-center justify-center animate-pulse-group">

@@ -1,8 +1,8 @@
 
 import React, { useEffect } from 'react';
-import { 
-  Home, 
-  MessageSquare, 
+import {
+  Home,
+  MessageSquare,
   ChevronLeft,
   Plus,
   Menu,
@@ -20,7 +20,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ title, onBack, rightElement }) => {
   return (
-    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
+    <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
       <div className="flex items-center gap-3">
         {onBack && (
           <button onClick={onBack} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-primary">
@@ -44,22 +44,22 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate,
   const getIconClass = (screen: Screen) => {
     return currentScreen === screen ? "text-primary" : "text-gray-400";
   };
-  
+
   const getLabelClass = (screen: Screen) => {
     return currentScreen === screen ? "text-primary font-bold" : "text-gray-400 font-medium";
   };
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-50 max-w-md mx-auto shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
-      <button 
-        onClick={() => onNavigate(Screen.DASHBOARD)} 
+      <button
+        onClick={() => onNavigate(Screen.DASHBOARD)}
         className={`flex flex-col items-center gap-1 transition-colors`}
       >
         <Home className={`w-6 h-6 ${getIconClass(Screen.DASHBOARD)}`} />
         <span className={`text-[10px] ${getLabelClass(Screen.DASHBOARD)}`}>Início</span>
       </button>
 
-      <button 
+      <button
         onClick={() => onNavigate(Screen.MESSAGES)}
         className={`flex flex-col items-center gap-1 transition-colors`}
       >
@@ -74,27 +74,27 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate,
         <span className={`text-[10px] ${getLabelClass(Screen.MESSAGES)}`}>Chat</span>
       </button>
 
-      <button 
+      <button
         onClick={() => onNavigate(Screen.CREATE_AD)}
         className="flex flex-col items-center gap-1 group -mt-8"
       >
-         <div className="bg-accent text-white p-4 rounded-full shadow-lg shadow-yellow-200 group-active:scale-95 transition-all border-4 border-gray-50 group-hover:bg-accent-hover">
-            <Plus className="w-7 h-7" />
-         </div>
-         <span className="text-[10px] font-medium text-gray-500 mt-1">Anunciar</span>
+        <div className="bg-accent text-white p-4 rounded-full shadow-lg shadow-yellow-200 group-active:scale-95 transition-all border-4 border-gray-50 group-hover:bg-accent-hover">
+          <Plus className="w-7 h-7" />
+        </div>
+        <span className="text-[10px] font-medium text-gray-500 mt-1">Anunciar</span>
       </button>
 
-      <button 
-        onClick={() => onNavigate(Screen.FAVORITES)} 
+      <button
+        onClick={() => onNavigate(Screen.FAVORITES)}
         className={`flex flex-col items-center gap-1 transition-colors`}
       >
         <div className="relative">
-             <Heart className={`w-6 h-6 ${currentScreen === Screen.FAVORITES ? 'fill-primary text-primary' : 'text-gray-400'}`} />
+          <Heart className={`w-6 h-6 ${currentScreen === Screen.FAVORITES ? 'fill-primary text-primary' : 'text-gray-400'}`} />
         </div>
         <span className={`text-[10px] ${getLabelClass(Screen.FAVORITES)}`}>Favs</span>
       </button>
 
-      <button 
+      <button
         onClick={() => onNavigate(Screen.USER_PANEL)}
         className={`flex flex-col items-center gap-1 transition-colors`}
       >
@@ -105,14 +105,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate,
   );
 };
 
-export const CardButton: React.FC<{ 
-  icon: React.ReactNode; 
-  label: string; 
+export const CardButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
   onClick?: () => void;
   bgIcon?: string;
 }> = ({ icon, label, onClick, bgIcon = "bg-gray-100" }) => {
   return (
-    <button 
+    <button
       onClick={onClick}
       className="w-full bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all mb-0 border border-gray-100 active:scale-[0.99]"
     >
@@ -160,7 +160,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   };
 
   return (
-    <div className={`fixed top-4 left-4 right-4 z-[100] flex items-center justify-center pointer-events-none animate-in slide-in-from-top duration-300`}>
+    <div className={`fixed top-4 left-4 right-4 z-70 flex items-center justify-center pointer-events-none animate-in slide-in-from-top duration-300`}>
       <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl ${styles[type]} max-w-sm w-full`}>
         {icon[type]}
         <span className="font-bold text-sm">{message}</span>

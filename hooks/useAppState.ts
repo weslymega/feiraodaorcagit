@@ -39,6 +39,7 @@ export const useAppState = () => {
   // CRITICAL: Default to null until session is confirmed
   const [user, setUser] = useState<User | null>(null);
   const [authInitialized, setAuthInitialized] = useState<boolean>(false);
+  const [sessionReady, setSessionReady] = useState<boolean>(false);
 
   const [myAds, setMyAds] = useState<AdItem[]>([]);
   const [favorites, setFavorites] = useState<AdItem[]>(() => loadFromStorage('orca_favorites', []));
@@ -109,109 +110,108 @@ export const useAppState = () => {
   }, [authInitialized]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔐 Auth State Change:", event, session?.user?.id);
+    // 1. Definição do mapeador de usuário (para consistência)
+    const mapUser = (sessionUser: any): User => ({
+      id: sessionUser.id,
+      email: sessionUser.email || '',
+      name: sessionUser.user_metadata?.name || "Usuário",
+      avatarUrl: sessionUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${sessionUser.email}&background=random`,
+      balance: 0,
+      adsCount: 0,
+      activePlan: 'free',
+      isAdmin: false,
+      verified: !!sessionUser.email_confirmed_at,
+      joinDate: new Date(sessionUser.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+      phone: "",
+      location: "Brasília, DF",
+      bio: ""
+    });
 
-      // REGRA 5: INITIAL_SESSION não deve interromper o boot se houver sessão
-      if (event === 'INITIAL_SESSION') {
-        console.log("📍 Initial session check complete.");
-        if (!session) {
-          console.log("📍 No initial session found, showing login.");
+    // 2. Verificação de sessão inicial (Cold Boot)
+    const initSession = async () => {
+      console.log("🔐 [Auth] Initializing session check...");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          console.log("✅ [Auth] Session found for user:", session.user.id);
+          authenticatedUserIdRef.current = session.user.id;
+          setUser(mapUser(session.user));
+          setCurrentScreen(Screen.DASHBOARD);
+        } else {
+          console.log("📍 [Auth] No initial session found.");
           setUser(null);
           setCurrentScreen(Screen.LOGIN);
-          setAuthInitialized(true);
-          setIsAppReady(true);
-          return;
         }
-        // Se houver sessão, o fluxo continua para o processamento do usuário abaixo
-      }
-
-      const isRecoveryEvent = event === 'PASSWORD_RECOVERY';
-      if (isRecoveryEvent) {
-        console.log("🔑 Password Recovery event detected.");
-        isRecoveringRef.current = true;
-        setCurrentScreen(Screen.RESET_PASSWORD);
+      } catch (err) {
+        console.error("❌ [Auth] Error getting session:", err);
+      } finally {
+        setAuthInitialized(true);
+        setSessionReady(true);
         setIsAppReady(true);
-        setAuthInitialized(true);
-        return;
       }
+    };
 
-      if ((event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && session)) && session?.user) {
-        // Identificar se é um login novo (estava deslogado ou mudou de usuário)
-        const isNewLogin = authenticatedUserIdRef.current !== session.user.id;
-        const isBoot = !authInitializedRef.current;
+    initSession();
 
-        // REGRA 2 & 4: Auth NÃO pode redirecionar ou resetar appReady se JÁ estiver estável
-        if (!isBoot && !isNewLogin) {
-          console.log(`⚠️ Stable session for user ${session.user.id}, ignoring duplicate/refresh event`);
-          return;
-        }
+    // 3. Listener de mudanças de estado (Event-driven)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("🔐 [Auth] State Change Event:", event, session?.user?.id);
 
-        console.log("✅ Processing auth event for user:", session.user.id);
-        authenticatedUserIdRef.current = session.user.id;
-
-        setUser({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.name || "Usuário",
-          avatarUrl: session.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${session.user.email}&background=random`,
-          balance: 0,
-          adsCount: 0,
-          activePlan: 'free',
-          isAdmin: false,
-          verified: !!session.user.email_confirmed_at,
-          joinDate: new Date(session.user.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-          phone: "",
-          location: "Brasília, DF",
-          bio: ""
-        });
-
-        // REGRA 3: Overlay global só em "Login inicial" (novo login) ou "Restauração de boot"
-        if (isBoot || isNewLogin) {
-          console.log(`🚀 ${isBoot ? 'Boot Restoration' : 'Initial Login'} detected. Preparing Dashboard.`);
-          setIsAppReady(false); // Bloqueia para carregar dados do Dashboard
-          setLoadingMessage("");
-
-          if (isRecoveringRef.current) {
-            console.log("🛡️ Staying on RESET_PASSWORD due to recovery.");
-            isRecoveringRef.current = false;
-            setCurrentScreen(Screen.RESET_PASSWORD);
-          } else {
-            setCurrentScreen(Screen.DASHBOARD);
-            console.log("✅ User authenticated, navigating to Dashboard");
-          }
-        }
-
-        setAuthInitialized(true);
-
-      } else if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT') {
         authenticatedUserIdRef.current = null;
         setUser(null);
         setCurrentScreen(Screen.LOGIN);
         setIsAppReady(true);
-        setAuthInitialized(true); // Garante que o estado de "boot" terminou
+        return;
+      }
+
+      if (event === 'PASSWORD_RECOVERY') {
+        isRecoveringRef.current = true;
+        setCurrentScreen(Screen.RESET_PASSWORD);
+        setIsAppReady(true);
+        return;
+      }
+
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        const isNewUser = authenticatedUserIdRef.current !== session.user.id;
+
+        if (isNewUser) {
+          console.log("✅ [Auth] User signed in:", session.user.id);
+          authenticatedUserIdRef.current = session.user.id;
+          setUser(mapUser(session.user));
+
+          if (isRecoveringRef.current) {
+            isRecoveringRef.current = false;
+            setCurrentScreen(Screen.RESET_PASSWORD);
+          } else {
+            setCurrentScreen(Screen.DASHBOARD);
+          }
+
+          // Se for uma mudança após o boot, precisamos recarregar os dados
+          setIsAppReady(false);
+          setLoadingMessage("");
+        } else {
+          console.log("ℹ️ [Auth] Session refreshed for same user.");
+        }
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []); // REGRA 1: Auth NÃO pode depender de currentScreen
+  }, []);
 
   // Fetch Data Effect State
   const lastFetchedUserIdRef = useRef<string | null>(null);
   const isFetchingRef = useRef<boolean>(false);
 
   useEffect(() => {
-    // CRITICAL SECURITY GUARD: Do not fetch if auth is not initialized or no user
-    if (!authInitialized || !user || !user.id || user.id === 'guest') {
-      if (authInitialized && (!user || user.id === 'guest')) {
-        setIsAppReady(true);
-      }
-      return;
-    }
+    // 1. Guardião de Sessão: Não faz nada antes da sessão estar pronta
+    if (!sessionReady) return;
 
-    if (lastFetchedUserIdRef.current === user.id && isAppReady) {
+    // Se a app já estiver pronta para o usuário atual, não refetch
+    if (lastFetchedUserIdRef.current === user?.id && isAppReady && realAds.length > 0) {
       return;
     }
 
@@ -219,71 +219,68 @@ export const useAppState = () => {
       if (isFetchingRef.current) return;
       isFetchingRef.current = true;
 
-      console.log(`[Dashboard-Loading] 🚀 Iniciando carregamento para usuário: ${user.id}`);
-      lastFetchedUserIdRef.current = user.id;
+      console.log(`[Data-Flow] 🚀 Carregando dados. Usuário: ${user?.id || 'Public'}`);
+      lastFetchedUserIdRef.current = user?.id || null;
 
-      // 1. Safeguard: Soft & Hard Timeouts
       const softTimeout = setTimeout(() => {
-        setLoadingMessage("Estamos carregando seus dados...");
-      }, 3000);
-
-      const hardTimeout = setTimeout(() => {
-        console.warn("[Dashboard-Loading] ⚠️ HARD TIMEOUT! Liberando interface.");
-        setIsAppReady(true);
-      }, 8000);
+        setLoadingMessage("Sincronizando dados...");
+      }, 2500);
 
       try {
-        // 2. CRITICAL SYNC DATA
-        const ads = await api.getAds();
-        if (ads) setRealAds(ads);
-
-        const freshProfile = await api.getProfile();
-        if (freshProfile) {
-          setUser(prev => prev ? ({ ...prev, ...freshProfile }) : null);
+        // A. BUSCAS PÚBLICAS (Sempre executa se estiverem vazias)
+        if (realAds.length === 0) {
+          const ads = await api.getAds();
+          if (ads) setRealAds(ads);
         }
 
-        // 3. PARALLEL NON-BLOCKING DATA
-        const parallelTasks = [
-          api.getMyAds().then(res => res && setMyAds(res)),
-          api.getUserConversations().then(res => res && setConversations(res)),
-          api.getFavorites().then(res => res && setFavorites(res)),
-          api.getPromotions('dashboard').then(res => res.length > 0 && setDashboardPromotions(res)),
-          api.getPromotions('veiculos').then(res => res.length > 0 && setVehiclesPromotions(res)),
-          api.getPromotions('imoveis').then(res => res.length > 0 && setRealEstatePromotions(res)),
-          api.getPromotions('pecas_servicos').then(res => res.length > 0 && setPartsServicesPromotions(res))
-        ];
+        // B. BUSCAS PRIVADAS (Apenas se o usuário estiver logado)
+        if (user?.id) {
+          const freshProfile = await api.getProfile();
+          if (freshProfile) {
+            setUser(prev => prev ? ({ ...prev, ...freshProfile }) : null);
+          }
 
-        const isAdminInDB = freshProfile?.isAdmin || user.isAdmin;
-        if (isAdminInDB) {
-          parallelTasks.push(api.getAllAdsForAdmin().then(res => res && setAdminAds(res)));
-          parallelTasks.push(api.getReports().then(reportsData => {
-            if (reportsData) {
-              const mappedReports = reportsData.map((r: any) => ({
-                id: r.id,
-                targetId: r.target_id || r.ad_id,
-                targetName: r.target_name || (r.ads?.title) || 'Alvo desconhecido',
-                targetType: r.target_type || (r.ad_id ? 'ad' : 'user'),
-                targetImage: r.target_image || (r.ads?.image) || null,
-                reportedUserId: r.reported_user_id || (r.ads?.user_id) || null,
-                reason: r.reason,
-                description: r.description,
-                reporterId: r.reporter_id,
-                reporterName: r.reporter?.name || 'Anon',
-                severity: r.severity || 'medium',
-                status: r.status,
-                date: new Date(r.created_at).toLocaleDateString('pt-BR')
-              } as ReportItem));
-              setReports(mappedReports);
-            }
-          }));
+          const parallelTasks = [
+            api.getMyAds().then(res => res && setMyAds(res)),
+            api.getUserConversations().then(res => res && setConversations(res)),
+            api.getFavorites().then(res => res && setFavorites(res)),
+            api.getPromotions('dashboard').then(res => res.length > 0 && setDashboardPromotions(res)),
+            api.getPromotions('veiculos').then(res => res.length > 0 && setVehiclesPromotions(res)),
+            api.getPromotions('imoveis').then(res => res.length > 0 && setRealEstatePromotions(res)),
+            api.getPromotions('pecas_servicos').then(res => res.length > 0 && setPartsServicesPromotions(res))
+          ];
+
+          const isAdminInDB = freshProfile?.isAdmin || user.isAdmin;
+          if (isAdminInDB) {
+            parallelTasks.push(api.getAllAdsForAdmin().then(res => res && setAdminAds(res)));
+            parallelTasks.push(api.getReports().then(reportsData => {
+              if (reportsData) {
+                const mappedReports = reportsData.map((r: any) => ({
+                  id: r.id,
+                  targetId: r.target_id || r.ad_id,
+                  targetName: r.target_name || (r.ads?.title) || 'Alvo desconhecido',
+                  targetType: r.target_type || (r.ad_id ? 'ad' : 'user'),
+                  targetImage: r.target_image || (r.ads?.image) || null,
+                  reportedUserId: r.reported_user_id || (r.ads?.user_id) || null,
+                  reason: r.reason,
+                  description: r.description,
+                  reporterId: r.reporter_id,
+                  reporterName: r.reporter?.name || 'Anon',
+                  severity: r.severity || 'medium',
+                  status: r.status,
+                  date: new Date(r.created_at).toLocaleDateString('pt-BR')
+                } as ReportItem));
+                setReports(mappedReports);
+              }
+            }));
+          }
+
+          await Promise.allSettled(parallelTasks);
         }
-
-        await Promise.allSettled(parallelTasks);
       } catch (error) {
-        console.error("[Dashboard-Loading] ❌ Erro:", error);
+        console.error("[Data-Flow] ❌ Erro ao buscar dados:", error);
       } finally {
         clearTimeout(softTimeout);
-        clearTimeout(hardTimeout);
         isFetchingRef.current = false;
         setLoadingMessage("");
         setIsAppReady(true);
@@ -291,11 +288,7 @@ export const useAppState = () => {
     };
 
     fetchData();
-
-    // Cleanup function para o useEffect
-    return () => {
-    };
-  }, [user?.id, authInitialized]); // Fix: Re-run when auth initializes to avoid F5 race condition
+  }, [user?.id, sessionReady]);
 
   // Dashboard Promotions State
   const [dashboardPromotions, setDashboardPromotions] = useState<DashboardPromotion[]>([]);
@@ -339,6 +332,7 @@ export const useAppState = () => {
     filterContext, setFilterContext,
     isAppReady, setIsAppReady,
     authInitialized, setAuthInitialized,
+    sessionReady, setSessionReady,
     loadingMessage,
     user, setUser,
     myAds, setMyAds,

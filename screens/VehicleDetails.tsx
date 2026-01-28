@@ -214,7 +214,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
           </div>
 
           {/* Photo Counter */}
-          <div className="absolute bottom-6 right-6 bg-black/60 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm flex items-center gap-1 z-20 shadow-sm pointer-events-none">
+          <div className="absolute bottom-6 right-6 bg-black/60 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm flex items-center gap-1 z-30 shadow-sm pointer-events-none">
             <Camera className="w-3.5 h-3.5" />
             <span>{currentImageIndex + 1} / {images.length}</span>
           </div>

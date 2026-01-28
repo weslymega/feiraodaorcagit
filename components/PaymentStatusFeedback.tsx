@@ -33,7 +33,7 @@ export const PaymentStatusFeedback: React.FC = () => {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col relative">
 
                 {/* Close Button (Top Right) */}
@@ -61,8 +61,8 @@ export const PaymentStatusFeedback: React.FC = () => {
 
                     {details && (
                         <div className={`w-full p-4 rounded-xl mb-6 text-sm ${type === 'error' ? 'bg-red-50 text-red-800 border border-red-100' :
-                                type === 'warning' ? 'bg-yellow-50 text-yellow-800 border border-yellow-100' :
-                                    'bg-gray-50 text-gray-700'
+                            type === 'warning' ? 'bg-yellow-50 text-yellow-800 border border-yellow-100' :
+                                'bg-gray-50 text-gray-700'
                             }`}>
                             <p className="font-bold mb-1 opacity-80 uppercase text-[10px] tracking-wider">Detalhes</p>
                             {details}

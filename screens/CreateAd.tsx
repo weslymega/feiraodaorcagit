@@ -85,11 +85,11 @@ const StepContainer: React.FC<StepContainerProps> = ({ title, progress, children
         <div className="h-full bg-accent w-full rounded-full transition-all duration-500 ease-out origin-left transform" style={{ transform: `scaleX(${progress})` }}></div>
       </div>
     )}
-    <div className="flex-1 overflow-y-auto no-scrollbar -mx-2 px-2 pb-4">
+    <div className="flex-1 overflow-y-auto no-scrollbar -mx-2 px-2 pb-24">
       {children}
     </div>
     {!hideFooter && (
-      <div className="mt-auto pt-4 flex gap-4">
+      <div className="sticky bottom-0 bg-white p-4 border-t z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] -mx-2 flex gap-4">
         <button onClick={onBack} className="flex-1 py-4 border-2 border-gray-200 rounded-2xl font-bold text-gray-600 hover:bg-gray-50 transition-colors">
           Voltar
         </button>
@@ -802,7 +802,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto no-scrollbar px-2 space-y-4 pb-4 pt-1">
+        <div className="flex-1 overflow-y-auto no-scrollbar px-2 space-y-4 pb-24 pt-1">
           {BOOST_PLANS.map((plan) => (
             <div key={plan.id} onClick={() => setFormData(p => ({ ...p, boostPlan: plan.id as any }))} className={`relative bg-white rounded-2xl p-5 border-2 transition-all cursor-pointer shadow-sm ${formData.boostPlan === plan.id ? `${plan.color} ring-1 ring-offset-2 ring-primary/20` : 'border-gray-100 hover:border-gray-200'}`}>
               {plan.recommended && (<div className="absolute top-0 right-0 bg-gradient-to-l from-yellow-400 to-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-xl rounded-tr-xl shadow-sm">RECOMENDADO</div>)}
@@ -831,7 +831,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formData.boostPlan === 'gratis' ? 'border-gray-500' : 'border-gray-300'}`}>{formData.boostPlan === 'gratis' && <div className="w-2.5 h-2.5 bg-gray-500 rounded-full" />}</div>
           </button>
         </div>
-        <div className="p-4 bg-white border-t border-gray-200"><button onClick={nextStep} disabled={formData.boostPlan === ''} className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all ${formData.boostPlan === '' ? 'bg-gray-300 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark active:scale-[0.98]'}`}>{formData.boostPlan === 'gratis' ? 'Publicar Grátis' : 'Ir para Pagamento'}</button></div>
+        <div className="sticky bottom-0 bg-white p-4 border-t z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] -mx-2"><button onClick={nextStep} disabled={formData.boostPlan === ''} className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all ${formData.boostPlan === '' ? 'bg-gray-300 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark active:scale-[0.98]'}`}>{formData.boostPlan === 'gratis' ? 'Publicar Grátis' : 'Ir para Pagamento'}</button></div>
       </div>
     );
   };

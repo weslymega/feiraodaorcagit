@@ -235,7 +235,7 @@ export const AdminContentModeration: React.FC<AdminContentModerationProps> = ({
 
                 {/* MODAL DE VISUALIZAÇÃO (READ ONLY) */}
                 {viewingAd && viewingReport && (
-                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+                    <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center">
                         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in" onClick={closeViewModal}></div>
                         <div className="bg-gray-100 w-full max-w-lg h-[90vh] sm:h-auto sm:max-h-[90vh] sm:rounded-2xl rounded-t-[30px] shadow-2xl relative animate-in slide-in-from-bottom flex flex-col overflow-hidden">
 
