@@ -2,6 +2,7 @@
 import React from 'react';
 import athosBg from '../assets/athos_bg_v3.jpg';
 import logoFull from '../assets/logo_full.png';
+import mercadoPagoLogo from '../assets/mercado-pago.png';
 import { Screen } from '../types';
 
 interface FooterProps {
@@ -46,14 +47,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                     />
                 </div>
 
-                {/* Mercado Pago Logo - Versão Original Sem Adições */}
-                <div className="flex justify-center mt-6 mb-10">
-                    <img
-                        src="https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadopago/logo__small.png"
-                        alt="Mercado Pago"
-                        className="h-12 w-auto"
-                    />
-                </div>
+
 
                 {/* Frase Principal */}
                 <p className="max-w-2xl text-base md:text-lg font-medium leading-relaxed mb-10 text-gray-600">
@@ -61,6 +55,26 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 </p>
 
                 {/* Links em Linha */}
+
+                {/* Logo Mercado Pago */}
+                <div style={{
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    padding: "16px 0"
+                }}>
+                    <img
+                        src={mercadoPagoLogo}
+                        alt="Mercado Pago"
+                        style={{
+                            height: "64px",
+                            width: "auto",
+                            objectFit: "contain"
+                        }}
+                    />
+                </div>
+
                 <div className="flex flex-wrap justify-center gap-6 mb-12">
                     <button
                         onClick={handleAboutClick}

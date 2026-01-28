@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ChevronRight, Sparkles } from 'lucide-react';
 import { AdItem, AdStatus, Screen } from '../../types';
+import { getVehiclesWithFallback } from '../../utils/adSelector';
 
 import { SmartImage } from '../ui/SmartImage';
 import { AdCardSkeleton } from '../skeletons/AdCardSkeleton';
@@ -13,32 +14,14 @@ interface PersonalizedFeedProps {
 }
 
 export const PersonalizedFeedSection: React.FC<PersonalizedFeedProps> = ({ ads, onAdClick, onNavigate, onViewAll }) => {
+
+
     // Logic to filter and mix ads
     const feedAds = useMemo(() => {
-        // Filter eligible ads - Simplified for more volume
-        const eligibleAds = ads.filter(ad => {
-            // Status validity
-            if (ad.status !== AdStatus.ACTIVE) return false;
-
-            // Optional: Filter by category here if needed, but we do it below
-            return true;
+        return getVehiclesWithFallback(ads, {
+            category: 'veiculos',
+            minItems: 20
         });
-
-        // Categorize
-        const autos = eligibleAds.filter(ad => ad.category === 'veiculos');
-
-        // Create final list with more vehicles (increased from 10 to 20)
-        const selectedAds = [
-            ...autos.slice(0, 20)
-        ];
-
-        // Sort by date descending
-        return selectedAds.sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return dateB - dateA;
-        });
-
     }, [ads]);
 
     if (ads === undefined) {

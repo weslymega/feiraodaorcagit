@@ -10,6 +10,7 @@ import { Footer } from '../components/Footer';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
+import { getVehiclesWithFallback } from '../utils/adSelector';
 
 interface VehiclesListProps {
   ads: AdItem[];
@@ -180,8 +181,45 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     ).slice(0, 6)
     : [];
 
+
+
   const filteredAds = useMemo(() => {
-    // 1. Filtragem Inicial
+    // Verificamos se há algum filtro específico ativo (exceto "todos" no grupo)
+    const hasSpecificFilters =
+      searchTerm ||
+      filters.brand ||
+      filters.baseModel ||
+      filters.version ||
+      filters.minPrice ||
+      filters.maxPrice ||
+      filters.minYear ||
+      filters.maxYear ||
+      filters.maxMileage ||
+      filters.transmission ||
+      filters.fuel ||
+      filters.color;
+
+    // Se houver filtros específicos, mantemos a lógica estrita original (sem fallback)
+    // Se NÃO houver filtros específicos, usamos a lógica inteligente de Fallback para preencher a tela
+    if (!hasSpecificFilters) {
+      // Fallback Logic: Preenche com Recentes + Destaques + Aleatórios se necessário
+      // Porém, precisamos respeitar o 'vehicleGroup' se selecionado (exceto 'todos')
+
+      let candidates = ads;
+
+      // Se um grupo específico (ex: Moto) for selecionado, filtramos primeiro por ele
+      // O fallback irá operar DENTRO desse grupo se possível
+      if (selectedGroup !== 'todos') {
+        candidates = ads.filter(ad => ad.vehicleType?.includes(selectedGroup));
+      }
+
+      return getVehiclesWithFallback(candidates, {
+        category: 'veiculos',
+        minItems: 20 // Garante pelo menos 20 itens na tela inicial
+      });
+    }
+
+    // --- LÓGICA ESTRITA ORIGINAL (Mantida para buscas específicas) ---
     const filtered = ads.filter(ad => {
       // Filter Recent Logic
       if (isRecentFilterActive) {
@@ -273,6 +311,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     });
 
   }, [ads, selectedGroup, searchTerm, filters]);
+
 
   const isPromotionVisible = (promo: VehiclesPromotion) => {
     const today = new Date();
