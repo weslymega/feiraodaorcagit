@@ -67,6 +67,7 @@ import { AdminVehiclesPromotions } from '../screens/AdminVehiclesPromotions';
 
 import { Wrench, Shield } from 'lucide-react';
 import { BottomNav, Toast } from '../components/Shared';
+import { AppLoadingOverlay } from './AppLoadingOverlay';
 import { ErrorBoundary } from './ErrorBoundary';
 
 interface AppRouterProps {
@@ -79,7 +80,8 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         currentScreen, setCurrentScreen, user, maintenanceMode, myAds, adminMockAds,
         fairActive, selectedAd, previousScreen, selectedChat,
         viewingProfile, notifications, reports,
-        dashboardPromotions, realEstatePromotions, partsServicesPromotions, vehiclesPromotions
+        dashboardPromotions, realEstatePromotions, partsServicesPromotions, vehiclesPromotions,
+        isAppReady
     } = state;
 
     const {
@@ -544,6 +546,9 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
 
     return (
         <div className="bg-gray-50 min-h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-hidden relative border-x border-gray-100">
+            {/* App Loading Overlay - Bloqueia interação até carregamento completo */}
+            <AppLoadingOverlay isActive={!isAppReady && currentScreen === Screen.DASHBOARD} />
+
             {state.toast && (
                 <Toast
                     message={state.toast.message}

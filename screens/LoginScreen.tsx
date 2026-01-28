@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Image as ImageIcon, Shield, Loader2 } from 'lucide-react';
 import { APP_LOGOS, ADMIN_USER, REGULAR_USER } from '../constants';
 import { User } from '../types';
@@ -17,15 +17,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
   const [imageError, setImageError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reset form when component mounts to prevent stale state after logout
+  useEffect(() => {
+    setEmail('');
+    setPassword('');
+    setErrorMsg('');
+    setIsSubmitting(false);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent double submit
+    if (isSubmitting) return;
+
     if (!email || !password) {
       setErrorMsg("Preencha todos os campos.");
       return;
     }
+
     setErrorMsg('');
     setLoading(true);
+    setIsSubmitting(true);
 
     try {
       // 1. Authenticate with Supabase
@@ -44,7 +59,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
       }
     } catch (err: any) {
       console.error("Login error:", err);
-      setErrorMsg(err.message === "Invalid global credentials" ? "Credenciais inválidas." : "Erro ao entrar. Verifique seus dados.");
+      setErrorMsg(err.message === "Invalid login credentials" ? "Credenciais inválidas." : "Erro ao entrar. Verifique seus dados.");
+      setIsSubmitting(false);
     } finally {
       setLoading(false);
     }
@@ -130,7 +146,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
 
         <h2 className="text-2xl font-bold text-white mb-8 text-center tracking-tight text-shadow-sm">Acesse sua conta</h2>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5" autoComplete="off">
           {errorMsg && (
             <div className="bg-red-500/80 text-white text-xs p-3 rounded-xl text-center backdrop-blur-sm shadow-sm animate-in fade-in">
               {errorMsg}
@@ -146,6 +162,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="off"
                 className="w-full pl-11 pr-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
                 placeholder="Seu e-mail"
               />
@@ -161,6 +178,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
                 className="w-full pl-11 pr-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
                 placeholder="Sua senha"
               />
@@ -179,7 +197,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isSubmitting}
             className="w-full py-4 bg-primary hover:bg-primary-dark text-white rounded-2xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Entrar'}

@@ -28,6 +28,9 @@ export const useAppState = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.LOGIN);
   const [previousScreen, setPreviousScreen] = useState<Screen>(Screen.DASHBOARD);
 
+  // App Ready State (Interaction Lock)
+  const [isAppReady, setIsAppReady] = useState<boolean>(false);
+
   // Temporary Filter Context
   const [filterContext, setFilterContext] = useState<FilterContext | null>(null);
 
@@ -92,28 +95,23 @@ export const useAppState = () => {
 
   // 1.1 Auth State Change Listener (Single Source of Truth)
   // Guard to prevent duplicate SIGNED_IN processing (fixes infinite loop)
-  const isAuthenticatingRef = useRef<boolean>(false);
-  const currentUserIdRef = useRef<string | null>(null);
+  const authenticatedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("🔐 Auth State Change:", event, session?.user?.id);
 
       if (event === 'SIGNED_IN' && session?.user) {
-        // GUARD: Prevent duplicate processing if we're already authenticated with this user
-        if (isAuthenticatingRef.current && currentUserIdRef.current === session.user.id) {
-          console.log("⚠️ Ignoring duplicate SIGNED_IN for same user:", session.user.id);
+        // CRITICAL GUARD: If we're already authenticated with this exact user, ignore
+        if (authenticatedUserIdRef.current === session.user.id) {
+          console.log(`⚠️ Already authenticated with user ${session.user.id}, ignoring duplicate SIGNED_IN`);
           return;
         }
 
-        // GUARD: Prevent concurrent processing
-        if (isAuthenticatingRef.current) {
-          console.log("⚠️ Already processing auth, ignoring duplicate SIGNED_IN");
-          return;
-        }
+        console.log("✅ Processing SIGNED_IN event...");
 
-        isAuthenticatingRef.current = true;
-        currentUserIdRef.current = session.user.id;
+        // Mark this user as authenticated BEFORE async operations
+        authenticatedUserIdRef.current = session.user.id;
 
         // Fetch Profile details safely
         let profile = null;
@@ -140,17 +138,13 @@ export const useAppState = () => {
         };
 
         setUser(authenticatedUser);
+        setIsAppReady(false); // Reset loading state on login
         setCurrentScreen(Screen.DASHBOARD);
-
-        // Reset guard after successful processing
-        setTimeout(() => {
-          isAuthenticatingRef.current = false;
-        }, 1000); // Small delay to prevent rapid re-triggers
+        console.log("✅ User authenticated, navigating to Dashboard");
 
       } else if (event === 'SIGNED_OUT') {
-        // Reset guards on logout
-        isAuthenticatingRef.current = false;
-        currentUserIdRef.current = null;
+        // Reset guard on logout
+        authenticatedUserIdRef.current = null;
 
         setUser(CURRENT_USER); // Reset to default/guest
         setCurrentScreen(Screen.LOGIN);
@@ -237,8 +231,13 @@ export const useAppState = () => {
         const pPromos = await api.getPromotions('pecas_servicos');
         if (pPromos.length > 0) setPartsServicesPromotions(pPromos);
 
+        // Liberar app após carregamento completo
+        setIsAppReady(true);
+
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);
+        // Liberar mesmo com erro para não travar o app
+        setIsAppReady(true);
       }
     };
 
@@ -284,6 +283,7 @@ export const useAppState = () => {
     currentScreen, setCurrentScreen,
     previousScreen, setPreviousScreen,
     filterContext, setFilterContext,
+    isAppReady, setIsAppReady,
     user, setUser,
     myAds, setMyAds,
     favorites, setFavorites,

@@ -108,14 +108,16 @@ export const useAppActions = (state: AppState) => {
         }
     };
 
-    // Global Auth Listener (Reset Password Flow)
+    // Global Auth Listener (Password Recovery ONLY - SIGNED_IN handled in useAppState.ts)
     useEffect(() => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log("🔐 Auth Event:", event);
+            // CRITICAL: Only handle PASSWORD_RECOVERY here
+            // SIGNED_IN is handled in useAppState.ts to prevent duplicate processing
             if (event === 'PASSWORD_RECOVERY') {
-                console.log("🔄 Detetado fluxo de recuperação de senha! Redirecionando...");
+                console.log("🔄 Detected password recovery flow! Redirecting...");
                 setCurrentScreen(Screen.RESET_PASSWORD);
             }
+            // Explicitly ignore all other events to prevent interference
         });
 
         return () => {
