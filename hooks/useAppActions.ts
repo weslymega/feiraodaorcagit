@@ -344,8 +344,36 @@ export const useAppActions = (state: AppState) => {
         });
     };
 
-    const handleDeleteAd = (id: string) => {
-        setMyAds((prev: AdItem[]) => prev.filter(ad => ad.id !== id));
+    const handleDeleteAd = async (id: string) => {
+        if (!user || user.id === 'guest') {
+            setToast({ message: "Usuário não autenticado", type: 'error' });
+            return;
+        }
+
+        setToast({ message: "Excluindo anúncio...", type: 'info' });
+
+        try {
+            const { error } = await supabase
+                .from('anuncios')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+
+            // 1. Atualizar lista de Meus Anúncios
+            setMyAds((prev: AdItem[]) => prev.filter(ad => ad.id !== id));
+
+            // 2. Atualizar lista Global (Feed) se o anúncio estiver lá
+            if (activeRealAds && setRealAds) {
+                setRealAds((prev: AdItem[]) => prev.filter(ad => ad.id !== id));
+            }
+
+            setToast({ message: "Anúncio excluído com sucesso!", type: 'success' });
+        } catch (error: any) {
+            console.error("❌ Erro ao excluir anúncio:", error);
+            setToast({ message: "Erro ao excluir: " + (error.message || "Erro desconhecido"), type: 'error' });
+        }
     };
 
     const handleEditAd = (ad: AdItem) => {
@@ -628,13 +656,14 @@ export const useAppActions = (state: AppState) => {
                 setToast({ message: "Validando limite e criando...", type: 'info' });
 
                 const payload: CreateAdPayload = {
-                    title: adData.title || 'Sem Título',
-                    description: adData.description || '',
-                    price: adData.price || 0,
-                    category: adData.category || 'outros',
-                    image: adData.image || '',
-                    location: adData.location || '',
-                    ...adData
+                    ...adData,
+                    title: adData.title || (adData as any).titulo || 'Sem Título',
+                    description: adData.description || (adData as any).descricao || '',
+                    price: adData.price || (adData as any).preco || 0,
+                    category: adData.category || (adData as any).categoria || 'outros',
+                    image: adData.image || (adData as any).imagens?.[0] || '',
+                    images: (adData.images && adData.images.length > 0) ? adData.images : (adData.image ? [adData.image] : []),
+                    location: adData.location || (adData as any).localizacao || ''
                 };
 
                 try {

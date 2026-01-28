@@ -131,13 +131,28 @@ export const useAppState = () => {
     const initSession = async () => {
       console.log("🔐 [Auth] Initializing session check...");
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
 
         if (session?.user) {
-          console.log("✅ [Auth] Session found for user:", session.user.id);
-          authenticatedUserIdRef.current = session.user.id;
-          setUser(mapUser(session.user));
-          setCurrentScreen(Screen.DASHBOARD);
+          // Health Check: Verificando se o token ainda é aceito pelo servidor
+          // Isso evita erros 401 residuais bloqueando o app
+          const { error: userError } = await supabase.auth.getUser();
+
+          if (userError) {
+            console.warn("⚠️ [Auth] Sessão existente é inválida ou expirou. Limpando...", userError.message);
+            // Limpeza agressiva para garantir que o app volte ao estado Guest
+            await supabase.auth.signOut().catch(() => { });
+            localStorage.removeItem('orca_user');
+
+            setUser(null);
+            setCurrentScreen(Screen.LOGIN);
+          } else {
+            console.log("✅ [Auth] Session found for user:", session.user.id);
+            authenticatedUserIdRef.current = session.user.id;
+            setUser(mapUser(session.user));
+            setCurrentScreen(Screen.DASHBOARD);
+          }
         } else {
           console.log("📍 [Auth] No initial session found.");
           setUser(null);
@@ -145,10 +160,12 @@ export const useAppState = () => {
         }
       } catch (err) {
         console.error("❌ [Auth] Error getting session:", err);
+        // Em caso de erro crítico na lib (ex: token corrompido que faz a lib travar)
+        setUser(null);
+        setCurrentScreen(Screen.LOGIN);
       } finally {
         setAuthInitialized(true);
         setSessionReady(true);
-        // setIsAppReady(true); -> Removed to allow skeletons to show until fetchData completes
       }
     };
 

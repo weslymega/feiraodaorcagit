@@ -11,6 +11,7 @@ import {
 import { AdItem, AdBoostConfig, AdStatus, User, HighlightPlan } from '../types';
 import { fipeApi, FipeItem, FipeDetail } from '../services/fipeApi';
 import { api } from '../services/api';
+import { APP_URL } from '../constants';
 import { getPlanMetadata } from '../utils/planConstants';
 import { HighlightAdModal } from '../components/HighlightAdModal';
 import { useAppState } from '../hooks/useAppState'; // Import to use context if needed (though passed via props usually)
@@ -118,6 +119,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   const [isUploading, setIsUploading] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [isLoadingCep, setIsLoadingCep] = useState(false);
+  const [adTitle, setAdTitle] = useState(''); // Added this state for the ad title
 
   const initialAddressDetails = useMemo(() => {
     let details = { logradouro: '', bairro: '', localidade: '', uf: '' };
@@ -311,7 +313,9 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   useEffect(() => {
     if (step === CreateStep.SUCCESS) {
       const adTitle = formData.category === 'veiculos' ? formData.vehicleType : (formData.realEstateType || 'Anúncio');
-      const dataString = `https://feiraodaorca.app/ad/view?title=${encodeURIComponent(adTitle)}&price=${formData.price}&cat=${formData.category}`;
+      setAdTitle(adTitle);
+
+      const dataString = `${APP_URL}/ad/view?title=${encodeURIComponent(adTitle)}&price=${formData.price}&cat=${formData.category}`;
       const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(dataString)}&color=004AAD&bgcolor=ffffff&margin=10`;
       setQrCodeUrl(url);
     }
@@ -382,17 +386,9 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
         }
         break;
       case CreateStep.BOOST:
-        if (formData.boostPlan !== 'gratis' && formData.boostPlan !== '') {
-          // Se for pago, finaliza o fluxo imediatamente para que o useAppActions gerencie o pagamento
-          // evitando a tela de "Sucesso" enganosa antes de pagar.
-          // Se for pago, finaliza o fluxo imediatamente para que o useAppActions gerencie o pagamento
-          // evitando a tela de "Sucesso" enganosa antes de pagar.
-          handleCreateAd();
-          return;
-        } else {
-          // Se for grátis, mostra a tela de sucesso padrão
-          next = CreateStep.SUCCESS;
-        }
+        // Sempre chama handleCreateAd() para garantir que o anúncio seja criado no banco
+        // independente de ser grátis ou pago.
+        handleCreateAd();
         break;
       // REMOVED LEGACY PAYMENT STEPS
       case CreateStep.SUCCESS: return;
@@ -583,20 +579,12 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
       // 2. CHECK PLAN TYPE
       if (formData.boostPlan && formData.boostPlan !== 'gratis') {
-        // PAID PLAN: Open Modal
+        // PAID PLAN: Open Modal for immediate payment
         setShowHighlightModal(true);
       } else {
-        // FREE PLAN: Navigate to Success
-        onFinish(adData, newAd); // Pass newAd to avoid re-creation
-        // goToStep(CreateStep.SUCCESS); // Should onFinish navigate? 
-        // onFinish inside useAppActions handles navigation to MyAds. 
-        // But user wants "Success" screen? 
-        // The prompts said "Criar anúncio gratuito → vai direto para sucesso".
-        // But `onFinish` in `useAppActions` navigates to `MY_ADS`.
-        // Let's rely on standard onFinish behavior for FREE ADS for now, 
-        // OR we can change `useAppActions` to NOT navigate if we want to show a Success Screen here?
-        // The prompt says "navigate('/success')" but we don't have a route.
-        // Assuming `onFinish` handles the "Flow completion".
+        // FREE PLAN: Show Success screen inside CreateAd
+        // The Success screen has a button that calls onFinish(adData, newAd)
+        goToStep(CreateStep.SUCCESS);
       }
 
     } catch (error: any) {
@@ -639,6 +627,93 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       onFinish({}, createdAd);
     }
   };
+
+  const renderRealEstateType = () => (
+    <StepContainer title="Tipo de Imóvel" progress={0.1} onNext={nextStep} onBack={goBack}>
+      <div className="flex flex-col gap-4">
+        {["Apartamento", "Casa", "Terreno", "Comercial", "Rural"].map(type => (
+          <button key={type} onClick={() => { setFormData(p => ({ ...p, realEstateType: type })); nextStep(); }} className="flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.99]">
+            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl"><Home className="w-6 h-6" /></div>
+            <span className="font-bold text-gray-800 text-lg flex-1 text-left">{type}</span>
+            <ChevronLeft className="w-5 h-5 text-gray-300 rotate-180" />
+          </button>
+        ))}
+      </div>
+    </StepContainer>
+  );
+
+  const renderRealEstateSpecs = () => (
+    <StepContainer title="Detalhes do Imóvel" progress={0.5} onNext={nextStep} onBack={goBack}>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Área Total (m²)</label>
+          <input type="text" inputMode="numeric" value={formData.area} onChange={(e) => setFormData(p => ({ ...p, area: e.target.value.replace(/\D/g, '') }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary outline-none" placeholder="0" />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Quartos</label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map(n => (
+              <button key={n} onClick={() => setFormData(p => ({ ...p, bedrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bedrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Banheiros</label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map(n => (
+              <button key={n} onClick={() => setFormData(p => ({ ...p, bathrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bathrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Vagas</label>
+          <div className="flex gap-2">
+            {[0, 1, 2, 3].map(n => (
+              <button key={n} onClick={() => setFormData(p => ({ ...p, parking: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.parking === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </StepContainer>
+  );
+
+  const renderRealEstateFeatures = () => (
+    <StepContainer title="Comodidades" progress={0.6} onNext={nextStep} onBack={goBack}>
+      <div className="flex flex-wrap gap-2">
+        {["Piscina", "Churrasqueira", "Academia", "Elevador", "Portaria 24h", "Varanda", "Armários", "Ar Condicionado", "Jardim"].map(f => (
+          <button key={f} onClick={() => toggleFeature(f)} className={`px-4 py-2.5 rounded-2xl border text-sm font-medium transition-all ${formData.features.includes(f) ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{f}</button>
+        ))}
+      </div>
+    </StepContainer>
+  );
+
+  const renderPartsType = () => (
+    <StepContainer title="Categoria da Peça/Serviço" progress={0.1} onNext={nextStep} onBack={goBack}>
+      <div className="flex flex-col gap-4">
+        {["Peças Mecânicas", "Som e Vídeo", "Acessórios", "Pneus e Rodas", "Serviços Automotivos", "Limpeza e Estética"].map(type => (
+          <button key={type} onClick={() => { setFormData(p => ({ ...p, partType: type })); nextStep(); }} className="flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.99]">
+            <div className="p-3 bg-orange-50 text-orange-600 rounded-xl"><Wrench className="w-6 h-6" /></div>
+            <span className="font-bold text-gray-800 text-lg flex-1 text-left">{type}</span>
+            <ChevronLeft className="w-5 h-5 text-gray-300 rotate-180" />
+          </button>
+        ))}
+      </div>
+    </StepContainer>
+  );
+
+  const renderPartsCondition = () => (
+    <StepContainer title="Condição" progress={0.2} onNext={nextStep} onBack={goBack}>
+      <div className="flex flex-col gap-4">
+        {["Novo", "Usado"].map(cond => (
+          <button key={cond} onClick={() => { setFormData(p => ({ ...p, condition: cond })); nextStep(); }} className="flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.99]">
+            <div className="p-3 bg-gray-50 text-gray-600 rounded-xl"><Package className="w-6 h-6" /></div>
+            <span className="font-bold text-gray-800 text-lg flex-1 text-left">{cond}</span>
+            <ChevronLeft className="w-5 h-5 text-gray-300 rotate-180" />
+          </button>
+        ))}
+      </div>
+    </StepContainer>
+  );
 
   const renderCategory = () => (<StepContainer title="Categoria" progress={0.05} onNext={nextStep} nextDisabled={!formData.category} onBack={goBack}><h1 className="text-2xl font-bold text-gray-900 leading-tight mb-6">O que você vai anunciar?</h1><div className="flex flex-col gap-4">{[{ id: 'veiculos', label: 'Veículos', icon: <Car className="w-6 h-6" />, desc: 'Carros, motos e caminhões' }, { id: 'imoveis', label: 'Imóveis', icon: <Home className="w-6 h-6" />, desc: 'Casas, apartamentos, terrenos' }, { id: 'servicos', label: 'Peças e Serviços', icon: <Wrench className="w-6 h-6" />, desc: 'Peças, som e serviços automotivos' }].map((cat) => (<button key={cat.id} onClick={() => setFormData(p => ({ ...p, category: cat.id }))} className={`flex items-center gap-4 p-5 border-2 rounded-2xl transition-all text-left group active:scale-[0.99] ${formData.category === cat.id ? 'border-primary bg-blue-50/50 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}><div className={`p-3 rounded-xl transition-colors ${formData.category === cat.id ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-blue-50 group-hover:text-primary'}`}>{cat.icon}</div><div className="flex-1"><span className={`font-bold text-lg block ${formData.category === cat.id ? 'text-gray-900' : 'text-gray-700'}`}>{cat.label}</span><span className="text-sm text-gray-400 font-medium">{cat.desc}</span></div><div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.category === cat.id ? 'border-primary' : 'border-gray-200'}`}>{formData.category === cat.id && <div className="w-3 h-3 bg-primary rounded-full" />}</div></button>))}</div></StepContainer>);
 
@@ -941,12 +1016,16 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
         {step === CreateStep.CATEGORY && renderCategory()}
         {step === CreateStep.VEHICLE_TYPE && renderVehicleType()}
-        {/* ... other steps ... */}
+        {step === CreateStep.REAL_ESTATE_TYPE && renderRealEstateType()}
+        {step === CreateStep.PARTS_TYPE && renderPartsType()}
+        {step === CreateStep.PARTS_CONDITION && renderPartsCondition()}
         {step === CreateStep.PHOTOS && renderPhotos()}
         {step === CreateStep.PLATE && renderPlate()}
         {step === CreateStep.SPECS && renderSpecs()}
         {step === CreateStep.INFO && renderInfo()}
         {step === CreateStep.FEATURES && renderFeatures()}
+        {step === CreateStep.REAL_ESTATE_SPECS && renderRealEstateSpecs()}
+        {step === CreateStep.REAL_ESTATE_FEATURES && renderRealEstateFeatures()}
         {step === CreateStep.ADDITIONAL_INFO && renderAdditionalInfo()}
         {step === CreateStep.TITLE && renderTitle()}
         {step === CreateStep.DESCRIPTION && renderDescription()}

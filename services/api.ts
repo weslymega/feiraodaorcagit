@@ -189,14 +189,17 @@ export const api = {
         }
 
         try {
-            // Try Edge Function first (has limit checking)
-            // Passing 'detalhes' explicitly so the function can be updated to handle it
+            // Build the payload for the Edge Function with both languages to ensure compatibility
+            const edgePayload = {
+                ...adData,
+                titulo: adData.title, // Sync explicit DB column names
+                imagens: (adData.images && adData.images.length > 0) ? adData.images : (adData.image ? [adData.image] : []),
+                category,
+                detalhes: details,
+            };
+
             const { data, error } = await supabase.functions.invoke('create_ad', {
-                body: {
-                    ...adData,
-                    category, // normalized
-                    detalhes: details
-                }
+                body: edgePayload
             });
 
             if (error) {
@@ -213,13 +216,13 @@ export const api = {
                 .from('anuncios')
                 .insert({
                     user_id: session.user.id,
-                    titulo: adData.title,
-                    descricao: adData.description,
-                    preco: adData.price,
+                    titulo: adData.title || 'Anúncio sem título',
+                    descricao: adData.description || '',
+                    preco: adData.price || 0,
                     categoria: category,
                     status: STATUS_DB_MAP[AdStatus.PENDING],
-                    imagens: adData.images || (adData.image ? [adData.image] : []),
-                    localizacao: adData.location,
+                    imagens: (adData.images && adData.images.length > 0) ? adData.images : (adData.image ? [adData.image] : []),
+                    localizacao: adData.location || 'Brasil',
                     detalhes: details,
                     boost_plan: adData.boostPlan || 'gratis'
                 })
@@ -289,7 +292,8 @@ export const api = {
             avatarUrl: data.avatar_url || `https://ui-avatars.com/api/?name=${data.email}&background=random`,
             balance: data.balance || 0,
             activePlan: data.active_plan || 'free',
-            isAdmin: data.is_admin || false,
+            isAdmin: data.role === 'admin' || data.is_admin || false,
+            role: data.role || 'user',
             phone: data.phone || '',
             location: data.location || '',
             bio: data.bio || '',
@@ -416,13 +420,43 @@ export const api = {
      */
     getAdById: async (adId: string) => {
         const { data: { user } } = await supabase.auth.getUser();
+
         const { data: ad, error } = await supabase
             .from('anuncios')
-            .select('*, profiles:user_id(name, avatar_url)')
+            .select(`
+                *, 
+                profiles:user_id(name, avatar_url),
+                destaques_anuncios(
+                    plano_id,
+                    result_ends_at:fim_em,
+                    status
+                )
+            `)
             .eq('id', adId)
             .single();
 
         if (error) throw error;
+
+        // Check for active highlight
+        const activeHighlight = ad.destaques_anuncios?.find((h: any) =>
+            h.status === 'active' && new Date(h.result_ends_at) > new Date()
+        );
+
+        if (activeHighlight) {
+            ad.detalhes = {
+                ...ad.detalhes,
+                boostConfig: {
+                    expiresAt: activeHighlight.result_ends_at,
+                    startDate: new Date().toISOString(),
+                    totalBumps: 0,
+                    bumpsRemaining: 0
+                }
+            };
+            if (!ad.boost_plan || ad.boost_plan === 'gratis') {
+                ad.boost_plan = 'active_highlight';
+            }
+        }
+
         return mapAdData(ad, ad.user_id === user?.id);
     },
 
@@ -727,16 +761,24 @@ export const api = {
     getAds: async () => {
         try {
             // Fetch only ACTIVE ads for public feed
-            // JOIN with profiles to get seller info
+            // JOIN with profiles to get seller info AND active highlights
             const { data, error } = await supabase
                 .from('anuncios')
-                .select('*, profiles:user_id(name, avatar_url)')
+                .select(`
+                    *, 
+                    profiles:user_id(name, avatar_url),
+                    destaques_anuncios(
+                        plano_id,
+                        result_ends_at:fim_em,
+                        status
+                    )
+                `)
                 .eq('status', STATUS_DB_MAP[AdStatus.ACTIVE])
                 .order('created_at', { ascending: false })
                 .limit(50);
 
             if (error) {
-                console.warn('⚠️ JOIN with profiles failed, retrying simple select...');
+                console.warn('⚠️ JOIN failed, retrying simple select...', error);
                 const { data: simpleData, error: simpleError } = await supabase
                     .from('anuncios')
                     .select('*')
@@ -748,7 +790,28 @@ export const api = {
                 return simpleData.map((ad: any) => mapAdData(ad));
             }
 
-            return (data || []).map((ad: any) => mapAdData(ad));
+            return (data || []).map((ad: any) => {
+                // Check for active highlight
+                const activeHighlight = ad.destaques_anuncios?.find((h: any) =>
+                    h.status === 'active' && new Date(h.result_ends_at) > new Date()
+                );
+
+                if (activeHighlight) {
+                    ad.detalhes = {
+                        ...ad.detalhes,
+                        boostConfig: {
+                            expiresAt: activeHighlight.result_ends_at,
+                            startDate: new Date().toISOString(),
+                            totalBumps: 0,
+                            bumpsRemaining: 0
+                        }
+                    };
+                    if (!ad.boost_plan || ad.boost_plan === 'gratis') {
+                        ad.boost_plan = 'active_highlight';
+                    }
+                }
+                return mapAdData(ad);
+            });
 
         } catch (err) {
             console.error('❌ Error in getAds:', err);
@@ -761,24 +824,54 @@ export const api = {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return [];
 
+            // Fetch ads AND active highlights
             const { data, error } = await supabase
                 .from('anuncios')
-                .select('*, profiles:user_id(name, avatar_url)')
+                .select(`
+                    *, 
+                    profiles:user_id(name, avatar_url),
+                    destaques_anuncios(
+                        plano_id,
+                        result_ends_at:fim_em,
+                        status
+                    )
+                `)
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) {
-                const { data: simpleData, error: simpleError } = await supabase
-                    .from('anuncios')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false });
-
-                if (simpleError) throw simpleError;
-                return simpleData.map((ad: any) => mapAdData(ad, true));
+                console.error("❌ Error fetching my ads:", error);
+                throw error;
             }
 
-            return (data || []).map((ad: any) => mapAdData(ad, true));
+            return (data || []).map((ad: any) => {
+                // Check for active highlight
+                const activeHighlight = ad.destaques_anuncios?.find((h: any) =>
+                    h.status === 'active' && new Date(h.result_ends_at) > new Date()
+                );
+
+                if (activeHighlight) {
+                    // Inject highlight info into the ad object before mapping
+                    // We map it to boostConfig as the frontend expects
+                    ad.detalhes = {
+                        ...ad.detalhes,
+                        boostConfig: {
+                            expiresAt: activeHighlight.result_ends_at,
+                            startDate: new Date().toISOString(), // Approximate or fetch from start_at if added to query
+                            totalBumps: 0, // Not tracked in ad_highlights yet
+                            bumpsRemaining: 0
+                        },
+                        // We can also force boost_plan if we want strictly active ones
+                        // ad.boost_plan = 'premium' (or map plan_id to name if needed)
+                    };
+                    // Override boost_plan to ensure UI sees it
+                    if (!ad.boost_plan || ad.boost_plan === 'gratis') {
+                        ad.boost_plan = 'active_highlight';
+                    }
+                }
+
+                return mapAdData(ad, true);
+            });
         } catch (err) {
             console.error('🔥 Critical error in getMyAds:', err);
             return [];
@@ -946,6 +1039,15 @@ export const api = {
 
         if (error) throw error;
         return data;
+    },
+
+    /**
+     * ADMIN: Fetch statistical report data via secure Edge Function
+     */
+    getAdminStats: async () => {
+        const { data, error } = await supabase.functions.invoke('admin_get_stats');
+        if (error) throw error;
+        return data; // { totalUsers, activeAds, totalRevenue, plansSold }
     },
 
     updateSystemSetting: async (settings: { fair_active?: boolean, maintenance_mode?: boolean }) => {

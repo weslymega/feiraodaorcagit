@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Heart, Share2, Calculator, MapPin, MessageSquare, Phone, User as UserIcon, ChevronRight, QrCode, Printer, Download, Map, Clock, Camera, Flag, AlertTriangle, CheckCircle } from 'lucide-react';
 import { generateA4PrintTemplate } from '../services/printTemplates';
 import { AdItem, ReportItem } from '../types';
+import { APP_URL } from '../constants';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
 import { SmartImage } from '../components/ui/SmartImage';
@@ -40,7 +41,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
   const images = safeImages;
   const features = ad.features || ["Air bag", "Alarme", "Ar condicionado", "Trava elétrica", "Som", "Vidro elétrico"];
 
-  const qrData = `https://feiraodaorca.app/ad/${ad.id}`;
+  const qrData = `${APP_URL}/ad/${ad.id}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10&ecc=H`;
 
   useEffect(() => {

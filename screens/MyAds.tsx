@@ -111,6 +111,13 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
 
+  const isHighlightActive = (ad: AdItem) => {
+    // Agora confiamos no boostConfig injetado pelo API.ts
+    if (!ad.boostConfig) return false;
+    if (!ad.boostConfig.expiresAt) return false;
+    return new Date(ad.boostConfig.expiresAt) > new Date();
+  };
+
   // Helper to check if the ad being edited is a paid plan
   const isPaidAd = editAd && (
     editAd.isFeatured ||
@@ -216,13 +223,21 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        // Redundant check if disabled, but good for safety
+                        if (isHighlightActive(ad)) {
+                          return;
+                        }
                         setHighlightAd(ad);
                         setActiveMenuId(null);
                       }}
-                      className="w-full text-left px-4 py-3 text-sm text-accent hover:bg-green-50 flex items-center gap-2 transition-colors font-bold"
+                      disabled={isHighlightActive(ad)}
+                      className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 transition-colors font-bold ${isHighlightActive(ad)
+                        ? 'text-gray-400 cursor-not-allowed bg-gray-50'
+                        : 'text-accent hover:bg-green-50'
+                        }`}
                     >
-                      <Zap className="w-4 h-4 fill-accent" />
-                      Destacar
+                      <Zap className={`w-4 h-4 ${isHighlightActive(ad) ? 'fill-gray-400 text-gray-400' : 'fill-accent'}`} />
+                      {isHighlightActive(ad) ? `Ativo até ${new Date(ad.boostConfig!.expiresAt).toLocaleDateString('pt-BR')}` : 'Destacar'}
                     </button>
                     <div className="h-[1px] bg-gray-100"></div>
                     <button

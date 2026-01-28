@@ -86,7 +86,7 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        // Chat action placeholder
+                                        onAdClick(service);
                                     }}
                                     className="flex-1 bg-purple-50 text-purple-700 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 hover:bg-purple-100"
                                 >

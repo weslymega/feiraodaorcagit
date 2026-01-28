@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ChevronLeft, Heart, Share2, MapPin, MessageSquare, User as UserIcon, ChevronRight, Bed, Bath, Maximize, Car, QrCode, Printer, Download, Home, Camera, Flag } from 'lucide-react';
 import { generateA4PrintTemplate } from '../services/printTemplates';
 import { AdItem, ReportItem } from '../types';
+import { APP_URL } from '../constants';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
 import { SmartImage } from '../components/ui/SmartImage';
@@ -43,7 +44,7 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
   const images = (ad.images && ad.images.length > 0) ? ad.images : (ad.image ? [ad.image] : ['https://via.placeholder.com/800x600?text=Sem+Imagem']);
   const features = ad.features || [];
 
-  const qrData = `https://feiraodaorca.app/ad/${ad.id}`;
+  const qrData = `${APP_URL}/ad/${ad.id}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10&ecc=H`;
 
   const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % images.length);

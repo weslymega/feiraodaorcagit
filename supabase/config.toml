@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.admin_manage_reports]
 verify_jwt = false
 
+[functions.admin_get_stats]
+verify_jwt = false
+
 [functions.create-highlight-payment]
 verify_jwt = false
 

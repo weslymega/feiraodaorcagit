@@ -10,6 +10,10 @@ export const APP_LOGOS = {
   // Ícone Quadrado: Apenas o símbolo (Asset Oficial Correto)
   ICON: "/assets/logo_orca_correct.png"
 };
+
+// --- CONFIGURAÇÃO DE DOMÍNIO ---
+export const APP_URL = import.meta.env.VITE_APP_URL || 'https://feiraodaorcagit-two.vercel.app';
+
 export const CATEGORY_ICONS = {
   VEHICLES: "/assets/categories/car.png",
   REAL_ESTATE: "/assets/categories/house.png",

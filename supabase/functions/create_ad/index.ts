@@ -69,16 +69,23 @@ Deno.serve(async (req) => {
             );
         }
 
-        // ✅ Criar anúncio
+        // ✅ Extração robusta de dados
+        const titulo = body.titulo || body.title || 'Anúncio sem título';
+        const imagens = (body.imagens && body.imagens.length > 0)
+            ? body.imagens
+            : (body.images && body.images.length > 0)
+                ? body.images
+                : (body.image ? [body.image] : []);
+
         const { data: ad, error } = await adminClient.from("anuncios").insert({
             user_id: user.id,
-            titulo: body.titulo || body.title,
-            descricao: body.descricao || body.description,
-            preco: body.preco || body.price,
+            titulo: titulo,
+            descricao: body.descricao || body.description || '',
+            preco: body.preco || body.price || 0,
             categoria: body.categoria || body.category,
             status: "pending",
-            imagens: body.imagens || (body.image ? [body.image] : []),
-            localizacao: body.localizacao || body.location,
+            imagens: imagens,
+            localizacao: body.localizacao || body.location || '',
             detalhes: body.detalhes || {
                 year: body.year,
                 mileage: body.mileage,
