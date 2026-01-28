@@ -625,26 +625,29 @@ export const useAppActions = (state: AppState) => {
     const handleCreateAdFinish = async (adData: Partial<AdItem>, createdAd?: AdItem) => {
         try {
             if (adToEdit) {
-                // Edit Logic (Simplification: Editing allows direct update if RLS permits, or use a function)
-                // For now, let's keep local edit logic OR map to API update if exists.
-                // The requirements focused on CREATE limits.
-                // Let's assume edit is still local for this mock migration step or basic API update.
-                // NOTE: User said "ZERO TRUST". Editing active ads usually requires moderation too. 
-                // But let's stick to the prompt focus: Create Ad & Limits.
-                // To avoid breaking the whole app instantly without backend, I will wrap in try/catch.
+                // Persistent Edit Logic (Zero Trust)
+                setToast({ message: "Salvando alterações...", type: 'info' });
 
-                // Existing Edit Logic (Preserved for now but ideally should be api.updateAd)
-                setMyAds((prev: AdItem[]) => prev.map(ad => {
-                    if (ad.id === adToEdit.id) {
-                        return {
-                            ...ad,
-                            ...adData,
-                            status: AdStatus.PENDING // Re-approve on edit?
-                        };
-                    }
-                    return ad;
-                }));
-                setToast({ message: "Anúncio atualizado!", type: 'success' });
+                try {
+                    await api.updateAd(adToEdit.id, adData);
+
+                    // Update Local State with merged data and status 'pendente'
+                    setMyAds((prev: AdItem[]) => prev.map(ad => {
+                        if (ad.id === adToEdit.id) {
+                            return {
+                                ...ad,
+                                ...adData,
+                                status: AdStatus.PENDING
+                            };
+                        }
+                        return ad;
+                    }));
+                    setToast({ message: "Anúncio enviado para reanálise!", type: 'success' });
+                } catch (updateError: any) {
+                    console.error("❌ Erro ao persistir edição:", updateError);
+                    setToast({ message: "Erro ao salvar: " + updateError.message, type: 'error' });
+                    return; // Abort navigation on error
+                }
             } else if (createdAd) {
                 // --- FLOW: ANÚNCIO JÁ CRIADO (PAGO) ---
                 // O anúncio já foi criado no CreateAd.tsx para permitir o pagamento imediato.

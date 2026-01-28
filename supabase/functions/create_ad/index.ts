@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
             descricao: body.descricao || body.description || '',
             preco: body.preco || body.price || 0,
             categoria: body.categoria || body.category,
-            status: "pending",
+            status: "pendente",
             imagens: imagens,
             localizacao: body.localizacao || body.location || '',
             detalhes: body.detalhes || {

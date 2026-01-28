@@ -603,7 +603,83 @@ export const api = {
 
     /**
      * Update Single Ad (Owner only - RLS)
-     * Supports updating is_in_fair status
+     * Security Hardening: Forces status to 'pendente' and ignores it from payload.
+     */
+    updateAd: async (adId: string, adData: any) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Usuário não autenticado");
+
+        // Identify category
+        const category = adData.category === 'autos' ? 'veiculos' : adData.category;
+
+        // Build specialized details object (similar to createAd)
+        let details: any = {
+            features: adData.features || [],
+            additionalInfo: adData.additionalInfo || []
+        };
+
+        if (category === 'imoveis') {
+            details = {
+                ...details,
+                realEstateType: adData.realEstateType,
+                transactionType: adData.transactionType || 'sale',
+                area: adData.area,
+                builtArea: adData.builtArea,
+                bedrooms: adData.bedrooms,
+                bathrooms: adData.bathrooms,
+                parking: adData.parking
+            };
+        } else if (category === 'veiculos') {
+            details = {
+                ...details,
+                year: adData.year,
+                mileage: adData.mileage,
+                vehicleType: adData.vehicleType,
+                fuel: adData.fuel,
+                gearbox: adData.gearbox,
+                color: adData.color,
+                plate: adData.plate,
+                fipePrice: adData.fipePrice
+            };
+        } else if (category === 'servicos' || category === 'pecas') {
+            details = {
+                ...details,
+                partType: adData.partType,
+                condition: adData.condition
+            };
+        }
+
+        // Prepare update payload
+        const updatePayload: any = {
+            titulo: adData.title,
+            descricao: adData.description,
+            preco: adData.price,
+            categoria: category,
+            imagens: adData.images,
+            localizacao: adData.location,
+            detalhes: details,
+            updated_at: new Date().toISOString()
+        };
+
+        // CRITICAL SECURITY: Ignore status from payload and force 'pendente'
+        updatePayload.status = 'pendente';
+
+        const { error } = await supabase
+            .from('anuncios')
+            .update(updatePayload)
+            .eq('id', adId)
+            .eq('user_id', user.id);
+
+        if (error) {
+            console.error("❌ Erro ao atualizar anúncio:", error);
+            throw error;
+        }
+        return true;
+    },
+
+    /**
+     * Legacy/Small Updates (Owner only - RLS)
+     * e.g. updating is_in_fair status
      */
     updateAnuncio: async (adId: string, updateData: { is_in_fair?: boolean, [key: string]: any }) => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -613,10 +689,10 @@ export const api = {
             .from('anuncios')
             .update(updateData)
             .eq('id', adId)
-            .eq('user_id', user.id); // Extra safety, though RLS handles it
+            .eq('user_id', user.id);
 
         if (error) {
-            console.error("❌ Erro ao atualizar anúncio:", error);
+            console.error("❌ Erro ao atualizar anuncio (v1):", error);
             throw error;
         }
         return true;
