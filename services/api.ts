@@ -13,7 +13,12 @@ const isValidUrl = (url: string) => {
 
 const finalUrl = isValidUrl(SUPABASE_URL) ? SUPABASE_URL : 'https://placeholder-url.supabase.co';
 
-export const supabase: SupabaseClient = createClient(finalUrl, SUPABASE_ANON_KEY);
+export const supabase: SupabaseClient = createClient(finalUrl, SUPABASE_ANON_KEY, {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+    }
+});
 
 export interface CreateAdPayload {
     title: string;
@@ -312,11 +317,33 @@ export const api = {
      * Process Highlight Payment (Mercado Pago Brick)
      */
     processHighlightPayment: async (adId: string, planId: string, paymentData: any) => {
+        // Get current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError || !session) {
+            console.error('[API] Session error:', sessionError);
+            throw new Error('Session expired. Please login again.');
+        }
+
+        console.log('[API] Processing payment with active session');
+        console.log('[API] User ID:', session.user.id);
+        console.log('[API] Token expires at:', new Date(session.expires_at! * 1000).toLocaleString());
+        console.log('[API] Access token preview:', session.access_token ? `${session.access_token.substring(0, 20)}...` : 'none');
+        console.log('[API] Token length:', session.access_token?.length);
+
+        // MANUALLY pass the Authorization header
+        // This ensures the token is sent in the correct format
         const { data, error } = await supabase.functions.invoke('create-highlight-payment', {
-            body: { ad_id: adId, plan_id: planId, payment_data: paymentData }
+            body: { ad_id: adId, plan_id: planId, payment_data: paymentData },
+            headers: {
+                Authorization: `Bearer ${session.access_token}`
+            }
         });
 
-        if (error) throw error;
+        if (error) {
+            console.error('[API] Edge Function Error:', error);
+            throw error;
+        }
         return data; // Result from MP API
     },
 

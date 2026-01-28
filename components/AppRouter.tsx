@@ -69,6 +69,7 @@ import { Wrench, Shield } from 'lucide-react';
 import { BottomNav, Toast } from '../components/Shared';
 import { AppLoadingOverlay } from './AppLoadingOverlay';
 import { ErrorBoundary } from './ErrorBoundary';
+import { PaymentStatusFeedback } from './PaymentStatusFeedback';
 
 interface AppRouterProps {
     state: AppState;
@@ -574,6 +575,9 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
                     onClose={() => state.setToast(null)}
                 />
             )}
+
+            {/* Feedback de Retorno de Pagamento (Mercado Pago) */}
+            <PaymentStatusFeedback />
 
             {renderScreen()}
 

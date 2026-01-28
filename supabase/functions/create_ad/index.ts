@@ -1,30 +1,45 @@
-import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-serve(async (req) => {
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+    // Handle CORS
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
-        const supabase = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+        const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+        const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-        const authHeader = req.headers.get("Authorization");
-        if (!authHeader) {
-            return new Response("Unauthorized", { status: 401 });
-        }
+        // 1. Create a client with the user's focus for validation
+        const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: { headers: { Authorization: req.headers.get('Authorization')! } }
+        });
 
-        const token = authHeader.replace("Bearer ", "");
-        const { data: userData } = await supabase.auth.getUser(token);
-        const user = userData.user;
+        // 2. Create an admin client for service-role actions
+        const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-        if (!user) {
-            return new Response("Unauthorized", { status: 401 });
+        const { data: { user }, error: authError } = await userClient.auth.getUser();
+
+        if (authError || !user) {
+            console.error('[CreateAd] Auth validation failed:', authError);
+            return new Response(JSON.stringify({
+                error: "Unauthorized",
+                message: "Invalid JWT or session expired",
+                details: authError
+            }), { status: 401, headers: corsHeaders });
         }
 
         const body = await req.json();
+        console.log(`[CreateAd] Request from user ${user.id}`);
 
-        // 🔍 Buscar plano do usuário
-        const { data: profile } = await supabase
+        // 🔍 Buscar plano do usuário (using adminClient)
+        const { data: profile } = await adminClient
             .from("profiles")
             .select("active_plan")
             .eq("id", user.id)
@@ -32,13 +47,12 @@ serve(async (req) => {
 
         const activePlan = profile?.active_plan ?? "free";
 
-        // 📆 Início do mês atual
+        // 🔢 Contar anúncios do mês
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
 
-        // 🔢 Contar anúncios do mês
-        const { count } = await supabase
+        const { count } = await adminClient
             .from("anuncios")
             .select("id", { count: "exact", head: true })
             .eq("user_id", user.id)
@@ -51,34 +65,40 @@ serve(async (req) => {
                     error: "LIMIT_REACHED",
                     message: "Limite mensal de anúncios do plano gratuito atingido."
                 }),
-                { status: 403 }
+                { status: 403, headers: corsHeaders }
             );
         }
 
         // ✅ Criar anúncio
-        const { data: ad, error } = await supabase.from("anuncios").insert({
+        const { data: ad, error } = await adminClient.from("anuncios").insert({
             user_id: user.id,
-            title: body.title,
-            description: body.description,
-            price: body.price,
-            category: body.category,
-            status: "pending", // Default status, admin must approve or use "active" for testing
-            image: body.image,
-            location: body.location,
-            year: body.year,
-            mileage: body.mileage,
-            vehicle_type: body.vehicleType // Assuming column exists, if not it might error. Safe to omit if unsure? 
-            // User asked for "professional", preserving data is key.
+            titulo: body.titulo || body.title,
+            descricao: body.descricao || body.description,
+            preco: body.preco || body.price,
+            categoria: body.categoria || body.category,
+            status: "pending",
+            imagens: body.imagens || (body.image ? [body.image] : []),
+            localizacao: body.localizacao || body.location,
+            detalhes: body.detalhes || {
+                year: body.year,
+                mileage: body.mileage,
+                vehicleType: body.vehicleType
+            },
+            boost_plan: body.boostPlan || 'gratis'
         }).select().single();
 
         if (error) throw error;
 
-        return new Response(JSON.stringify(ad), { status: 200 });
+        return new Response(JSON.stringify(ad), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
 
     } catch (err) {
+        console.error('[CreateAd] Internal Error:', err);
         return new Response(
             JSON.stringify({ error: "INTERNAL_ERROR", detail: String(err) }),
-            { status: 500 }
+            { status: 500, headers: corsHeaders }
         );
     }
 });

@@ -19,10 +19,24 @@ VALUES
 ('Topo', 39.90, 30, 3)
 ON CONFLICT DO NOTHING;
 
--- 2. AD HIGHLIGHTS
+-- 2. ENSURE PAYMENTS TABLE EXISTS
+-- Some schemas might use different names, but we need public.payments for logs.
+CREATE TABLE IF NOT EXISTS public.payments (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) NOT NULL,
+    mp_payment_id TEXT UNIQUE NOT NULL,
+    status TEXT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    plan_type TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    metadata JSONB
+);
+
+-- 3. AD HIGHLIGHTS
+-- Note: Using public.anuncios instead of public.ads which is the current table name.
 CREATE TABLE IF NOT EXISTS public.ad_highlights (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    ad_id UUID REFERENCES public.ads(id) ON DELETE CASCADE NOT NULL,
+    ad_id UUID REFERENCES public.anuncios(id) ON DELETE CASCADE NOT NULL,
     user_id UUID REFERENCES public.profiles(id) NOT NULL,
     plan_id UUID REFERENCES public.highlight_plans(id) NOT NULL,
     starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -35,32 +49,32 @@ CREATE TABLE IF NOT EXISTS public.ad_highlights (
 CREATE INDEX IF NOT EXISTS idx_ad_highlights_ad_id ON public.ad_highlights(ad_id);
 CREATE INDEX IF NOT EXISTS idx_ad_highlights_status ON public.ad_highlights(status);
 
--- 3. UPDATE PAYMENTS TABLE
+-- 4. UPDATE PAYMENTS TABLE WITH NEW COLUMNS
 ALTER TABLE public.payments 
-ADD COLUMN IF NOT EXISTS ad_id UUID REFERENCES public.ads(id),
+ADD COLUMN IF NOT EXISTS ad_id UUID REFERENCES public.anuncios(id),
 ADD COLUMN IF NOT EXISTS highlight_plan_id UUID REFERENCES public.highlight_plans(id),
 ADD COLUMN IF NOT EXISTS payment_method TEXT;
 
--- 4. RLS POLICIES
+-- 5. RLS POLICIES
 
 -- highlight_plans: Public read
 ALTER TABLE public.highlight_plans ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public can view highlight plans" ON public.highlight_plans;
 CREATE POLICY "Public can view highlight plans" ON public.highlight_plans
     FOR SELECT USING (active = true);
 
--- ad_highlights: Public read viewable, but only owner/admin can see details if needed
--- Actually, anyone can see if an ad is highlighted (needed for the UI)
+-- ad_highlights: Anyone can see if an ad is highlighted (needed for the UI)
 ALTER TABLE public.ad_highlights ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public can view active highlights" ON public.ad_highlights;
 CREATE POLICY "Public can view active highlights" ON public.ad_highlights
     FOR SELECT USING (true);
 
--- Only service role should insert/update ad_highlights via webhook
--- But we can allow users to see their own highlights even if they are expired
+-- Only owner/admin can see specific highlight details
+DROP POLICY IF EXISTS "Users can view own highlights" ON public.ad_highlights;
 CREATE POLICY "Users can view own highlights" ON public.ad_highlights
     FOR SELECT USING (auth.uid() = user_id);
 
--- 5. FUNCTION TO MARK EXPIRED HIGHLIGHTS (for periodic cleanup/updates)
--- This can be called by a cron or edge function
+-- 6. FUNCTION TO MARK EXPIRED HIGHLIGHTS
 CREATE OR REPLACE FUNCTION public.update_expired_highlights() 
 RETURNS VOID AS $$
 BEGIN
