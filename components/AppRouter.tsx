@@ -106,6 +106,11 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         handleForgotPassword
     } = actions;
 
+    // Auto-scroll to top when screen changes
+    React.useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [currentScreen]);
+
     const handleBackFromDetails = () => {
         if (previousScreen &&
             previousScreen !== currentScreen &&
@@ -392,7 +397,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
                     <ChatDetail
                         chat={selectedChat}
                         messages={state.chatMessages}
-                        onBack={() => navigateTo(Screen.MESSAGES)}
+                        onBack={handleBackFromDetails}
                         onAdClick={navigateToAdDetails}
                         onViewProfile={handleViewProfileFromChat}
                         onSendMessage={(text, imageUrl) => {

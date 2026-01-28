@@ -854,5 +854,88 @@ export const api = {
             .eq('id', true);
 
         if (error) throw error;
+    },
+
+    /**
+     * PROMOTIONS: Global Banner Management
+     */
+    getPromotions: async (category?: string) => {
+        let query = supabase
+            .from('promotions')
+            .select('*')
+            .order('order_index', { ascending: true });
+
+        if (category) {
+            query = query.eq('category', category);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        return (data || []).map(p => ({
+            id: p.id,
+            category: p.category,
+            title: p.title,
+            subtitle: p.subtitle,
+            image: p.image,
+            link: p.link,
+            startDate: p.start_date,
+            endDate: p.end_date,
+            active: p.active,
+            order: p.order_index
+        }));
+    },
+
+    savePromotion: async (promo: any) => {
+        const { id, order, startDate, endDate, ...rest } = promo;
+
+        const payload = {
+            ...rest,
+            order_index: order,
+            start_date: startDate,
+            end_date: endDate,
+            updated_at: new Date().toISOString()
+        };
+
+        if (id && !id.startsWith('promo_')) { // Real UUID from DB
+            const { data, error } = await supabase
+                .from('promotions')
+                .update(payload)
+                .eq('id', id)
+                .select()
+                .single();
+            if (error) throw error;
+            return data;
+        } else {
+            // New or Mock promotion being converted
+            const { data, error } = await supabase
+                .from('promotions')
+                .insert({
+                    ...payload,
+                    created_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+            if (error) throw error;
+            return data;
+        }
+    },
+
+    deletePromotion: async (id: string) => {
+        const { error } = await supabase
+            .from('promotions')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+        return true;
+    },
+
+    togglePromotionActive: async (id: string, active: boolean) => {
+        const { error } = await supabase
+            .from('promotions')
+            .update({ active, updated_at: new Date().toISOString() })
+            .eq('id', id);
+        if (error) throw error;
+        return true;
     }
 };

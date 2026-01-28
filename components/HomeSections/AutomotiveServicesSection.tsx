@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Wrench, ChevronRight, MessageCircle, Phone } from 'lucide-react';
+import { Wrench, ChevronRight, MessageCircle } from 'lucide-react';
 import { AdItem, Screen } from '../../types';
 
 interface AutomotiveServicesProps {
@@ -50,13 +50,6 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
                         <div className="p-3">
                             <h3 className="font-bold text-gray-800 text-sm line-clamp-1 mb-1">{service.title}</h3>
 
-                            <div className="flex items-baseline gap-1 mb-2">
-                                <p className="font-bold text-purple-700 text-base">
-                                    {service.priceType === 'starting_at' ? 'A partir de ' : ''}
-                                    {service.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}
-                                </p>
-                            </div>
-
                             {service.estimatedTime && (
                                 <div className="flex items-center gap-1 mb-3">
                                     <span className="text-[10px] text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
@@ -74,15 +67,6 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
                                     className="flex-1 bg-purple-50 text-purple-700 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 hover:bg-purple-100"
                                 >
                                     <MessageCircle className="w-3 h-3" /> Chat
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        // Whatsapp/Call placeholder
-                                    }}
-                                    className="flex-1 bg-green-50 text-green-700 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 hover:bg-green-100"
-                                >
-                                    <Phone className="w-3 h-3" /> Ligar
                                 </button>
                             </div>
                         </div>

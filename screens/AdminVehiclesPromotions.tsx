@@ -169,7 +169,7 @@ export const AdminVehiclesPromotions: React.FC<AdminVehiclesPromotionsProps> = (
             {/* Modal */}
             {isModalOpen && editingPromo && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                    <div className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
                         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="text-lg font-bold text-gray-900">
                                 {editingPromo.id ? 'Editar Propaganda' : 'Nova Propaganda'}
@@ -179,7 +179,7 @@ export const AdminVehiclesPromotions: React.FC<AdminVehiclesPromotionsProps> = (
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
                             {/* Image Preview / Input */}
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Imagem do Banner</label>
@@ -278,17 +278,6 @@ export const AdminVehiclesPromotions: React.FC<AdminVehiclesPromotionsProps> = (
                                 </div>
                             </div>
 
-                            {/* Link */}
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Link de Destino</label>
-                                <input
-                                    type="text"
-                                    placeholder="https://... ou #"
-                                    className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    value={editingPromo.link || ''}
-                                    onChange={e => setEditingPromo({ ...editingPromo, link: e.target.value })}
-                                />
-                            </div>
 
                             {/* Active Toggle */}
                             <div className="flex items-center justify-between py-2">

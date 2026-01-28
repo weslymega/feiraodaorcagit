@@ -123,364 +123,139 @@ export const useAppActions = (state: AppState) => {
         };
     }, []);
 
-    const handleSavePromotion = (promoData: Partial<DashboardPromotion>) => {
-        const startDate = new Date(promoData.startDate || '');
-        const endDate = new Date(promoData.endDate || '');
-
-        if (endDate <= startDate) {
-            setToast({ message: "A data de término deve ser posterior à data de início.", type: 'error' });
-            return;
-        }
-
-        const activeCount = dashboardPromotions.filter(p => p.active && p.id !== promoData.id).length;
-        if (promoData.active) {
-            if (activeCount >= 5) {
-                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
-                return;
-            }
-            const today = new Date();
-            if (today > new Date(promoData.endDate || '')) {
-                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
-                return;
-            }
-        }
-
-        if (promoData.id) {
-            // Update mode
-            setDashboardPromotions((prev: DashboardPromotion[]) => prev.map(p =>
-                p.id === promoData.id ? {
-                    ...p,
-                    title: promoData.title ?? p.title,
-                    subtitle: promoData.subtitle ?? p.subtitle,
-                    image: promoData.image ?? p.image,
-                    link: promoData.link ?? p.link,
-                    startDate: promoData.startDate ?? p.startDate,
-                    endDate: promoData.endDate ?? p.endDate,
-                    active: promoData.active ?? p.active,
-                    order: promoData.order ?? p.order,
-                    updatedAt: new Date().toISOString()
-                } : p
-            ));
-            setToast({ message: "Propaganda atualizada com sucesso!", type: 'success' });
-        } else {
-            // Create mode
-            const newPromo: DashboardPromotion = {
-                id: `promo_${Date.now()}`,
-                title: promoData.title || '',
-                subtitle: promoData.subtitle || '',
-                image: promoData.image || '',
-                link: promoData.link || '#',
-                startDate: promoData.startDate || new Date().toISOString(),
-                endDate: promoData.endDate || new Date().toISOString(),
-                active: promoData.active ?? true,
-                order: dashboardPromotions.length,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-            setDashboardPromotions((prev: DashboardPromotion[]) => [...prev, newPromo]);
-            setToast({ message: "Propaganda criada com sucesso!", type: 'success' });
+    const handleSavePromotion = async (promoData: Partial<DashboardPromotion>) => {
+        try {
+            await api.savePromotion({ ...promoData, category: 'dashboard' });
+            const updated = await api.getPromotions('dashboard');
+            setDashboardPromotions(updated);
+            setToast({ message: 'Propaganda do Dashboard salva!', type: 'success' });
+        } catch (error) {
+            console.error(error);
+            setToast({ message: 'Erro ao salvar propaganda', type: 'error' });
         }
     };
 
-    const handleDeletePromotion = (id: string) => {
-        setDashboardPromotions((prev: DashboardPromotion[]) => prev.filter(p => p.id !== id));
-        setToast({ message: "Propaganda excluída.", type: 'info' });
-    };
-
-    const handleTogglePromotionActive = (id: string) => {
-        const promo = dashboardPromotions.find(p => p.id === id);
-        if (!promo) return;
-
-        if (!promo.active) {
-            const activeCount = dashboardPromotions.filter(p => p.active).length;
-            if (activeCount >= 5) {
-                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
-                return;
-            }
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const end = new Date(promo.endDate);
-            end.setHours(23, 59, 59, 999);
-
-            if (today > end) {
-                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
-                return;
-            }
-        }
-
-        setDashboardPromotions((prev: DashboardPromotion[]) => prev.map(p =>
-            p.id === id ? { ...p, active: !p.active, updatedAt: new Date().toISOString() } : p
-        ));
-    };
-
-    const handleSaveRealEstatePromotion = (promoData: Partial<RealEstatePromotion>) => {
-        const startDate = new Date(promoData.startDate || '');
-        const endDate = new Date(promoData.endDate || '');
-
-        if (endDate <= startDate) {
-            setToast({ message: "A data de término deve ser posterior à data de início.", type: 'error' });
-            return;
-        }
-
-        const activeCount = realEstatePromotions.filter(p => p.active && p.id !== promoData.id).length;
-        if (promoData.active) {
-            if (activeCount >= 5) {
-                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
-                return;
-            }
-            const today = new Date();
-            if (today > new Date(promoData.endDate || '')) {
-                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
-                return;
-            }
-        }
-
-        if (promoData.id) {
-            // Update mode
-            setRealEstatePromotions((prev: RealEstatePromotion[]) => prev.map(p =>
-                p.id === promoData.id ? {
-                    ...p,
-                    title: promoData.title ?? p.title,
-                    subtitle: promoData.subtitle ?? p.subtitle,
-                    image: promoData.image ?? p.image,
-                    link: promoData.link ?? p.link,
-                    startDate: promoData.startDate ?? p.startDate,
-                    endDate: promoData.endDate ?? p.endDate,
-                    active: promoData.active ?? p.active,
-                    order: promoData.order ?? p.order,
-                    updatedAt: new Date().toISOString()
-                } : p
-            ));
-            setToast({ message: "Propaganda atualizada com sucesso!", type: 'success' });
-        } else {
-            // Create mode
-            const newPromo: RealEstatePromotion = {
-                id: `re_promo_${Date.now()}`,
-                title: promoData.title || '',
-                subtitle: promoData.subtitle || '',
-                image: promoData.image || '',
-                link: promoData.link || '#',
-                startDate: promoData.startDate || new Date().toISOString(),
-                endDate: promoData.endDate || new Date().toISOString(),
-                active: promoData.active ?? true,
-                order: realEstatePromotions.length,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-            setRealEstatePromotions((prev: RealEstatePromotion[]) => [...prev, newPromo]);
-            setToast({ message: "Propaganda criada com sucesso!", type: 'success' });
+    const handleDeletePromotion = async (id: string) => {
+        try {
+            await api.deletePromotion(id);
+            const updated = await api.getPromotions('dashboard');
+            setDashboardPromotions(updated);
+            setToast({ message: 'Propaganda excluída', type: 'success' });
+        } catch (error) {
+            console.error(error);
+            setToast({ message: 'Erro ao excluir propaganda', type: 'error' });
         }
     };
 
-    const handleDeleteRealEstatePromotion = (id: string) => {
-        setRealEstatePromotions((prev: RealEstatePromotion[]) => prev.filter(p => p.id !== id));
-        setToast({ message: "Propaganda excluída.", type: 'info' });
-    };
-
-    const handleToggleRealEstatePromotionActive = (id: string) => {
-        const promo = realEstatePromotions.find(p => p.id === id);
-        if (!promo) return;
-
-        if (!promo.active) {
-            const activeCount = realEstatePromotions.filter(p => p.active).length;
-            if (activeCount >= 5) {
-                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
-                return;
-            }
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const end = new Date(promo.endDate);
-            end.setHours(23, 59, 59, 999);
-
-            if (today > end) {
-                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
-                return;
-            }
-        }
-
-        setRealEstatePromotions((prev: RealEstatePromotion[]) => prev.map(p =>
-            p.id === id ? { ...p, active: !p.active, updatedAt: new Date().toISOString() } : p
-        ));
-    };
-
-    const handleSavePartsServicesPromotion = (promoData: Partial<PartsServicesPromotion>) => {
-        const startDate = new Date(promoData.startDate || '');
-        const endDate = new Date(promoData.endDate || '');
-
-        if (endDate <= startDate) {
-            setToast({ message: "A data de término deve ser posterior à data de início.", type: 'error' });
-            return;
-        }
-
-        const activeCount = partsServicesPromotions.filter(p => p.active && p.id !== promoData.id).length;
-        if (promoData.active) {
-            if (activeCount >= 5) {
-                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
-                return;
-            }
-            const today = new Date();
-            if (today > new Date(promoData.endDate || '')) {
-                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
-                return;
-            }
-        }
-
-        if (promoData.id) {
-            // Update mode
-            setPartsServicesPromotions((prev: PartsServicesPromotion[]) => prev.map(p =>
-                p.id === promoData.id ? {
-                    ...p,
-                    title: promoData.title ?? p.title,
-                    subtitle: promoData.subtitle ?? p.subtitle,
-                    image: promoData.image ?? p.image,
-                    link: promoData.link ?? p.link,
-                    startDate: promoData.startDate ?? p.startDate,
-                    endDate: promoData.endDate ?? p.endDate,
-                    active: promoData.active ?? p.active,
-                    order: promoData.order ?? p.order,
-                    updatedAt: new Date().toISOString()
-                } : p
-            ));
-            setToast({ message: "Propaganda atualizada com sucesso!", type: 'success' });
-        } else {
-            // Create mode
-            const newPromo: PartsServicesPromotion = {
-                id: `ps_promo_${Date.now()}`,
-                title: promoData.title || '',
-                subtitle: promoData.subtitle || '',
-                image: promoData.image || '',
-                link: promoData.link || '#',
-                startDate: promoData.startDate || new Date().toISOString(),
-                endDate: promoData.endDate || new Date().toISOString(),
-                active: promoData.active ?? true,
-                order: partsServicesPromotions.length,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-            setPartsServicesPromotions((prev: PartsServicesPromotion[]) => [...prev, newPromo]);
-            setToast({ message: "Propaganda criada com sucesso!", type: 'success' });
+    const handleTogglePromotionActive = async (id: string) => {
+        try {
+            const promo = dashboardPromotions.find(p => p.id === id);
+            if (!promo) return;
+            await api.togglePromotionActive(id, !promo.active);
+            const updated = await api.getPromotions('dashboard');
+            setDashboardPromotions(updated);
+        } catch (error) {
+            console.error(error);
         }
     };
 
-    const handleDeletePartsServicesPromotion = (id: string) => {
-        setPartsServicesPromotions((prev: PartsServicesPromotion[]) => prev.filter(p => p.id !== id));
-        setToast({ message: "Propaganda excluída.", type: 'info' });
-    };
-
-    const handleTogglePartsServicesPromotionActive = (id: string) => {
-        const promo = partsServicesPromotions.find(p => p.id === id);
-        if (!promo) return;
-
-        if (!promo.active) {
-            const activeCount = partsServicesPromotions.filter(p => p.active).length;
-            if (activeCount >= 5) {
-                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
-                return;
-            }
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const end = new Date(promo.endDate);
-            end.setHours(23, 59, 59, 999);
-
-            if (today > end) {
-                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
-                return;
-            }
-        }
-
-        setPartsServicesPromotions((prev: PartsServicesPromotion[]) => prev.map(p =>
-            p.id === id ? { ...p, active: !p.active, updatedAt: new Date().toISOString() } : p
-        ));
-    };
-
-    const handleSaveVehiclesPromotion = (promoData: Partial<VehiclesPromotion>) => {
-        const startDate = new Date(promoData.startDate || '');
-        const endDate = new Date(promoData.endDate || '');
-
-        if (endDate <= startDate) {
-            setToast({ message: "A data de término deve ser posterior à data de início.", type: 'error' });
-            return;
-        }
-
-        const activeCount = vehiclesPromotions.filter(p => p.active && p.id !== promoData.id).length;
-        if (promoData.active) {
-            if (activeCount >= 5) {
-                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
-                return;
-            }
-            const today = new Date();
-            if (today > new Date(promoData.endDate || '')) {
-                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
-                return;
-            }
-        }
-
-        if (promoData.id) {
-            // Update mode
-            setVehiclesPromotions((prev: VehiclesPromotion[]) => prev.map(p =>
-                p.id === promoData.id ? {
-                    ...p,
-                    title: promoData.title ?? p.title,
-                    subtitle: promoData.subtitle ?? p.subtitle,
-                    image: promoData.image ?? p.image,
-                    link: promoData.link ?? p.link,
-                    startDate: promoData.startDate ?? p.startDate,
-                    endDate: promoData.endDate ?? p.endDate,
-                    active: promoData.active ?? p.active,
-                    order: promoData.order ?? p.order,
-                    updatedAt: new Date().toISOString()
-                } : p
-            ));
-            setToast({ message: "Propaganda atualizada com sucesso!", type: 'success' });
-        } else {
-            // Create mode
-            const newPromo: VehiclesPromotion = {
-                id: `vehicles_promo_${Date.now()}`,
-                title: promoData.title || '',
-                subtitle: promoData.subtitle || '',
-                image: promoData.image || '',
-                link: promoData.link || '#',
-                startDate: promoData.startDate || new Date().toISOString(),
-                endDate: promoData.endDate || new Date().toISOString(),
-                active: promoData.active ?? true,
-                order: vehiclesPromotions.length,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-            setVehiclesPromotions((prev: VehiclesPromotion[]) => [...prev, newPromo]);
-            setToast({ message: "Propaganda criada com sucesso!", type: 'success' });
+    const handleSaveRealEstatePromotion = async (promoData: Partial<RealEstatePromotion>) => {
+        try {
+            await api.savePromotion({ ...promoData, category: 'imoveis' });
+            const updated = await api.getPromotions('imoveis');
+            setRealEstatePromotions(updated);
+            setToast({ message: 'Propaganda de Imóveis salva!', type: 'success' });
+        } catch (error) {
+            console.error(error);
         }
     };
 
-    const handleDeleteVehiclesPromotion = (id: string) => {
-        setVehiclesPromotions((prev: VehiclesPromotion[]) => prev.filter(p => p.id !== id));
-        setToast({ message: "Propaganda excluída.", type: 'info' });
+    const handleDeleteRealEstatePromotion = async (id: string) => {
+        try {
+            await api.deletePromotion(id);
+            const updated = await api.getPromotions('imoveis');
+            setRealEstatePromotions(updated);
+        } catch (error) {
+            console.error(error);
+        }
     };
 
-    const handleToggleVehiclesPromotionActive = (id: string) => {
-        const promo = vehiclesPromotions.find(p => p.id === id);
-        if (!promo) return;
-
-        if (!promo.active) {
-            const activeCount = vehiclesPromotions.filter(p => p.active).length;
-            if (activeCount >= 5) {
-                setToast({ message: "Limite máximo de 5 banners ativos atingido.", type: 'error' });
-                return;
-            }
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const end = new Date(promo.endDate);
-            end.setHours(23, 59, 59, 999);
-
-            if (today > end) {
-                setToast({ message: "Não é possível ativar uma propaganda com data vencida.", type: 'error' });
-                return;
-            }
+    const handleToggleRealEstatePromotionActive = async (id: string) => {
+        try {
+            const promo = realEstatePromotions.find(p => p.id === id);
+            if (!promo) return;
+            await api.togglePromotionActive(id, !promo.active);
+            const updated = await api.getPromotions('imoveis');
+            setRealEstatePromotions(updated);
+        } catch (error) {
+            console.error(error);
         }
+    };
 
-        setVehiclesPromotions((prev: VehiclesPromotion[]) => prev.map(p =>
-            p.id === id ? { ...p, active: !p.active, updatedAt: new Date().toISOString() } : p
-        ));
+    const handleSavePartsServicesPromotion = async (promoData: Partial<PartsServicesPromotion>) => {
+        try {
+            await api.savePromotion({ ...promoData, category: 'pecas_servicos' });
+            const updated = await api.getPromotions('pecas_servicos');
+            setPartsServicesPromotions(updated);
+            setToast({ message: 'Propaganda de Peças e Serviços salva!', type: 'success' });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleDeletePartsServicesPromotion = async (id: string) => {
+        try {
+            await api.deletePromotion(id);
+            const updated = await api.getPromotions('pecas_servicos');
+            setPartsServicesPromotions(updated);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleTogglePartsServicesPromotionActive = async (id: string) => {
+        try {
+            const promo = partsServicesPromotions.find(p => p.id === id);
+            if (!promo) return;
+            await api.togglePromotionActive(id, !promo.active);
+            const updated = await api.getPromotions('pecas_servicos');
+            setPartsServicesPromotions(updated);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleSaveVehiclesPromotion = async (promoData: Partial<VehiclesPromotion>) => {
+        try {
+            await api.savePromotion({ ...promoData, category: 'veiculos' });
+            const updated = await api.getPromotions('veiculos');
+            setVehiclesPromotions(updated);
+            setToast({ message: 'Propaganda de Veículos salva!', type: 'success' });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleDeleteVehiclesPromotion = async (id: string) => {
+        try {
+            await api.deletePromotion(id);
+            const updated = await api.getPromotions('veiculos');
+            setVehiclesPromotions(updated);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleToggleVehiclesPromotionActive = async (id: string) => {
+        try {
+            const promo = vehiclesPromotions.find(p => p.id === id);
+            if (!promo) return;
+            await api.togglePromotionActive(id, !promo.active);
+            const updated = await api.getPromotions('veiculos');
+            setVehiclesPromotions(updated);
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const handleLogin = (selectedUser: User) => {

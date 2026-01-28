@@ -610,6 +610,19 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     const isEmpty = charCount === 0;
     const canContinue = !isEmpty && !isExceeded;
 
+    // Categorized titles
+    const placeholder = formData.category === 'imoveis'
+      ? "Ex: Casa em Condomínio com 3 Quartos"
+      : formData.category === 'veiculos'
+        ? "Ex: Honda Civic 2020 Impecável"
+        : "Ex: Pneu Aro 17 Novo Michelin";
+
+    const suggestion = formData.category === 'imoveis'
+      ? "Use o tipo de imóvel, localização e um diferencial (Ex: Vista para o Mar, Reformado)."
+      : formData.category === 'veiculos'
+        ? "Use a marca, modelo e um diferencial (Ex: Único Dono, Completo)."
+        : "Use o nome da peça ou serviço e o estado (Ex: Na Garantia, Original).";
+
     return (
       <StepContainer
         title="Título do Anúncio"
@@ -620,14 +633,14 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       >
         <div className="space-y-6">
           <h2 className="text-xl font-bold text-gray-900 leading-tight">Dê um nome para o seu anúncio</h2>
-          <p className="text-sm text-gray-500 font-medium">Um bom título ajuda compradores a encontrarem seu veículo mais rápido.</p>
+          <p className="text-sm text-gray-500 font-medium">Um bom título ajuda compradores a encontrarem seu anúncio mais rápido.</p>
 
           <div className="relative">
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))}
-              placeholder="Ex: Honda Civic 2020 Impecável"
+              placeholder={placeholder}
               className={`w-full border-2 rounded-2xl px-5 py-4 text-xl font-bold focus:ring-4 outline-none transition-all ${isExceeded ? 'border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-primary focus:ring-primary/10'
                 }`}
             />
@@ -654,7 +667,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <p className="text-xs text-blue-800 leading-tight flex-1">
-              <strong>Sugestão:</strong> Use a marca, modelo e um diferencial (Ex: Único Dono, Completo).
+              <strong>Sugestão:</strong> {suggestion}
             </p>
           </div>
         </div>
@@ -871,7 +884,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     case CreateStep.INFO: return renderInfo();
     case CreateStep.FEATURES: return renderFeatures();
     case CreateStep.ADDITIONAL_INFO: return renderAdditionalInfo();
-    case CreateStep.REAL_ESTATE_SPECS: return (<StepContainer title="Detalhes do Imóvel" progress={0.5} onNext={nextStep} onBack={goBack}><div className="space-y-4"><div><label className="block text-sm font-bold text-gray-700 mb-2">Área Total (m²)</label><input type="text" inputMode="numeric" value={formData.area} onChange={(e) => setFormData(p => ({ ...p, area: e.target.value.replace(/\D/g, '') }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary outline-none" placeholder="0" /></div><div><label className="block text-sm font-bold text-gray-700 mb-2">Quartos</label><div className="flex gap-2">{[1, 2, 3, 4, 5].map(n => (<button key={n} onClick={() => setFormData(p => ({ ...p, bedrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bedrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>))}</div></div><div><label className="block text-sm font-bold text-gray-700 mb-2">Banheiros</label><div className="flex gap-2">{[1, 2, 3, 4].map(n => (<button key={n} onClick={() => setFormData(p => ({ ...p, bathrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bathrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>))}</div></div><div><label className="block text-sm font-bold text-gray-700 mb-2">Vagas</label><div className="flex gap-2">{[0, 1, 2, 3].map(n => (<button key={n} onClick={() => setFormData(p => ({ ...p, parking: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.parking === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>))}</div></div></div></StepContainer>);
+    case CreateStep.REAL_ESTATE_SPECS: return (<StepContainer title="Detalhes do Imóvel" progress={0.5} onNext={nextStep} onBack={goBack}><div className="space-y-4"><div><label className="block text-sm font-bold text-gray-700 mb-2">Área Total (m²)</label><input type="text" inputMode="numeric" value={formData.area ? Number(formData.area.toString().replace(/\D/g, '')).toLocaleString('pt-BR') : ''} onChange={(e) => setFormData(p => ({ ...p, area: e.target.value.replace(/\D/g, '') }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary outline-none" placeholder="0" /></div><div><label className="block text-sm font-bold text-gray-700 mb-2">Quartos</label><div className="flex gap-2">{[1, 2, 3, 4, 5].map(n => (<button key={n} onClick={() => setFormData(p => ({ ...p, bedrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bedrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}</button>))}</div></div><div><label className="block text-sm font-bold text-gray-700 mb-2">Banheiros</label><div className="flex gap-2">{[1, 2, 3, 4].map(n => (<button key={n} onClick={() => setFormData(p => ({ ...p, bathrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bathrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}</button>))}</div></div><div><label className="block text-sm font-bold text-gray-700 mb-2">Vagas</label><div className="flex gap-2">{[0, 1, 2, 3].map(n => (<button key={n} onClick={() => setFormData(p => ({ ...p, parking: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.parking === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}</button>))}</div></div></div></StepContainer>);
     case CreateStep.REAL_ESTATE_FEATURES: return (<StepContainer title="Comodidades" progress={0.6} onNext={nextStep} onBack={goBack}><div className="flex flex-wrap gap-2">{["Piscina", "Churrasqueira", "Academia", "Elevador", "Portaria 24h", "Varanda", "Armários", "Ar Condicionado", "Jardim"].map(f => (<button key={f} onClick={() => toggleFeature(f)} className={`px-4 py-2.5 rounded-2xl border text-sm font-medium transition-all ${formData.features.includes(f) ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{f}</button>))}</div></StepContainer>);
     case CreateStep.TITLE: return renderTitle();
     case CreateStep.DESCRIPTION: return renderDescription();

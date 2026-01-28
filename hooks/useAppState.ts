@@ -151,6 +151,20 @@ export const useAppState = () => {
         const favs = await api.getFavorites();
         if (favs) setFavorites(favs);
 
+        // Fetch Promotions
+        console.log("📣 Fetching Promotions...");
+        const dPromos = await api.getPromotions('dashboard');
+        if (dPromos.length > 0) setDashboardPromotions(dPromos);
+
+        const vPromos = await api.getPromotions('veiculos');
+        if (vPromos.length > 0) setVehiclesPromotions(vPromos);
+
+        const rPromos = await api.getPromotions('imoveis');
+        if (rPromos.length > 0) setRealEstatePromotions(rPromos);
+
+        const pPromos = await api.getPromotions('pecas_servicos');
+        if (pPromos.length > 0) setPartsServicesPromotions(pPromos);
+
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);
       }
@@ -160,49 +174,16 @@ export const useAppState = () => {
   }, [user.id]); // Refetch if user changes
 
   // Dashboard Promotions State
-  const [dashboardPromotions, setDashboardPromotions] = useState<DashboardPromotion[]>(() => {
-    const saved = localStorage.getItem('orca_dashboard_promotions');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Error parsing dashboard promotions", e);
-      }
-    }
-    // Default to empty or some static banner if desired, removing PROMO_BANNERS mock if requested.
-    // Let's keep banners for now as they might be "system" config not "ads". 
-    // User asked to remove "anuncios modelos" (model ads). Banners are structural. 
-    // I'll keep them to avoid empty gray box, but maybe clear logic.
-    // Let's keep existing logic for promotions for now as they are content-managed.
-    return (PROMO_BANNERS as any[]).map((promo, index) => ({
-      id: promo.id || `promo_${index}`,
-      image: promo.image,
-      title: promo.title,
-      subtitle: promo.subtitle,
-      link: promo.link || '#',
-      startDate: new Date().toISOString(),
-      endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
-      active: true,
-      order: index,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }));
-  });
+  const [dashboardPromotions, setDashboardPromotions] = useState<DashboardPromotion[]>([]);
 
   // Real Estate Promotions State
-  const [realEstatePromotions, setRealEstatePromotions] = useState<RealEstatePromotion[]>(() => {
-    return loadFromStorage<RealEstatePromotion[]>('orca_realestate_promotions', []);
-  });
+  const [realEstatePromotions, setRealEstatePromotions] = useState<RealEstatePromotion[]>([]);
 
   // Parts & Services Promotions State
-  const [partsServicesPromotions, setPartsServicesPromotions] = useState<PartsServicesPromotion[]>(() => {
-    return loadFromStorage<PartsServicesPromotion[]>('orca_parts_services_promotions', []);
-  });
+  const [partsServicesPromotions, setPartsServicesPromotions] = useState<PartsServicesPromotion[]>([]);
 
   // Vehicles Promotions State
-  const [vehiclesPromotions, setVehiclesPromotions] = useState<VehiclesPromotion[]>(() => {
-    return loadFromStorage<VehiclesPromotion[]>('orca_vehicles_promotions', []);
-  });
+  const [vehiclesPromotions, setVehiclesPromotions] = useState<VehiclesPromotion[]>([]);
 
   // Admin Mock Ads - Removed/Empty
   const [adminMockAds, setAdminMockAds] = useState<AdItem[]>([]);

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronLeft, Heart, Share2, MapPin, MessageSquare, Phone, User as UserIcon, ChevronRight, Wrench, Tag, Package, CheckCircle, QrCode, Printer, Download, Flag } from 'lucide-react';
+import { ChevronLeft, Heart, Share2, MapPin, MessageSquare, User as UserIcon, ChevronRight, Wrench, Tag, Package, CheckCircle, QrCode, Printer, Download, Flag } from 'lucide-react';
 import { AdItem, ReportItem } from '../types';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
@@ -182,7 +182,6 @@ export const PartServiceDetails: React.FC<PartServiceDetailsProps> = ({ ad, onBa
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-3 items-center z-50 max-w-md mx-auto">
         <button onClick={onStartChat} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-full shadow flex items-center justify-center gap-2 transition-colors active:scale-95"><MessageSquare className="w-5 h-5" /> Chat</button>
-        <button className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full shadow transition-colors active:scale-95 flex-1 font-bold flex items-center justify-center gap-2"><Phone className="w-5 h-5" /> Ligar</button>
       </div>
     </div>
   );
