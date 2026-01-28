@@ -32,7 +32,8 @@ enum CreateStep {
   ADDITIONAL_INFO = 8,
   REAL_ESTATE_SPECS = 9,
   REAL_ESTATE_FEATURES = 10,
-  DESCRIPTION = 11,
+  TITLE = 11,
+  DESCRIPTION = 15, // Changed from 11 to avoid collision and keep order
   PRICE = 12,
   CONTACT = 13,
   BOOST = 14,
@@ -41,7 +42,7 @@ enum CreateStep {
   PAYMENT_PIX = 22,
   PAYMENT_PROCESSING = 23,
   PAYMENT_APPROVED = 24,
-  SUCCESS = 15
+  SUCCESS = 25 // Changed from 15
 }
 
 const ACTION_BTN_CLASS = "bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98]";
@@ -175,6 +176,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
   const [formData, setFormData] = useState({
     category: editingAd?.category || '',
+    title: editingAd?.title || '',
     vehicleType: editingAd?.vehicleType || '',
     plate: editingAd?.plate || '',
     isZeroKm: false,
@@ -363,9 +365,10 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       case CreateStep.SPECS: next = CreateStep.INFO; break;
       case CreateStep.INFO: next = CreateStep.FEATURES; break;
       case CreateStep.FEATURES: next = CreateStep.ADDITIONAL_INFO; break;
-      case CreateStep.ADDITIONAL_INFO: next = CreateStep.DESCRIPTION; break;
+      case CreateStep.ADDITIONAL_INFO: next = CreateStep.TITLE; break;
       case CreateStep.REAL_ESTATE_SPECS: next = CreateStep.REAL_ESTATE_FEATURES; break;
-      case CreateStep.REAL_ESTATE_FEATURES: next = CreateStep.DESCRIPTION; break;
+      case CreateStep.REAL_ESTATE_FEATURES: next = CreateStep.TITLE; break;
+      case CreateStep.TITLE: next = CreateStep.DESCRIPTION; break;
       case CreateStep.DESCRIPTION: next = CreateStep.PRICE; break;
       case CreateStep.PRICE: next = CreateStep.CONTACT; break;
       case CreateStep.CONTACT:
@@ -504,11 +507,16 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   };
 
   const handleFinish = () => {
-    let title = 'Anúncio';
-    if (formData.category === 'veiculos') { title = `${formData.brandName || editingAd?.title.split(' ')[0]} ${formData.modelName} ${formData.year || ''}`.trim() || formData.vehicleType; }
-    else if (formData.category === 'imoveis') { title = `${formData.realEstateType || 'Imóvel'} - ${formData.area}m²`; }
-    else if (formData.category === 'servicos') { title = `${formData.partType || 'Peça/Serviço'} ${formData.condition ? `(${formData.condition})` : ''}`; }
-    if (!title || title.trim() === '') title = editingAd?.title || 'Anúncio sem título';
+    let title = formData.title || editingAd?.title || 'Anúncio';
+
+    // Fallback logic for legacy safety if title is empty (should not happen with validation)
+    if (!title || title.trim() === '') {
+      if (formData.category === 'veiculos') { title = `${formData.brandName} ${formData.modelName} ${formData.year || ''}`.trim() || formData.vehicleType; }
+      else if (formData.category === 'imoveis') { title = `${formData.realEstateType || 'Imóvel'} - ${formData.area}m²`; }
+      else if (formData.category === 'servicos') { title = `${formData.partType || 'Peça/Serviço'} ${formData.condition ? `(${formData.condition})` : ''}`; }
+    }
+
+    if (!title || title.trim() === '') title = 'Anúncio sem título';
     const boostConfig = calculateBoostConfig(formData.boostPlan as any);
     onFinish({
       title,
@@ -595,7 +603,106 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
   const renderFeatures = () => (<StepContainer title="Opcionais" progress={0.7} onNext={nextStep} onBack={goBack}><p className="text-gray-500 mb-6">Selecione o que seu veículo tem de bom.</p><div className="flex flex-wrap gap-2">{["Airbag", "Ar condicionado", "Alarme", "Bancos de couro", "Câmera de ré", "Sensor de ré", "Som", "Teto solar", "Vidro elétrico", "Trava elétrica"].map(feature => (<button key={feature} onClick={() => toggleFeature(feature)} className={`px-4 py-2.5 rounded-2xl border text-sm font-medium transition-all duration-200 ${formData.features.includes(feature) ? 'bg-primary text-white border-primary shadow-lg shadow-blue-100 transform scale-105' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{feature}</button>))}</div></StepContainer>);
   const renderAdditionalInfo = () => (<StepContainer title="Infos Adicionais" progress={0.8} onNext={nextStep} onBack={goBack}><div className="flex flex-col gap-3">{["Único dono", "IPVA pago", "Licenciado", "Todas as revisões feitas", "Na garantia de fábrica", "Aceita troca"].map(item => (<button key={item} onClick={() => toggleAdditionalInfo(item)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 ${formData.additionalInfo.includes(item) ? 'bg-blue-50 border-primary shadow-sm' : 'bg-white border-gray-100 hover:border-gray-300'}`}><span className={`font-medium ${formData.additionalInfo.includes(item) ? 'text-primary font-bold' : 'text-gray-700'}`}>{item}</span>{formData.additionalInfo.includes(item) && <CheckCircle className="w-5 h-5 text-primary" />}</button>))}</div></StepContainer>);
-  const renderDescription = () => (<StepContainer title="Descrição" progress={0.85} onNext={nextStep} nextDisabled={formData.description.length < 5} onBack={goBack}><textarea value={formData.description} onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))} className="w-full h-64 border border-gray-200 bg-gray-50 rounded-2xl p-5 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 outline-none resize-none text-gray-800 text-lg leading-relaxed shadow-inner" placeholder="Ex: Carro em perfeito estado..." maxLength={1000} /><div className="absolute bottom-4 right-4 text-xs font-bold text-gray-400 bg-white/80 px-2 py-1 rounded-md backdrop-blur-sm border border-gray-100">{formData.description.length}/1000</div></StepContainer>);
+  const renderTitle = () => {
+    const wordCount = formData.title.trim() ? formData.title.trim().split(/\s+/).length : 0;
+    const charCount = formData.title.length;
+    const isExceeded = charCount > 40 || wordCount > 10;
+    const isEmpty = charCount === 0;
+    const canContinue = !isEmpty && !isExceeded;
+
+    return (
+      <StepContainer
+        title="Título do Anúncio"
+        progress={0.82}
+        onNext={nextStep}
+        nextDisabled={!canContinue}
+        onBack={goBack}
+      >
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold text-gray-900 leading-tight">Dê um nome para o seu anúncio</h2>
+          <p className="text-sm text-gray-500 font-medium">Um bom título ajuda compradores a encontrarem seu veículo mais rápido.</p>
+
+          <div className="relative">
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))}
+              placeholder="Ex: Honda Civic 2020 Impecável"
+              className={`w-full border-2 rounded-2xl px-5 py-4 text-xl font-bold focus:ring-4 outline-none transition-all ${isExceeded ? 'border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-primary focus:ring-primary/10'
+                }`}
+            />
+
+            <div className="flex justify-between mt-2 px-1">
+              <div className="flex gap-4">
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${charCount > 40 ? 'text-red-500' : 'text-gray-400'}`}>
+                  {charCount}/40 caracteres
+                </span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${wordCount > 10 ? 'text-red-500' : 'text-gray-400'}`}>
+                  {wordCount}/10 palavras
+                </span>
+              </div>
+              {isExceeded && (
+                <span className="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Limite excedido
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center gap-3">
+            <div className="bg-white p-1.5 rounded-full shadow-sm">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-xs text-blue-800 leading-tight flex-1">
+              <strong>Sugestão:</strong> Use a marca, modelo e um diferencial (Ex: Único Dono, Completo).
+            </p>
+          </div>
+        </div>
+      </StepContainer>
+    );
+  };
+
+  const renderDescription = () => {
+    const wordCount = formData.description.trim() ? formData.description.trim().split(/\s+/).length : 0;
+    const charCount = formData.description.length;
+    const isExceeded = charCount > 500 || wordCount > 200;
+    const canContinue = charCount >= 5 && !isExceeded;
+
+    return (
+      <StepContainer
+        title="Descrição"
+        progress={0.88}
+        onNext={nextStep}
+        nextDisabled={!canContinue}
+        onBack={goBack}
+      >
+        <div className="space-y-4">
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
+            className={`w-full h-64 border-2 bg-gray-50 rounded-2xl p-5 focus:bg-white focus:ring-4 outline-none resize-none text-gray-800 text-lg leading-relaxed shadow-inner transition-all ${isExceeded ? 'border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-primary focus:ring-primary/10'
+              }`}
+            placeholder="Ex: Carro em perfeito estado, revisado recentemente..."
+          />
+          <div className="flex justify-between items-center px-1">
+            <div className="flex gap-4">
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${charCount > 500 ? 'text-red-500' : 'text-gray-400'}`}>
+                {charCount}/500 caracteres
+              </span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${wordCount > 200 ? 'text-red-500' : 'text-gray-400'}`}>
+                {wordCount}/200 palavras
+              </span>
+            </div>
+            {isExceeded && (
+              <span className="text-[10px] font-bold text-red-500 uppercase flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> Limite excedido
+              </span>
+            )}
+          </div>
+        </div>
+      </StepContainer>
+    );
+  };
 
   const renderPrice = () => {
     let fipeComparison = null;
@@ -766,6 +873,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     case CreateStep.ADDITIONAL_INFO: return renderAdditionalInfo();
     case CreateStep.REAL_ESTATE_SPECS: return (<StepContainer title="Detalhes do Imóvel" progress={0.5} onNext={nextStep} onBack={goBack}><div className="space-y-4"><div><label className="block text-sm font-bold text-gray-700 mb-2">Área Total (m²)</label><input type="text" inputMode="numeric" value={formData.area} onChange={(e) => setFormData(p => ({ ...p, area: e.target.value.replace(/\D/g, '') }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary outline-none" placeholder="0" /></div><div><label className="block text-sm font-bold text-gray-700 mb-2">Quartos</label><div className="flex gap-2">{[1, 2, 3, 4, 5].map(n => (<button key={n} onClick={() => setFormData(p => ({ ...p, bedrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bedrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>))}</div></div><div><label className="block text-sm font-bold text-gray-700 mb-2">Banheiros</label><div className="flex gap-2">{[1, 2, 3, 4].map(n => (<button key={n} onClick={() => setFormData(p => ({ ...p, bathrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bathrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>))}</div></div><div><label className="block text-sm font-bold text-gray-700 mb-2">Vagas</label><div className="flex gap-2">{[0, 1, 2, 3].map(n => (<button key={n} onClick={() => setFormData(p => ({ ...p, parking: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.parking === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>))}</div></div></div></StepContainer>);
     case CreateStep.REAL_ESTATE_FEATURES: return (<StepContainer title="Comodidades" progress={0.6} onNext={nextStep} onBack={goBack}><div className="flex flex-wrap gap-2">{["Piscina", "Churrasqueira", "Academia", "Elevador", "Portaria 24h", "Varanda", "Armários", "Ar Condicionado", "Jardim"].map(f => (<button key={f} onClick={() => toggleFeature(f)} className={`px-4 py-2.5 rounded-2xl border text-sm font-medium transition-all ${formData.features.includes(f) ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{f}</button>))}</div></StepContainer>);
+    case CreateStep.TITLE: return renderTitle();
     case CreateStep.DESCRIPTION: return renderDescription();
     case CreateStep.PRICE: return renderPrice();
     case CreateStep.CONTACT: return renderContact();

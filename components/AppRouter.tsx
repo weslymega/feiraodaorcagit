@@ -142,16 +142,19 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
 
     // 3. Lista para o Dashboard (Veículos)
     const dashboardVehicleAds = activeRealAds.filter(ad =>
-        (ad.category === 'veiculos' || ad.category === 'autos')
+        ad.category === 'veiculos'
     ).slice(0, 20);
 
     // 4. Destaques (Reais Pagos/Destaques)
     const displayFeaturedAds = activeRealAds.filter(ad =>
+        ad.category === 'veiculos' &&
         (ad.isFeatured || (ad.boostPlan && ad.boostPlan !== 'gratis'))
     );
 
     // 5. Veículos na Feira (Lógica Atualizada)
-    const fairAds = activeRealAds.filter(ad => ad.isInFair === true);
+    const fairAds = activeRealAds.filter(ad =>
+        ad.category === 'veiculos' && ad.isInFair === true
+    );
 
     // 6. Lista Completa para o Admin - Veículos
     const allAdminVehicleAds = Array.isArray(adminAds) ? adminAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos') : [];
@@ -286,7 +289,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
                 return <CreateAd user={user} onBack={() => { (state.cameFromMyAds) ? navigateTo(Screen.MY_ADS) : goBackToDashboard(); state.setAdToEdit(undefined); state.setCameFromMyAds(false); }} onFinish={handleCreateAdFinish} editingAd={state.adToEdit} />;
             case Screen.VEHICLES_LIST:
                 // Include Only Real Approved Ads
-                const vehicleListAds = activeRealAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos');
+                const vehicleListAds = activeRealAds.filter(ad => ad.category === 'veiculos');
                 return <VehiclesList ads={vehicleListAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => state.setFilterContext(null)} promotions={vehiclesPromotions} onNavigate={navigateTo} />;
             case Screen.REAL_ESTATE_LIST:
                 const realEstateListAds = activeRealAds.filter(ad => ad.category === 'imoveis');

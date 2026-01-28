@@ -22,7 +22,7 @@ export const PersonalizedFeedSection: React.FC<PersonalizedFeedProps> = ({ ads, 
         });
 
         // Categorize
-        const autos = eligibleAds.filter(ad => ad.category === 'autos' || ad.category === 'veiculos');
+        const autos = eligibleAds.filter(ad => ad.category === 'veiculos');
 
         // Create final list with more vehicles (increased from 10 to 20)
         const selectedAds = [

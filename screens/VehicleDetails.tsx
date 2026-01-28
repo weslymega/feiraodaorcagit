@@ -198,16 +198,16 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
               <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 text-white backdrop-blur-md border border-white/20 hover:bg-white/20"><ChevronRight className="w-6 h-6" /></button>
             </>
           )}
-          <div className="absolute top-0 left-0 right-0 p-4 pt-6 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
-            <button onClick={onBack} className="p-2 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 pointer-events-auto border border-white/10"><ChevronLeft className="w-6 h-6" /></button>
-            <div className="flex gap-3 pointer-events-auto">
-              <button onClick={(e) => { e.stopPropagation(); setIsReportModalOpen(true); }} className="p-2 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-red-500 hover:border-red-500 border border-white/10 transition-colors" title="Denunciar"><Flag className="w-6 h-6" /></button>
-              <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }} className={`p-2 rounded-full backdrop-blur-md transition-all border ${isFavorite ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/30' : 'bg-white/20 border-white/10 text-white hover:bg-white/30'}`}><Heart className={`w-6 h-6 ${isFavorite ? 'fill-current' : ''}`} /></button>
+          <div className="absolute top-0 left-0 right-0 p-4 pt-6 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent pointer-events-none z-30">
+            <button onClick={onBack} className="p-2.5 rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-black/50 pointer-events-auto border border-white/10 shadow-lg transition-all active:scale-90"><ChevronLeft className="w-6 h-6" /></button>
+            <div className="flex gap-2 pointer-events-auto">
+              <button onClick={(e) => { e.stopPropagation(); setIsReportModalOpen(true); }} className="p-2.5 rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-red-500 border border-white/10 transition-all active:scale-90" title="Denunciar"><Flag className="w-5 h-5" /></button>
+              <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }} className={`p-2.5 rounded-full backdrop-blur-md transition-all border shadow-lg active:scale-90 ${isFavorite ? 'bg-red-500 border-red-500 text-white shadow-red-500/30' : 'bg-black/30 border-white/10 text-white hover:bg-white/20'}`}><Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} /></button>
               <button
                 onClick={(e) => { e.stopPropagation(); handleShareQR(); }}
-                className="p-2 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 border border-white/10"
+                className="p-2.5 rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-white/20 border border-white/10 active:scale-90"
               >
-                <Share2 className="w-6 h-6" />
+                <Share2 className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -258,21 +258,27 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
             </div>
           )}
 
-          <div className="flex items-start justify-between gap-4 mb-2">
-            <h1 className="text-xl font-bold text-gray-900 leading-snug">
-              {truncateTitle(ad.title || "Sem título")}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1.5 rounded-lg whitespace-nowrap border border-blue-100 uppercase tracking-wider shadow-sm">
+                {ad.vehicleType || "Veículo"}
+              </span>
+            </div>
+            <h1 className="text-3xl font-black text-gray-900 leading-[1.1] tracking-tight">
+              {ad.title || "Sem título"}
             </h1>
-            <span className="bg-blue-50 text-primary text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap border border-blue-100">{ad.vehicleType || "Veículo"}</span>
           </div>
 
           <div className="flex gap-2 flex-wrap mb-6">
-            {ad.isOwner && (<span className="inline-block bg-green-50 text-green-700 text-[10px] font-bold px-2 py-1 rounded-md border border-green-100">Único dono</span>)}
-            {ad.ipvaPaid && (<span className="inline-block bg-green-50 text-green-700 text-[10px] font-bold px-2 py-1 rounded-md border border-green-100">IPVA pago</span>)}
+            {ad.isOwner && (<span className="inline-block bg-green-50 text-green-700 text-[10px] font-black px-2 py-1 rounded-lg border border-green-100 uppercase">Único dono</span>)}
+            {ad.ipvaPaid && (<span className="inline-block bg-green-50 text-green-700 text-[10px] font-black px-2 py-1 rounded-lg border border-green-100 uppercase">IPVA pago</span>)}
           </div>
 
           <div className="mb-8">
-            <span className="text-sm text-gray-500 font-medium block mb-1">Valor à vista</span>
-            <h2 className="text-4xl font-bold text-primary tracking-tight">{(ad.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}</h2>
+            <span className="text-xs text-gray-400 font-bold block mb-1 uppercase tracking-wide">Valor à vista</span>
+            <h2 className="text-5xl font-black text-blue-700 tracking-tighter">
+              {(ad.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </h2>
           </div>
 
           {/* Seller Info Card (Clickable) */}
@@ -332,7 +338,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
 
           {ad.additionalInfo && ad.additionalInfo.length > 0 && (
             <div className="mb-8">
-              <h3 className="font-bold text-gray-900 mb-3 text-lg">Destaques do Vendedor</h3>
+              <h3 className="font-bold text-gray-900 mb-3 text-lg">Destaques do Veiculo</h3>
               <div className="flex flex-wrap gap-2">
                 {ad.additionalInfo.map((info, idx) => (
                   <span key={idx} className="bg-green-50 text-green-700 px-3 py-2 rounded-xl text-sm font-bold border border-green-100 flex items-center gap-1.5">
@@ -362,11 +368,17 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-50 max-w-md mx-auto shadow-[0_-5px_20px_rgba(0,0,0,0.05)] rounded-t-[30px]">
-          <button onClick={onStartChat} className="flex-1 bg-accent hover:bg-accent-hover text-white font-bold py-4 rounded-2xl shadow-lg shadow-yellow-100 flex items-center justify-center gap-2 transition-all active:scale-95"><MessageSquare className="w-5 h-5" /><span>Chat</span></button>
+        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-50 max-w-md mx-auto rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
+          <button
+            onClick={onStartChat}
+            className="flex-1 bg-[#F1B911] hover:bg-[#D9A60D] text-white font-black py-4 rounded-2xl shadow-xl shadow-yellow-200/50 flex items-center justify-center gap-2 transition-all active:scale-[0.97]"
+          >
+            <MessageSquare className="w-5 h-5 fill-current" />
+            <span>Chat</span>
+          </button>
           <button
             onClick={handleShareQR}
-            className="bg-green-500 hover:bg-green-600 text-white p-4 rounded-2xl shadow-lg shadow-green-100 transition-all active:scale-95"
+            className="bg-[#20C961] hover:bg-[#1BAE53] text-white p-4 rounded-2xl shadow-xl shadow-green-200/50 transition-all active:scale-[0.97]"
           >
             <Share2 className="w-6 h-6" />
           </button>
