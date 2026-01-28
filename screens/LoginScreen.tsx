@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, Image as ImageIcon, Shield, Loader2 } from 'lucide-react';
 import { APP_LOGOS, ADMIN_USER, REGULAR_USER } from '../constants';
 import { User } from '../types';
-import { supabase, api } from '../services/api';
+import { supabase } from '../services/api';
 import { getSiteUrl } from '../utils/url';
 
 interface LoginScreenProps {
@@ -37,32 +37,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
       if (error) throw error;
 
       if (data.user) {
-        // 2. Fetch Profile details (Balance, Plan, etc) or use basic user data
-        // We use api.getProfile to get extra fields if they exist in 'profiles' table
-        let profile = null;
-        try {
-          profile = await api.getProfile();
-        } catch (err) {
-          console.warn("Could not fetch extra profile details", err);
-        }
-
-        const user: User = {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: profile?.name || data.user.user_metadata?.name || "Usuário",
-          avatarUrl: profile?.avatarUrl || data.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${data.user.email}&background=random`,
-          balance: profile?.balance || 0,
-          adsCount: 0, // Should fetch real count if needed
-          activePlan: profile?.activePlan || 'free',
-          isAdmin: profile?.isAdmin || false,
-          verified: !!data.user.email_confirmed_at,
-          joinDate: profile?.joinDate || new Date(data.user.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-          phone: profile?.phone || "",
-          location: profile?.location || "Brasília, DF",
-          bio: profile?.bio || ""
-        };
-
-        onLogin(user);
+        // 2. Success: do NOTHING else.
+        // The onAuthStateChange listener in useAppState.ts will detect the session, 
+        // fetch the profile, set the user, and redirect to Dashboard.
+        console.log("✅ Login successful. Waiting for Auth Listener...");
       }
     } catch (err: any) {
       console.error("Login error:", err);

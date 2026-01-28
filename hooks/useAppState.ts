@@ -90,16 +90,16 @@ export const useAppState = () => {
     };
   }, []);
 
-  // 1.1 Auth State Change Listener (For Google Login & Session Restoration)
+  // 1.1 Auth State Change Listener (Single Source of Truth)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("🔐 Auth State Change:", event, session?.user?.id);
 
       if (event === 'SIGNED_IN' && session?.user) {
-        // Fetch Profile details (Balance, Plan, etc) or use basic user data
+        // Fetch Profile details safely
         let profile = null;
         try {
-          profile = await api.getProfile();
+          profile = await api.getProfile(); // Handles PGRST116 gracefully internally
         } catch (err) {
           console.warn("Could not fetch extra profile details", err);
         }
@@ -121,10 +121,18 @@ export const useAppState = () => {
         };
 
         setUser(authenticatedUser);
-        setCurrentScreen(Screen.DASHBOARD); // Auto-redirect to dashboard
+
+        // ONLY navigate if we are currently in auth screens or loading
+        // This prevents resetting the user to dashboard if they are already browsing elsewhere (e.g. strict refresh)
+        // BUT for this specific task requirement ("email/password login"), we enforce dashboard redirect on login event.
+        // We check currentScreen via the state variable available in closure, but be careful with stale closures.
+        // Since this runs on mount, it captures initial state. 
+        // Best practice: Always redirect to Dashboard on explicit SIGNED_IN event to ensure consistency.
+        setCurrentScreen(Screen.DASHBOARD);
+
       } else if (event === 'SIGNED_OUT') {
-        // Should already handle logout content, but good for safety
-        // setUser(CURRENT_USER); // Reset to default guest? Or handled by handleLogout
+        setUser(CURRENT_USER); // Reset to default/guest
+        setCurrentScreen(Screen.LOGIN);
       }
     });
 
