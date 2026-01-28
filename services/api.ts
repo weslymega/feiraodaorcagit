@@ -255,10 +255,20 @@ export const api = {
             .single();
 
         if (error) {
+            // PGRST116: JSON object requested, multiple (or no) rows returned
+            // This happens when the Profile Trigger hasn't finished running yet.
+            // We return NULL gracefully so the UI uses auth.user metadata as a fallback.
+            if (error.code === 'PGRST116') {
+                console.log("ℹ️ Perfil ainda não criado pelo Trigger (Async Race Condition). Usando fallback...");
+                return null;
+            }
+
             console.error("❌ Erro no getProfile:", error);
             return null;
         }
 
+        // SAFETY CHECK: Never trust the frontend to dictate admin status if it was somehow passed incorrectly.
+        // We only read what is in the database.
         console.log("👤 Perfil carregado do DB:", {
             id: data.id,
             show_online_status: data.show_online_status,
