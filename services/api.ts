@@ -308,6 +308,38 @@ export const api = {
     },
 
     /**
+     * Update User Profile
+     */
+    updateProfile: async (userData: Partial<User>) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const updateData: any = {
+            updated_at: new Date().toISOString()
+        };
+
+        // Somente envia se o valor existir para evitar conflitos de tipos ou colunas faltantes
+        if (userData.name !== undefined) updateData.name = userData.name;
+        if (userData.avatarUrl !== undefined) updateData.avatar_url = userData.avatarUrl;
+        if (userData.phone !== undefined) updateData.phone = userData.phone;
+        if (userData.location !== undefined) updateData.location = userData.location;
+        if (userData.bio !== undefined) updateData.bio = userData.bio;
+
+        const { error } = await supabase
+            .from('profiles')
+            .update(updateData)
+            .eq('id', user.id);
+
+        if (error) {
+            console.error("❌ Erro ao atualizar perfil no DB:", error);
+            throw error;
+        }
+
+        console.log("✅ Perfil atualizado com sucesso no DB");
+        return true;
+    },
+
+    /**
      * Get Single Ad by ID
      */
     getAdById: async (adId: string) => {

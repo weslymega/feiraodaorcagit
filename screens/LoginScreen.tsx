@@ -71,6 +71,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      setErrorMsg('');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Google login error:", err);
+      setErrorMsg("Erro ao iniciar login com Google.");
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen relative flex flex-col overflow-hidden">
 
@@ -190,10 +208,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
         <div className="mt-8 flex flex-col items-center gap-4">
           <p className="text-white/70 text-xs uppercase tracking-wide font-medium">Ou continue com</p>
           <div className="flex gap-4">
-            <button className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors border border-white/20">
+            <button
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Entrar com Google"
+            >
               <span className="font-bold text-white">G</span>
             </button>
-            <button className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors border border-white/20">
+            <button className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors border border-white/20 opacity-50 cursor-not-allowed" title="Em breve">
               <span className="font-bold text-white">f</span>
             </button>
           </div>

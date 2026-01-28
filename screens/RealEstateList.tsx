@@ -5,6 +5,8 @@ import { AdItem, FilterContext, AdStatus, RealEstatePromotion, Screen } from '..
 import { REAL_ESTATE_PROMO_BANNERS } from '../constants';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
+import { Skeleton } from '../components/ui/Skeleton';
+import { SmartImage } from '../components/ui/SmartImage';
 
 interface RealEstateListProps {
   ads: AdItem[];
@@ -31,6 +33,20 @@ const PROPERTY_QUICK_FILTERS = [
   { id: 'Terreno', label: 'Terrenos' },
   { id: 'Comercial', label: 'Comercial' },
 ];
+
+export const VerticalCardSkeleton: React.FC = () => (
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <Skeleton className="h-56 w-full" />
+    <div className="p-4 space-y-3">
+      <Skeleton className="h-6 w-full rounded" />
+      <Skeleton className="h-4 w-1/3 rounded pt-1" />
+      <div className="flex justify-between items-center border-t border-gray-50 pt-3">
+        <Skeleton className="h-8 w-1/3 rounded-lg" />
+        <Skeleton className="h-5 w-1/4 rounded" />
+      </div>
+    </div>
+  </div>
+);
 
 export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate }) => {
   const [transactionType, setTransactionType] = useState<'sale' | 'rent'>('sale');
@@ -312,14 +328,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
       {/* Promotional Carousel */}
       <div className="mb-2">
-        <PromoCarousel
-          banners={carouselBanners}
-          onPromoClick={(promo) => {
-            if (promo.link && promo.link !== '#') {
-              window.open(promo.link, '_blank');
-            }
-          }}
-        />
+        <PromoCarousel banners={carouselBanners} />
       </div>
 
       {/* Property Type Quick Filters (NEW) */}
@@ -341,75 +350,81 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       {/* Results List */}
       <div className="px-4 flex flex-col gap-4">
         <p className="text-sm font-bold text-gray-700 ml-1 mb-0">
-          {filteredAds.length} imóveis encontrados
+          {ads === undefined ? 'Buscando imóveis...' : `${filteredAds.length} imóveis encontrados`}
         </p>
 
-        {
-          filteredAds.length > 0 ? (
-            filteredAds.map((ad) => {
-              const isFav = favorites.some(f => f.id === ad.id);
-              return (
-                <div
-                  key={ad.id}
-                  onClick={() => onAdClick(ad)}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-all group"
-                >
-                  <div className="relative h-56 w-full">
-                    <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleFavorite(ad);
-                        }}
-                        className="p-2 bg-white/80 backdrop-blur-md rounded-full text-gray-500 hover:text-red-500 transition-colors shadow-sm"
-                      >
-                        <Heart className={`w-5 h-5 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
-                      </button>
-                    </div>
-
-                    {/* Tag Category */}
-                    <div className="absolute bottom-3 left-3 flex gap-2">
-                      <span className="bg-white/95 backdrop-blur-sm text-gray-800 text-xs font-bold px-3 py-1 rounded-lg shadow-sm">
-                        {ad.realEstateType}
-                      </span>
-                    </div>
+        {ads === undefined ? (
+          [1, 2, 3].map(i => <VerticalCardSkeleton key={i} />)
+        ) : filteredAds.length > 0 ? (
+          filteredAds.map((ad) => {
+            const isFav = favorites.some(f => f.id === ad.id);
+            return (
+              <div
+                key={ad.id}
+                onClick={() => onAdClick(ad)}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-all group"
+              >
+                <div className="relative h-56 w-full">
+                  <SmartImage
+                    src={ad.image}
+                    alt={ad.title}
+                    className="w-full h-full object-cover"
+                    skeletonClassName="h-56 w-full"
+                  />
+                  <div className="absolute top-3 right-3 flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFavorite(ad);
+                      }}
+                      className="p-2 bg-white/80 backdrop-blur-md rounded-full text-gray-500 hover:text-red-500 transition-colors shadow-sm"
+                    >
+                      <Heart className={`w-5 h-5 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
+                    </button>
                   </div>
 
-                  <div className="p-4">
-                    <h3 className="font-bold text-gray-900 text-lg line-clamp-1 mb-1">{ad.title}</h3>
-                    <div className="flex items-center gap-1 text-gray-500 text-xs font-medium mb-3">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>{ad.location}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center border-t border-gray-50 pt-3">
-                      <div>
-                        <PriceTag value={ad.price} />
-                        {ad.transactionType === 'rent' && <span className="text-gray-400 text-xs">/mês</span>}
-                      </div>
-                      {ad.area && (
-                        <div className="text-right">
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mr-1">Área</span>
-                          <span className="text-gray-700 font-bold">{ad.area}m²</span>
-                        </div>
-                      )}
-                    </div>
+                  {/* Tag Category */}
+                  <div className="absolute bottom-3 left-3 flex gap-2">
+                    <span className="bg-white/95 backdrop-blur-sm text-gray-800 text-xs font-bold px-3 py-1 rounded-lg shadow-sm">
+                      {ad.realEstateType}
+                    </span>
                   </div>
                 </div>
-              );
-            })
-          ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-              <Search className="w-12 h-12 mb-2 text-gray-300" />
-              <p>Nenhum imóvel encontrado.</p>
-              {activeFiltersCount > 0 && (
-                <button onClick={clearFilters} className="mt-4 text-primary font-bold text-sm underline">
-                  Limpar Filtros
-                </button>
-              )}
-            </div>
-          )
+
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-900 text-lg line-clamp-1 mb-1">{ad.title}</h3>
+                  <div className="flex items-center gap-1 text-gray-500 text-xs font-medium mb-3">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>{ad.location}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center border-t border-gray-50 pt-3">
+                    <div>
+                      <PriceTag value={ad.price} />
+                      {ad.transactionType === 'rent' && <span className="text-gray-400 text-xs">/mês</span>}
+                    </div>
+                    {ad.area && (
+                      <div className="text-right">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mr-1">Área</span>
+                        <span className="text-gray-700 font-bold">{ad.area}m²</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <Search className="w-12 h-12 mb-2 text-gray-300" />
+            <p>Nenhum imóvel encontrado.</p>
+            {activeFiltersCount > 0 && (
+              <button onClick={clearFilters} className="mt-4 text-primary font-bold text-sm underline">
+                Limpar Filtros
+              </button>
+            )}
+          </div>
+        )
         }
       </div >
 

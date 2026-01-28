@@ -7,6 +7,8 @@ import { fipeApi, FipeItem } from '../services/fipeApi';
 import { VEHICLES_PROMO_BANNERS } from '../constants';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
+import { Skeleton } from '../components/ui/Skeleton';
+import { SmartImage } from '../components/ui/SmartImage';
 
 interface VehiclesListProps {
   ads: AdItem[];
@@ -47,6 +49,17 @@ const FUEL_OPTIONS = ['Flex', 'Gasolina', 'Diesel', 'Elétrico', 'Híbrido'];
 
 // Gera anos de 2026 até 1950
 const YEARS = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => 2026 - i);
+
+export const VerticalCardSkeleton: React.FC = () => (
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <Skeleton className="h-48 w-full" />
+    <div className="p-4 space-y-3">
+      <Skeleton className="h-6 w-full rounded" />
+      <Skeleton className="h-7 w-1/3 rounded-lg" />
+      <Skeleton className="h-4 w-1/4 rounded mt-3" />
+    </div>
+  </div>
+);
 
 export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate }) => {
   const [selectedGroup, setSelectedGroup] = useState('todos');
@@ -270,6 +283,30 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   }, [ads, selectedGroup, searchTerm, filters]);
 
+  const isPromotionVisible = (promo: VehiclesPromotion) => {
+    const today = new Date();
+    return promo.active &&
+      today >= new Date(promo.startDate) &&
+      today <= new Date(promo.endDate);
+  };
+
+  const carouselBanners = useMemo(() => {
+    const activePromos = promotions
+      .filter(isPromotionVisible)
+      .sort((a, b) => a.order - b.order)
+      .map(p => ({
+        id: p.id,
+        title: p.title || '',
+        subtitle: p.subtitle,
+        image: p.image,
+        ctaText: 'VER MAIS',
+        // Internal link logic handled by PromoCarousel, we pass p.link just in case but it's ignored for modal usually
+        // Note: PromoCarousel handles click > modal now.
+      }));
+
+    return activePromos.length > 0 ? activePromos : VEHICLES_PROMO_BANNERS;
+  }, [promotions]);
+
   // Filters that are counted for the badge (excluding Brand/Model since they are visible)
   const activeFiltersCount = [
     filters.minPrice, filters.maxPrice, filters.minYear, filters.maxYear,
@@ -411,38 +448,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
       {/* Promotional Carousel */}
       <div className="mb-3">
-        <PromoCarousel
-          banners={useMemo(() => {
-            const isPromotionVisible = (promo: VehiclesPromotion): boolean => {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const start = new Date(promo.startDate);
-              start.setHours(0, 0, 0, 0);
-              const end = new Date(promo.endDate);
-              end.setHours(23, 59, 59, 999);
-              return promo.active && today >= start && today <= end;
-            };
-
-            const visiblePromotions = promotions
-              .filter(isPromotionVisible)
-              .sort((a, b) => a.order - b.order)
-              .map(p => ({
-                id: p.id,
-                title: p.title || '',
-                subtitle: p.subtitle,
-                image: p.image,
-                ctaText: 'VER MAIS',
-                link: p.link
-              }));
-
-            return visiblePromotions.length > 0 ? visiblePromotions : VEHICLES_PROMO_BANNERS;
-          }, [promotions])}
-          onPromoClick={(promo) => {
-            if (promo.link && promo.link !== '#') {
-              window.open(promo.link, '_blank');
-            }
-          }}
-        />
+        <PromoCarousel banners={carouselBanners} />
       </div>
 
       {/* Groups / Categories */}
@@ -463,7 +469,9 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
       {/* Ads List */}
       <div className="px-4 flex flex-col gap-4 relative z-0">
-        {filteredAds.length > 0 ? (
+        {ads === undefined ? (
+          [1, 2, 3].map(i => <VerticalCardSkeleton key={i} />)
+        ) : filteredAds.length > 0 ? (
           filteredAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);
 
@@ -500,7 +508,12 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                 className={`bg-white rounded-2xl shadow-sm border overflow-hidden cursor-pointer active:scale-[0.99] transition-all group ${borderClass}`}
               >
                 <div className="relative h-48 w-full">
-                  <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
+                  <SmartImage
+                    src={ad.image}
+                    alt={ad.title}
+                    className="w-full h-full object-cover"
+                    skeletonClassName="h-48 w-full"
+                  />
 
                   {/* Badge de Destaque (Se houver) */}
                   {badge}

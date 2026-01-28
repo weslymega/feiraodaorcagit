@@ -2,8 +2,11 @@ import React, { useMemo } from 'react';
 import { Home, ChevronRight, TrendingUp, BedDouble, Ruler } from 'lucide-react';
 import { AdItem, Screen } from '../../types';
 
+import { SmartImage } from '../ui/SmartImage';
+import { HorizontalAdCardSkeleton } from '../../screens/Dashboard';
+
 interface TrendingRealEstateProps {
-    ads: AdItem[];
+    ads?: AdItem[];
     onAdClick: (ad: AdItem) => void;
     onNavigate: (screen: Screen) => void;
     onViewAll: () => void;
@@ -32,6 +35,19 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
         // Sort by Score Descending
         return scoredAds.sort((a, b) => b.score - a.score).map(item => item.ad);
     }, [ads]);
+
+    if (ads === undefined) {
+        return (
+            <div className="mb-8">
+                <div className="px-4 mb-4 flex items-center justify-between">
+                    <h2 className="font-bold text-gray-900 text-lg uppercase tracking-tighter">Imóveis em Alta</h2>
+                </div>
+                <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
+                    {[1, 2, 3].map(i => <HorizontalAdCardSkeleton key={i} />)}
+                </div>
+            </div>
+        );
+    }
 
     if (trendingAds.length === 0) return null;
 
@@ -65,7 +81,12 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
                         )}
 
                         <div className="h-32 w-full relative">
-                            <img src={estate.image} alt={estate.title} className="w-full h-full object-cover" />
+                            <SmartImage
+                                src={estate.image}
+                                alt={estate.title}
+                                className="w-full h-full object-cover"
+                                skeletonClassName="h-32 w-full"
+                            />
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
                                 <p className="text-white font-bold text-lg">
                                     {estate.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}

@@ -2,8 +2,11 @@ import React, { useMemo } from 'react';
 import { ChevronRight, Sparkles } from 'lucide-react';
 import { AdItem, AdStatus, Screen } from '../../types';
 
+import { SmartImage } from '../ui/SmartImage';
+import { HorizontalAdCardSkeleton } from '../../screens/Dashboard';
+
 interface PersonalizedFeedProps {
-    ads: AdItem[];
+    ads?: AdItem[];
     onAdClick: (ad: AdItem) => void;
     onNavigate: (screen: Screen) => void;
     onViewAll?: () => void;
@@ -38,6 +41,22 @@ export const PersonalizedFeedSection: React.FC<PersonalizedFeedProps> = ({ ads, 
 
     }, [ads]);
 
+    if (ads === undefined) {
+        return (
+            <div className="mb-8">
+                <div className="px-4 mb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        <h2 className="font-bold text-gray-900 text-lg leading-tight uppercase tracking-tighter">Sugestões</h2>
+                    </div>
+                </div>
+                <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
+                    {[1, 2, 3].map(i => <HorizontalAdCardSkeleton key={i} />)}
+                </div>
+            </div>
+        );
+    }
+
     if (feedAds.length === 0) return null;
 
     return (
@@ -66,7 +85,12 @@ export const PersonalizedFeedSection: React.FC<PersonalizedFeedProps> = ({ ads, 
                         className="min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
                     >
                         <div className="h-28 w-full relative bg-gray-100">
-                            <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
+                            <SmartImage
+                                src={ad.image}
+                                alt={ad.title}
+                                className="w-full h-full object-cover"
+                                skeletonClassName="h-28 w-full"
+                            />
                             {ad.category === 'autos' && (
                                 <span className="absolute bottom-0 right-0 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded-tl-lg backdrop-blur-sm">
                                     {ad.year}

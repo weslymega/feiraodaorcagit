@@ -3,15 +3,34 @@ import React from 'react';
 import { Wrench, ChevronRight, MessageCircle } from 'lucide-react';
 import { AdItem, Screen } from '../../types';
 
+import { SmartImage } from '../ui/SmartImage';
+import { HorizontalAdCardSkeleton } from '../../screens/Dashboard';
+
 interface AutomotiveServicesProps {
-    ads: AdItem[];
+    ads?: AdItem[];
     onAdClick: (ad: AdItem) => void;
     onNavigate: (screen: Screen) => void;
     onViewAll: () => void;
 }
 
 export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ ads, onAdClick, onNavigate, onViewAll }) => {
-    const serviceAds = ads.filter(ad => ad.category === 'servicos');
+    const serviceAds = ads?.filter(ad => ad.category === 'servicos') || [];
+
+    if (ads === undefined) {
+        return (
+            <div className="mb-8">
+                <div className="px-4 mb-4 flex items-center gap-2">
+                    <div className="bg-purple-100 p-2 rounded-full">
+                        <Wrench className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <h2 className="font-bold text-gray-900 text-lg">Serviços</h2>
+                </div>
+                <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
+                    {[1, 2, 3].map(i => <HorizontalAdCardSkeleton key={i} />)}
+                </div>
+            </div>
+        );
+    }
 
     if (serviceAds.length === 0) return null;
 
@@ -41,7 +60,12 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
                         className="min-w-[200px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow relative"
                     >
                         <div className="h-28 w-full relative">
-                            <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
+                            <SmartImage
+                                src={service.image}
+                                alt={service.title}
+                                className="w-full h-full object-cover"
+                                skeletonClassName="h-28 w-full"
+                            />
                             <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded text-gray-700">
                                 {service.partType || 'Serviço'}
                             </div>

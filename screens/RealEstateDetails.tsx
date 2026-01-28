@@ -1,9 +1,11 @@
 
 import React, { useState } from 'react';
 import { ChevronLeft, Heart, Share2, MapPin, MessageSquare, User as UserIcon, ChevronRight, Bed, Bath, Maximize, Car, QrCode, Printer, Download, Home, Camera, Flag } from 'lucide-react';
+import { generateA4PrintTemplate } from '../services/printTemplates';
 import { AdItem, ReportItem } from '../types';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
+import { SmartImage } from '../components/ui/SmartImage';
 
 interface RealEstateDetailsProps {
   ad: AdItem;
@@ -42,7 +44,7 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
   const features = ad.features || [];
 
   const qrData = `https://feiraodaorca.app/ad/${ad.id}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10&ecc=H`;
 
   const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % images.length);
   const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
@@ -64,9 +66,10 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
   };
 
   const handlePrintQR = () => {
-    const printWindow = window.open('', '', 'width=600,height=600');
+    const printWindow = window.open('', '_blank');
     if (printWindow) {
-      printWindow.document.write(`<html><body><h1>${ad.title || 'Anúncio'}</h1><img src="${qrCodeUrl}" onload="setTimeout(function(){ window.print(); window.close(); }, 500);" /></body></html>`);
+      const html = generateA4PrintTemplate(ad, qrCodeUrl);
+      printWindow.document.write(html);
       printWindow.document.close();
     }
   };
@@ -114,11 +117,11 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
       />
 
       <div className="relative h-72 w-full bg-gray-900 group">
-        <img
-          src={images[currentImageIndex] || 'https://via.placeholder.com/800x600?text=Erro+Imagem'}
+        <SmartImage
+          src={images[currentImageIndex]}
           alt={`${ad.title || 'Imóvel'} - Foto ${currentImageIndex + 1}`}
           className="w-full h-full object-cover transition-opacity duration-300"
-          onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800x600?text=Erro+Imagem'; }}
+          skeletonClassName="h-72 w-full"
         />
         {images.length > 1 && (
           <>
@@ -174,7 +177,7 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
         >
           <div className="w-12 h-12 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden">
             {ad.ownerAvatar ? (
-              <img src={ad.ownerAvatar} alt={ad.ownerName} className="w-full h-full object-cover" />
+              <SmartImage src={ad.ownerAvatar} alt={ad.ownerName} className="w-full h-full object-cover" />
             ) : (
               <UserIcon className="w-6 h-6 text-gray-400" />
             )}

@@ -90,6 +90,49 @@ export const useAppState = () => {
     };
   }, []);
 
+  // 1.1 Auth State Change Listener (For Google Login & Session Restoration)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("🔐 Auth State Change:", event, session?.user?.id);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Fetch Profile details (Balance, Plan, etc) or use basic user data
+        let profile = null;
+        try {
+          profile = await api.getProfile();
+        } catch (err) {
+          console.warn("Could not fetch extra profile details", err);
+        }
+
+        const authenticatedUser: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: profile?.name || session.user.user_metadata?.name || "Usuário",
+          avatarUrl: profile?.avatarUrl || session.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${session.user.email}&background=random`,
+          balance: profile?.balance || 0,
+          adsCount: 0,
+          activePlan: profile?.activePlan || 'free',
+          isAdmin: profile?.isAdmin || false,
+          verified: !!session.user.email_confirmed_at,
+          joinDate: profile?.joinDate || new Date(session.user.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+          phone: profile?.phone || "",
+          location: profile?.location || "Brasília, DF",
+          bio: profile?.bio || ""
+        };
+
+        setUser(authenticatedUser);
+        setCurrentScreen(Screen.DASHBOARD); // Auto-redirect to dashboard
+      } else if (event === 'SIGNED_OUT') {
+        // Should already handle logout content, but good for safety
+        // setUser(CURRENT_USER); // Reset to default guest? Or handled by handleLogout
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Fetch Data Effect
   useEffect(() => {
     const fetchData = async () => {

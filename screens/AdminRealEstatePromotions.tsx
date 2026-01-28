@@ -107,9 +107,9 @@ export const AdminRealEstatePromotions: React.FC<AdminRealEstatePromotionsProps>
                                         <Calendar className="w-4 h-4" />
                                         <span>{new Date(banner.startDate).toLocaleDateString()} - {new Date(banner.endDate).toLocaleDateString()}</span>
                                     </div>
-                                    <div className={`flex items-center gap-1 text-sm font-bold ${banner.link ? 'text-primary' : 'text-gray-300'}`}>
-                                        <ExternalLink className="w-4 h-4" />
-                                        <span>{banner.link ? 'Link Ativo' : 'Sem Link'}</span>
+                                    <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md">
+                                        <span className="w-2 h-2 rounded-full bg-primary/50"></span>
+                                        <span className="text-xs font-bold text-gray-600">Promoção Interna</span>
                                     </div>
                                 </div>
 

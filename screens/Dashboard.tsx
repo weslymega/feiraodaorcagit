@@ -4,7 +4,9 @@ import {
   Search, MapPin, Bell, Car, Home, ChevronRight, Wrench, Smartphone, ArrowRight, Sparkles, Star, Map, Camera
 } from 'lucide-react';
 import { Screen, User, AdItem, DashboardPromotion } from '../types';
-import { POPULAR_REAL_ESTATE, POPULAR_SERVICES, POPULAR_CARS, APP_LOGOS, PROMO_BANNERS } from '../constants';
+import { POPULAR_REAL_ESTATE, POPULAR_SERVICES, POPULAR_CARS, APP_LOGOS, PROMO_BANNERS, CATEGORY_ICONS } from '../constants';
+import { Skeleton } from '../components/ui/Skeleton';
+import { SmartImage } from '../components/ui/SmartImage';
 
 interface DashboardProps {
   user: User;
@@ -14,7 +16,10 @@ interface DashboardProps {
   adsAtFair?: AdItem[]; // Veículos na feira
   featuredAds?: AdItem[]; // Veículos em destaque (Dinâmico)
   recentVehicles?: AdItem[]; // Veículos gerais (incluindo do usuário)
+  trendingRealEstate?: AdItem[]; // Imóveis em alta
   fairActive?: boolean; // Controls global visibility of the Fair section
+  onOpenNewArrivals: () => void;
+  onOpenServices: () => void;
   onOpenTrending: () => void;
   serviceAds?: AdItem[]; // Lista unificada de serviços
   dashboardPromotions?: DashboardPromotion[]; // Nova prop
@@ -36,28 +41,88 @@ const isPromotionVisible = (promo: DashboardPromotion): boolean => {
 
 // Category Button Component
 const CategoryItem: React.FC<{
-  icon: React.ReactNode,
+  icon?: React.ReactNode,
+  imageUrl?: string,
   label: string,
   badge?: string,
   onClick?: () => void
-}> = ({ icon, label, badge, onClick }) => (
-  <button
-    onClick={onClick}
-    disabled={!!badge}
-    className={`flex flex-col items-center gap-2 w-full transition-opacity group ${badge ? 'cursor-default' : 'active:opacity-70'}`}
-  >
-    <div className="w-full aspect-square max-w-[70px] bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center text-primary group-hover:border-accent group-hover:shadow-md transition-all relative overflow-visible">
-      {icon}
-      {badge && (
-        <div className="absolute -top-3 -right-3 z-20 animate-pulse">
-          <div className="bg-gradient-to-r from-red-600 to-pink-600 text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg border-2 border-white transform rotate-3 whitespace-nowrap tracking-wide">
-            {badge.toUpperCase()}!
+}> = ({ icon, imageUrl, label, badge, onClick }) => {
+  // Define color schemes based on label to respect "no props change" rule
+  // Using high-contrast icon colors on soft pastel backgrounds for AA accessibility
+  const getScheme = (l: string) => {
+    const lowerLabel = l.toLowerCase();
+    if (lowerLabel.includes('veículo')) return {
+      bg: 'bg-blue-50',
+      border: 'border-blue-100',
+      icon: 'text-blue-700',
+      hoverBorder: 'group-hover:border-blue-300'
+    };
+    if (lowerLabel.includes('imóve')) return {
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-100',
+      icon: 'text-emerald-700',
+      hoverBorder: 'group-hover:border-emerald-300'
+    };
+    if (lowerLabel.includes('peça')) return {
+      bg: 'bg-orange-50',
+      border: 'border-orange-100',
+      icon: 'text-orange-700',
+      hoverBorder: 'group-hover:border-orange-300'
+    };
+    return { // Default / Celulares
+      bg: 'bg-gray-50',
+      border: 'border-gray-100',
+      icon: 'text-gray-600',
+      hoverBorder: 'group-hover:border-gray-300'
+    };
+  };
+
+  const scheme = getScheme(label);
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={!!badge}
+      className={`flex flex-col items-center gap-2.5 w-full transition-all group ${badge ? 'cursor-default opacity-60' : 'active:scale-95'}`}
+    >
+      <div className={`w-full aspect-square max-w-[70px] ${scheme.bg} rounded-3xl border-2 ${scheme.border} flex items-center justify-center ${scheme.icon} ${scheme.hoverBorder} transition-all duration-300 relative overflow-visible shadow-sm`}>
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={label}
+            className="w-12 h-12 object-contain transition-transform group-hover:scale-110 duration-300"
+          />
+        ) : icon ? (
+          React.cloneElement(icon as React.ReactElement, {
+            className: 'w-8 h-8 transition-transform group-hover:scale-110 duration-300',
+            strokeWidth: 2.5
+          })
+        ) : null}
+
+        {badge && (
+          <div className="absolute -top-2.5 -right-2.5 z-20">
+            <div className="bg-gray-400 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-sm border border-white transform rotate-3 whitespace-nowrap tracking-wide">
+              {badge.toUpperCase()}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      <span className={`text-[10px] font-black text-center leading-tight px-1 uppercase tracking-tighter transition-colors ${badge ? 'text-gray-400' : 'text-gray-600 group-hover:text-gray-900'}`}>{label}</span>
+    </button>
+  );
+};
+
+// Horizontal Ad Card Skeleton
+export const HorizontalAdCardSkeleton: React.FC = () => (
+  <div className="min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 relative">
+    <Skeleton className="h-28 w-full" />
+    <div className="p-3 space-y-2">
+      <Skeleton className="h-4 w-full rounded" />
+      <Skeleton className="h-4 w-2/3 rounded" />
+      <Skeleton className="h-5 w-1/2 rounded-md mt-1" />
+      <Skeleton className="h-3 w-1/3 rounded mt-2" />
     </div>
-    <span className={`text-[10px] font-bold text-center leading-tight px-1 ${badge ? 'text-gray-400' : 'text-gray-600'}`}>{label}</span>
-  </button>
+  </div>
 );
 
 // Horizontal Ad Card with logic for different boost plans
@@ -105,7 +170,12 @@ const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, 
       className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] relative border ${borderColor}`}
     >
       <div className="h-28 w-full relative">
-        <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
+        <SmartImage
+          src={ad.image}
+          alt={ad.title}
+          className="w-full h-full object-cover"
+          skeletonClassName="h-28 w-full"
+        />
         {boostBadge}
 
         {/* Photo Counter Badge */}
@@ -139,15 +209,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   user,
   onNavigate,
   onAdClick,
-  adsAtFair = [],
-  featuredAds = [],
-  recentVehicles = POPULAR_CARS, // Default to popular if not provided
-  trendingRealEstate = POPULAR_REAL_ESTATE, // Default to constants
-  fairActive = true, // Default to true if not provided
+  adsAtFair,
+  featuredAds,
+  recentVehicles,
+  trendingRealEstate,
+  fairActive = true,
   onOpenNewArrivals,
   onOpenServices,
   onOpenTrending,
-  serviceAds = POPULAR_SERVICES,
+  serviceAds,
   dashboardPromotions = [],
   hasNotifications
 }) => {
@@ -269,22 +339,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="bg-white pb-6 pt-4 px-4 shadow-[0_4px_10px_-5px_rgba(0,0,0,0.05)] rounded-b-3xl mb-4">
         <div className="grid grid-cols-4 gap-3">
           <CategoryItem
-            icon={<Car className="w-6 h-6" />}
+            imageUrl={CATEGORY_ICONS.VEHICLES}
             label="Veículos"
             onClick={() => onNavigate(Screen.VEHICLES_LIST)}
           />
           <CategoryItem
-            icon={<Home className="w-6 h-6" />}
+            imageUrl={CATEGORY_ICONS.REAL_ESTATE}
             label="Imóveis"
             onClick={() => onNavigate(Screen.REAL_ESTATE_LIST)}
           />
           <CategoryItem
-            icon={<Wrench className="w-6 h-6" />}
+            imageUrl={CATEGORY_ICONS.PARTS}
             label="Peças e Serviços"
             onClick={() => onNavigate(Screen.PARTS_SERVICES_LIST)}
           />
           <CategoryItem
-            icon={<Smartphone className="w-6 h-6" />}
+            imageUrl={CATEGORY_ICONS.PHONES}
             label="Celulares"
             badge="Em breve"
             onClick={() => { }}
@@ -310,11 +380,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 }))
               : PROMO_BANNERS.map(p => ({ ...p, ctaText: p.ctaText || 'VER MAIS' }))
           }
-          onPromoClick={(promo) => {
-            if (promo.link && promo.link !== '#') {
-              window.open(promo.link, '_blank');
-            }
-          }}
         />
       </div>
 
@@ -337,7 +402,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {sortedFeaturedVehicles.length > 0 ? (
+        {featuredAds === undefined ? (
+          <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
+            {[1, 2, 3].map(i => <HorizontalAdCardSkeleton key={i} />)}
+          </div>
+        ) : sortedFeaturedVehicles.length > 0 ? (
           <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar snap-x">
             {sortedFeaturedVehicles.map((car) => (
               <HorizontalAdCard
@@ -364,8 +433,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* 4. Group: ESTOU NA FEIRA AGORA (CONDITIONAL RENDERING) */}
-      {/* Exibir apenas se a funcionalidade estiver ativa pelo Admin E houver carros na feira */}
-      {fairActive && adsAtFair.length > 0 && (
+      {/* Exibir apenas se a funcionalidade estiver ativa pelo Admin E houver carros na feira (ou estiver carregando) */}
+      {fairActive && (adsAtFair === undefined || adsAtFair.length > 0) && (
         <div className="mb-6 animate-in slide-in-from-right">
           <div
             onClick={() => onNavigate(Screen.FAIR_LIST)}
@@ -376,51 +445,62 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full animate-pulse"></div>
             </div>
             <div className="flex-1">
-              <h2 className="font-bold text-gray-900 text-lg leading-none flex items-center gap-1">
+              <h2 className="font-bold text-gray-900 text-lg leading-none flex items-center gap-1 text-green-800">
                 Estou na feira agora
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </h2>
-              <p className="text-xs text-gray-500 mt-0.5">Confira quem está por aqui ao vivo!</p>
+              <p className="text-xs text-green-600 mt-0.5 font-medium">Ao vivo no Feirão da Orca!</p>
             </div>
           </div>
 
           <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar snap-x">
-            {adsAtFair.map((car) => (
-              <div
-                key={`fair-${car.id}`}
-                onClick={() => onAdClick && onAdClick(car)}
-                className="min-w-[200px] bg-white rounded-2xl shadow-sm border-2 border-green-400 overflow-hidden snap-start cursor-pointer active:scale-[0.98] relative hover:shadow-md transition-shadow ring-2 ring-green-100"
-              >
-                <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm animate-pulse">
-                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                  AO VIVO
-                </div>
+            {adsAtFair === undefined ? (
+              [1, 2].map(i => <HorizontalAdCardSkeleton key={i} />)
+            ) : (
+              <>
+                {adsAtFair.map((car) => (
+                  <div
+                    key={`fair-${car.id}`}
+                    onClick={() => onAdClick && onAdClick(car)}
+                    className="min-w-[200px] bg-white rounded-2xl shadow-sm border-2 border-green-400 overflow-hidden snap-start cursor-pointer active:scale-[0.98] relative hover:shadow-md transition-shadow ring-2 ring-green-100"
+                  >
+                    <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm animate-pulse">
+                      <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                      AO VIVO
+                    </div>
 
-                <div className="h-32 w-full relative">
-                  <img src={car.image} alt={car.title} className="w-full h-full object-cover" />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-8">
-                    <p className="text-white text-xs font-bold truncate">{car.vehicleType}</p>
+                    <div className="h-32 w-full relative">
+                      <SmartImage
+                        src={car.image}
+                        alt={car.title}
+                        className="w-full h-full object-cover"
+                        skeletonClassName="h-32 w-full"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-8">
+                        <p className="text-white text-xs font-bold truncate">{car.vehicleType}</p>
+                      </div>
+                    </div>
+
+                    <div className="p-3">
+                      <h3 className="font-bold text-gray-900 text-sm line-clamp-1 mb-1">{car.title}</h3>
+                      <p className="text-primary font-bold">{car.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}</p>
+                      <p className="text--[10px] text-green-600 font-bold mt-1 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" /> Na Feira
+                      </p>
+                    </div>
                   </div>
-                </div>
-
-                <div className="p-3">
-                  <h3 className="font-bold text-gray-900 text-sm line-clamp-1 mb-1">{car.title}</h3>
-                  <p className="text-primary font-bold">{car.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}</p>
-                  <p className="text--[10px] text-green-600 font-bold mt-1 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> Na Feira
-                  </p>
-                </div>
-              </div>
-            ))}
-            <button
-              onClick={() => onNavigate(Screen.FAIR_LIST)}
-              className="min-w-[100px] bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-2 snap-start hover:bg-green-50 group border-green-100"
-            >
-              <div className="w-10 h-10 rounded-full bg-green-50 group-hover:bg-green-100 flex items-center justify-center text-green-600 transition-colors">
-                <ChevronRight className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold text-green-700">Ver todos</span>
-            </button>
+                ))}
+                <button
+                  onClick={() => onNavigate(Screen.FAIR_LIST)}
+                  className="min-w-[100px] bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-2 snap-start hover:bg-green-50 group border-green-100"
+                >
+                  <div className="w-10 h-10 rounded-full bg-green-50 group-hover:bg-green-100 flex items-center justify-center text-green-600 transition-colors">
+                    <ChevronRight className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-bold text-green-700">Ver todos</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

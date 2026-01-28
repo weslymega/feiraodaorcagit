@@ -149,6 +149,29 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
     });
   }, [ads, selectedGroup, searchTerm, filters]);
 
+  const isPromotionVisible = (promo: PartsServicesPromotion) => {
+    const today = new Date();
+    return promo.active &&
+      today >= new Date(promo.startDate) &&
+      today <= new Date(promo.endDate);
+  };
+
+  const carouselBanners = useMemo(() => {
+    const activePromos = promotions
+      .filter(isPromotionVisible)
+      .sort((a, b) => a.order - b.order)
+      .map(p => ({
+        id: p.id,
+        title: p.title || '',
+        subtitle: p.subtitle,
+        image: p.image,
+        ctaText: 'VER MAIS',
+        link: p.link
+      }));
+
+    return activePromos.length > 0 ? activePromos : PARTS_SERVICES_PROMO_BANNERS;
+  }, [promotions]);
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.vehicleCompatible) count++;
@@ -232,38 +255,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
       {/* Promotional Carousel */}
       <div className="mb-2">
-        <PromoCarousel
-          banners={useMemo(() => {
-            const isPromotionVisible = (promo: PartsServicesPromotion): boolean => {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const start = new Date(promo.startDate);
-              start.setHours(0, 0, 0, 0);
-              const end = new Date(promo.endDate);
-              end.setHours(23, 59, 59, 999);
-              return promo.active && today >= start && today <= end;
-            };
-
-            const visiblePromotions = promotions
-              .filter(isPromotionVisible)
-              .sort((a, b) => a.order - b.order)
-              .map(p => ({
-                id: p.id,
-                title: p.title || '',
-                subtitle: p.subtitle,
-                image: p.image,
-                ctaText: 'VER MAIS',
-                link: p.link
-              }));
-
-            return visiblePromotions.length > 0 ? visiblePromotions : PARTS_SERVICES_PROMO_BANNERS;
-          }, [promotions])}
-          onPromoClick={(promo) => {
-            if (promo.link && promo.link !== '#') {
-              window.open(promo.link, '_blank');
-            }
-          }}
-        />
+        <PromoCarousel banners={carouselBanners} />
       </div>
       <div className="flex gap-2 overflow-x-auto px-4 pb-4 no-scrollbar mb-2 relative z-0">
         <button

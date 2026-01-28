@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview do Rodapé - Imagem Personalizada</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: #f5f5f7;
+            font-family: 'Inter', sans-serif;
+            color: #1d1d1f;
+        }
+
+        .preview-card {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .preview-header {
+            padding: 32px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #f8fafc;
+            margin-bottom: 24px;
+        }
+
+        .upload-zone:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .footer-mockup {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            /* Reduced height for footer context */
+            background-color: #003594;
+            /* Fallback color */
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .footer-content {
+            z-index: 10;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="preview-card">
+        <div class="preview-header">
+            <h1 class="text-2xl font-black mb-2">Simulador de Rodapé</h1>
+            <p class="text-gray-500">Faça o upload da imagem fornecida para visualizar como ficará no rodapé do
+                aplicativo.</p>
+        </div>
+
+        <div style="padding: 32px;">
+            <!-- Upload Control -->
+            <div class="upload-zone" id="drop-zone">
+                <p class="font-bold text-gray-700 mb-1">Clique ou Arraste a Imagem Aqui</p>
+                <p class="text-sm text-gray-400">Use a imagem do JK e Athos Bulcão fornecida</p>
+                <input type="file" id="file-input" accept="image/*" style="display: none;">
+            </div>
+
+            <!-- Preview Area -->
+            <div class="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                <div class="bg-gray-100 p-2 text-xs text-center text-gray-400 uppercase tracking-widest font-bold">
+                    Preview do App</div>
+
+                <!-- The Footer Container -->
+                <div id="footer-bg" class="footer-mockup">
+                    <div class="footer-content">
+                        <div class="flex justify-around items-center w-full max-w-md mx-auto opacity-90">
+                            <!-- Mock Navigation Icons -->
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="w-6 h-6 bg-white rounded flex items-center justify-center bg-opacity-20">🏠
+                                </div>
+                                <span class="text-[10px] font-medium">Início</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="w-6 h-6 bg-white rounded flex items-center justify-center bg-opacity-20">❤️
+                                </div>
+                                <span class="text-[10px] font-medium">Favoritos</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 -mt-8">
+                                <div
+                                    class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg border-4 border-white text-xl">
+                                    ➕</div>
+                            </div>
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="w-6 h-6 bg-white rounded flex items-center justify-center bg-opacity-20">✈️
+                                </div>
+                                <span class="text-[10px] font-medium">Viagens</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="w-6 h-6 bg-white rounded flex items-center justify-center bg-opacity-20">🔔
+                                </div>
+                                <span class="text-[10px] font-medium">Notificações</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const footerBg = document.getElementById('footer-bg');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#3b82f6';
+            dropZone.style.background = '#eff6ff';
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#cbd5e1';
+            dropZone.style.background = '#f8fafc';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#cbd5e1';
+            dropZone.style.background = '#f8fafc';
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                footerBg.style.backgroundImage = `url(${e.target.result})`;
+            };
+            reader.readAsDataURL(file);
+        }
+    </script>
+
+</body>
+
+</html>

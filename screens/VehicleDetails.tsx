@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Heart, Share2, Calculator, MapPin, MessageSquare, Phone, User as UserIcon, ChevronRight, QrCode, Printer, Download, Map, Clock, Camera, Flag, AlertTriangle, CheckCircle } from 'lucide-react';
+import { generateA4PrintTemplate } from '../services/printTemplates';
 import { AdItem, ReportItem } from '../types';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
+import { SmartImage } from '../components/ui/SmartImage';
 
 interface VehicleDetailsProps {
   ad: AdItem;
@@ -39,7 +41,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
   const features = ad.features || ["Air bag", "Alarme", "Ar condicionado", "Trava elétrica", "Som", "Vidro elétrico"];
 
   const qrData = `https://feiraodaorca.app/ad/${ad.id}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10&ecc=H`;
 
   useEffect(() => {
     // Reset index when ad changes
@@ -96,11 +98,10 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
   };
 
   const handlePrintQR = () => {
-    const printWindow = window.open('', '', 'width=600,height=600');
+    const printWindow = window.open('', '_blank');
     if (printWindow) {
-      printWindow.document.write(`
-        <html><body><h1>${ad.title}</h1><img src="${qrCodeUrl}" onload="setTimeout(function(){ window.print(); window.close(); }, 500);" /></body></html>
-      `);
+      const html = generateA4PrintTemplate(ad, qrCodeUrl);
+      printWindow.document.write(html);
       printWindow.document.close();
     }
   };
@@ -186,11 +187,11 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
 
         {/* Header Image Gallery */}
         <div className="relative h-80 w-full bg-gray-900 group rounded-b-[40px] overflow-hidden shadow-lg z-10">
-          <img
-            src={images[currentImageIndex] || 'https://via.placeholder.com/800x600?text=Erro+Imagem'}
+          <SmartImage
+            src={images[currentImageIndex]}
             alt={`${ad.title || 'Veículo'} - Foto ${currentImageIndex + 1}`}
-            className="w-full h-full object-cover transition-opacity duration-300"
-            onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800x600?text=Erro+Imagem'; }}
+            className="w-full h-full object-cover"
+            skeletonClassName="h-80 w-full"
           />
           {images.length > 1 && (
             <>
@@ -288,7 +289,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
           >
             <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm group-hover:border-primary transition-colors">
               {ad.ownerAvatar ? (
-                <img src={ad.ownerAvatar} alt={ad.ownerName || "Vendedor"} className="w-full h-full object-cover" />
+                <SmartImage src={ad.ownerAvatar} alt={ad.ownerName || "Vendedor"} className="w-full h-full object-cover" />
               ) : (
                 <UserIcon className="w-7 h-7 text-gray-400" />
               )}

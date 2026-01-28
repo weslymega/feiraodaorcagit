@@ -313,9 +313,19 @@ export const useAppActions = (state: AppState) => {
     const goBackToDashboard = () => setCurrentScreen(Screen.DASHBOARD);
     const goBackToPanel = () => setCurrentScreen(Screen.USER_PANEL);
 
-    const handleSaveProfile = (updatedUser: User) => {
-        setUser(updatedUser);
-        goBackToPanel();
+    const handleSaveProfile = async (updatedUser: User) => {
+        try {
+            setToast({ message: "Salvando alterações...", type: 'info' });
+            await api.updateProfile(updatedUser);
+
+            // Somente atualiza localmente após sucesso no Supabase
+            setUser(updatedUser);
+            setToast({ message: "Perfil atualizado com sucesso!", type: 'success' });
+            goBackToPanel();
+        } catch (error) {
+            console.error("❌ Erro ao salvar perfil:", error);
+            setToast({ message: "Erro ao salvar perfil. Tente novamente.", type: 'error' });
+        }
     };
 
     const handleToggleRole = () => {

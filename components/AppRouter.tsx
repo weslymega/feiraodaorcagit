@@ -173,16 +173,11 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
     // 9. Lista Completa para o Admin - Peças e Serviços
     const allAdminPartsServicesAds = Array.isArray(adminAds) ? adminAds.filter(ad => ad.category === 'pecas' || ad.category === 'servicos') : [];
 
-    // 10. Lista Destaque para Dashboard (Imóveis)
+    // 10. Lista para Dashboard (Imóveis em Alta)
+    // Passamos uma lista maior para que o componente TrendingRealEstateSection faça seu próprio score/filtro interno
     const dashboardRealEstateAds = activeRealAds.filter(ad =>
-        ad.category === 'imoveis' &&
-        (ad.isFeatured || (ad.boostPlan && ad.boostPlan !== 'gratis'))
-    ).slice(0, 5);
-
-    // Fallback se não tiver destaques, mostrar recentes
-    if (dashboardRealEstateAds.length === 0) {
-        dashboardRealEstateAds.push(...activeRealAds.filter(ad => ad.category === 'imoveis').slice(0, 5));
-    }
+        ad.category === 'imoveis'
+    ).slice(0, 20);
 
     // 11. Lista para Página de Peças e Serviços
     const serviceAds = activeRealAds.filter(ad =>

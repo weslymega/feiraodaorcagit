@@ -2,14 +2,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { PromoBanner } from '../../constants';
+import { PromoModal, PromoData } from './PromoModal';
 
 interface PromoCarouselProps {
     banners: PromoBanner[];
-    onPromoClick?: (promo: PromoBanner) => void;
 }
 
-export const PromoCarousel: React.FC<PromoCarouselProps> = ({ banners, onPromoClick }) => {
+export const PromoCarousel: React.FC<PromoCarouselProps> = ({ banners }) => {
     const [activeIndex, setActiveIndex] = useState(0);
+    const [selectedPromo, setSelectedPromo] = useState<PromoData | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const isAutoScrolling = useRef(false);
 
@@ -68,7 +69,13 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({ banners, onPromoCl
                 {banners.map((promo) => (
                     <div
                         key={promo.id}
-                        onClick={() => onPromoClick?.(promo)}
+                        onClick={() => setSelectedPromo({
+                            id: promo.id,
+                            title: promo.title,
+                            subtitle: promo.subtitle,
+                            image: promo.image,
+                            description: promo.title // Using title as fallback description if none exists
+                        })}
                         className="relative min-w-full aspect-[21/9] md:aspect-[25/9] overflow-hidden snap-center cursor-pointer active:scale-[0.99] transition-transform flex-shrink-0"
                     >
                         <div className="mx-4 h-full rounded-2xl overflow-hidden relative shadow-lg">
@@ -112,13 +119,21 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({ banners, onPromoCl
                             key={index}
                             onClick={() => scrollToIndex(index)}
                             className={`h-1.5 transition-all duration-300 rounded-full ${activeIndex === index
-                                    ? 'w-6 bg-primary'
-                                    : 'w-1.5 bg-gray-300 hover:bg-gray-400'
+                                ? 'w-6 bg-primary'
+                                : 'w-1.5 bg-gray-300 hover:bg-gray-400'
                                 }`}
                             aria-label={`Ir para slide ${index + 1}`}
                         />
                     ))}
                 </div>
+            )}
+
+            {/* Internal Promo Modal */}
+            {selectedPromo && (
+                <PromoModal
+                    promo={selectedPromo}
+                    onClose={() => setSelectedPromo(null)}
+                />
             )}
         </div>
     );

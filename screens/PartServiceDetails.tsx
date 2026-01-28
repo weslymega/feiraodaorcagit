@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ChevronLeft, Heart, Share2, MapPin, MessageSquare, User as UserIcon, ChevronRight, Wrench, Tag, Package, CheckCircle, QrCode, Printer, Download, Flag } from 'lucide-react';
+import { generateA4PrintTemplate } from '../services/printTemplates';
 import { AdItem, ReportItem } from '../types';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
@@ -33,7 +34,7 @@ export const PartServiceDetails: React.FC<PartServiceDetailsProps> = ({ ad, onBa
   const images = (ad.images && ad.images.length > 0) ? ad.images : (ad.image ? [ad.image] : ['https://via.placeholder.com/800x600?text=Sem+Imagem']);
 
   const qrData = `https://feiraodaorca.app/ad/${ad.id}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10&ecc=H`;
 
   const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % images.length);
   const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
@@ -55,9 +56,10 @@ export const PartServiceDetails: React.FC<PartServiceDetailsProps> = ({ ad, onBa
   };
 
   const handlePrintQR = () => {
-    const printWindow = window.open('', '', 'width=600,height=600');
+    const printWindow = window.open('', '_blank');
     if (printWindow) {
-      printWindow.document.write(`<html><body><h1>${ad.title || 'Anúncio'}</h1><div class="price">${(ad.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div><img src="${qrCodeUrl}" onload="setTimeout(function(){ window.print(); window.close(); }, 500);" /></body></html>`);
+      const html = generateA4PrintTemplate(ad, qrCodeUrl);
+      printWindow.document.write(html);
       printWindow.document.close();
     }
   };
