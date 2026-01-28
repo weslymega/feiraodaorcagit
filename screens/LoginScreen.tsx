@@ -3,6 +3,7 @@ import { Mail, Lock, Image as ImageIcon, Shield, Loader2 } from 'lucide-react';
 import { APP_LOGOS, ADMIN_USER, REGULAR_USER } from '../constants';
 import { User } from '../types';
 import { supabase, api } from '../services/api';
+import { getSiteUrl } from '../utils/url';
 
 interface LoginScreenProps {
   onLogin: (user: User) => void;
@@ -75,10 +76,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
     try {
       setLoading(true);
       setErrorMsg('');
+      const redirectUrl = getSiteUrl();
+      console.log('🔗 [DEBUG] Starting Google Login...');
+      console.log('🔗 [DEBUG] Resolved Site URL (getSiteUrl):', redirectUrl);
+      console.log('🔗 [DEBUG] Window Origin:', window.location.origin);
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: redirectUrl
         }
       });
       if (error) throw error;
