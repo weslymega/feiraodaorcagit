@@ -129,7 +129,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
     // --- FILTRAGEM E COMPOSIÇÃO DE DADOS (REAL DATA from Supabase) ---
 
     // Desestruturar ads reais do estado
-    const { activeRealAds } = state;
+    const { activeRealAds, adminAds } = state;
 
     // 1. Meus Anúncios Ativos (já filtrados no hook ou aqui)
     const activeMyAds = myAds.filter(ad => ad.status === AdStatus.ACTIVE);
@@ -155,28 +155,16 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
     });
 
     // 6. Lista Completa para o Admin - Veículos
-    const allAdminVehicleAds = [
-        ...activeRealAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos'),
-        ...myAds.filter(ad => (ad.category === 'veiculos' || ad.category === 'autos') && !activeRealAds.find(r => r.id === ad.id))
-    ];
+    const allAdminVehicleAds = Array.isArray(adminAds) ? adminAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos') : [];
 
     // 7. Lista Completa para o Admin - Imóveis
-    const allAdminRealEstateAds = [
-        ...activeRealAds.filter(ad => ad.category === 'imoveis'),
-        ...myAds.filter(ad => ad.category === 'imoveis' && !activeRealAds.find(r => r.id === ad.id))
-    ];
+    const allAdminRealEstateAds = Array.isArray(adminAds) ? adminAds.filter(ad => ad.category === 'imoveis') : [];
 
     // 8. Lista UNIFICADA para MODERAÇÃO
-    const allModerationAds = [
-        ...activeRealAds,
-        ...myAds.filter(ad => !activeRealAds.find(r => r.id === ad.id))
-    ];
+    const allModerationAds = Array.isArray(adminAds) ? adminAds : [];
 
     // 9. Lista Completa para o Admin - Peças e Serviços
-    const allAdminPartsServicesAds = [
-        ...activeRealAds.filter(ad => ad.category === 'pecas' || ad.category === 'servicos'),
-        ...myAds.filter(ad => (ad.category === 'pecas' || ad.category === 'servicos') && !activeRealAds.find(r => r.id === ad.id))
-    ];
+    const allAdminPartsServicesAds = Array.isArray(adminAds) ? adminAds.filter(ad => ad.category === 'pecas' || ad.category === 'servicos') : [];
 
     // 10. Lista Destaque para Dashboard (Imóveis)
     const dashboardRealEstateAds = activeRealAds.filter(ad =>
