@@ -112,18 +112,9 @@ const CategoryItem: React.FC<{
   );
 };
 
-// Horizontal Ad Card Skeleton
-export const HorizontalAdCardSkeleton: React.FC = () => (
-  <div className="min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 relative">
-    <Skeleton className="h-28 w-full" />
-    <div className="p-3 space-y-2">
-      <Skeleton className="h-4 w-full rounded" />
-      <Skeleton className="h-4 w-2/3 rounded" />
-      <Skeleton className="h-5 w-1/2 rounded-md mt-1" />
-      <Skeleton className="h-3 w-1/3 rounded mt-2" />
-    </div>
-  </div>
-);
+import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
+
+// ... (CategoryItem remains unchanged) ...
 
 // Horizontal Ad Card with logic for different boost plans
 const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, onClick }) => {
@@ -167,7 +158,7 @@ const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, 
   return (
     <div
       onClick={onClick}
-      className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] relative border ${borderColor}`}
+      className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] relative border ${borderColor} animate-fadeIn`}
     >
       <div className="h-28 w-full relative">
         <SmartImage
@@ -225,7 +216,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
 
   // --- LÓGICA DE BUSCA GLOBAL ---
-  const allSearchableData = [...featuredAds, ...recentVehicles, ...trendingRealEstate, ...POPULAR_SERVICES];
+  // --- LÓGICA DE BUSCA GLOBAL ---
+  const allSearchableData = [...(featuredAds || []), ...(recentVehicles || []), ...(trendingRealEstate || []), ...POPULAR_SERVICES];
 
   const searchSuggestions = searchTerm.length >= 3
     ? allSearchableData.filter(ad =>
@@ -243,12 +235,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return 0;
   };
 
-  const sortedFeaturedVehicles = [...featuredAds].sort((a, b) => {
+  const sortedFeaturedVehicles = [...(featuredAds || [])].sort((a, b) => {
     return getBoostPriority(b.boostPlan) - getBoostPriority(a.boostPlan);
   });
 
   // --- DATASET COMBINADO PARA O FEED PERSONALIZADO ---
-  const allDiscoveryAds = [...recentVehicles, ...trendingRealEstate, ...serviceAds];
+  const allDiscoveryAds = [...(recentVehicles || []), ...(trendingRealEstate || []), ...(serviceAds || [])];
 
   const handleAdClickWrapper = (ad: AdItem) => {
     // Logic to save viewed ad ID to localStorage for Personalized Feed
@@ -404,7 +396,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {featuredAds === undefined ? (
           <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
-            {[1, 2, 3].map(i => <HorizontalAdCardSkeleton key={i} />)}
+            {[1, 2, 3].map(i => <AdCardSkeleton key={i} />)}
           </div>
         ) : sortedFeaturedVehicles.length > 0 ? (
           <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar snap-x">
@@ -455,7 +447,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar snap-x">
             {adsAtFair === undefined ? (
-              [1, 2].map(i => <HorizontalAdCardSkeleton key={i} />)
+              [1, 2].map(i => <AdCardSkeleton key={i} />)
             ) : (
               <>
                 {adsAtFair.map((car) => (

@@ -9,6 +9,7 @@ import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
+import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 
 interface VehiclesListProps {
   ads: AdItem[];
@@ -50,16 +51,6 @@ const FUEL_OPTIONS = ['Flex', 'Gasolina', 'Diesel', 'Elétrico', 'Híbrido'];
 // Gera anos de 2026 até 1950
 const YEARS = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => 2026 - i);
 
-export const VerticalCardSkeleton: React.FC = () => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <Skeleton className="h-48 w-full" />
-    <div className="p-4 space-y-3">
-      <Skeleton className="h-6 w-full rounded" />
-      <Skeleton className="h-7 w-1/3 rounded-lg" />
-      <Skeleton className="h-4 w-1/4 rounded mt-3" />
-    </div>
-  </div>
-);
 
 export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate }) => {
   const [selectedGroup, setSelectedGroup] = useState('todos');
@@ -467,10 +458,9 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
         ))}
       </div>
 
-      {/* Ads List */}
       <div className="px-4 flex flex-col gap-4 relative z-0">
         {ads === undefined ? (
-          [1, 2, 3].map(i => <VerticalCardSkeleton key={i} />)
+          [1, 2, 3].map(i => <AdCardSkeleton key={i} variant="vertical" />)
         ) : filteredAds.length > 0 ? (
           filteredAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);
@@ -505,7 +495,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
               <div
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className={`bg-white rounded-2xl shadow-sm border overflow-hidden cursor-pointer active:scale-[0.99] transition-all group ${borderClass}`}
+                className={`bg-white rounded-2xl shadow-sm border overflow-hidden cursor-pointer active:scale-[0.99] transition-all group ${borderClass} animate-fadeIn`}
               >
                 <div className="relative h-48 w-full">
                   <SmartImage

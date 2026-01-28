@@ -34,19 +34,7 @@ const PROPERTY_QUICK_FILTERS = [
   { id: 'Comercial', label: 'Comercial' },
 ];
 
-export const VerticalCardSkeleton: React.FC = () => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <Skeleton className="h-56 w-full" />
-    <div className="p-4 space-y-3">
-      <Skeleton className="h-6 w-full rounded" />
-      <Skeleton className="h-4 w-1/3 rounded pt-1" />
-      <div className="flex justify-between items-center border-t border-gray-50 pt-3">
-        <Skeleton className="h-8 w-1/3 rounded-lg" />
-        <Skeleton className="h-5 w-1/4 rounded" />
-      </div>
-    </div>
-  </div>
-);
+import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 
 export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate }) => {
   const [transactionType, setTransactionType] = useState<'sale' | 'rent'>('sale');
@@ -354,7 +342,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         </p>
 
         {ads === undefined ? (
-          [1, 2, 3].map(i => <VerticalCardSkeleton key={i} />)
+          [1, 2, 3].map(i => <AdCardSkeleton key={i} variant="vertical" />)
         ) : filteredAds.length > 0 ? (
           filteredAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);
@@ -362,7 +350,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
               <div
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-all group"
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-all group animate-fadeIn"
               >
                 <div className="relative h-56 w-full">
                   <SmartImage

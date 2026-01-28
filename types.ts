@@ -119,7 +119,7 @@ export interface AdItem {
   category?: 'veiculos' | 'imoveis' | 'servicos' | 'autos' | 'pecas' | 'produtos'; // Mantendo antigos por compatibilidade temporária se necessário, mas priorizando novos
 
   isFeatured?: boolean; // Indicates if the ad is a "Destaque"
-  boostPlan?: 'premium' | 'advanced' | 'basic' | 'gratis'; // Specific Plan Tier
+  boostPlan?: string; // ID do plano ou 'gratis'
   boostConfig?: AdBoostConfig; // Regras de data e bumps
 
   fairPresence?: FairPresence; // Novo campo: Presença física na feira

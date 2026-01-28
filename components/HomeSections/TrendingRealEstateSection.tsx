@@ -3,7 +3,7 @@ import { Home, ChevronRight, TrendingUp, BedDouble, Ruler } from 'lucide-react';
 import { AdItem, Screen } from '../../types';
 
 import { SmartImage } from '../ui/SmartImage';
-import { HorizontalAdCardSkeleton } from '../../screens/Dashboard';
+import { AdCardSkeleton } from '../skeletons/AdCardSkeleton';
 
 interface TrendingRealEstateProps {
     ads?: AdItem[];
@@ -16,7 +16,7 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
 
     const trendingAds = useMemo(() => {
         // Filter Real Estate
-        const realEstate = ads.filter(ad => ad.category === 'imoveis');
+        const realEstate = ads?.filter(ad => ad.category === 'imoveis') || [];
 
         // Score Logic
         const scoredAds = realEstate.map(ad => {
@@ -43,7 +43,7 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
                     <h2 className="font-bold text-gray-900 text-lg uppercase tracking-tighter">Imóveis em Alta</h2>
                 </div>
                 <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
-                    {[1, 2, 3].map(i => <HorizontalAdCardSkeleton key={i} />)}
+                    {[1, 2, 3].map(i => <AdCardSkeleton key={i} />)}
                 </div>
             </div>
         );
@@ -71,7 +71,7 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
                     <div
                         key={estate.id}
                         onClick={() => onAdClick(estate)}
-                        className="min-w-[220px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow group relative"
+                        className="min-w-[220px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow group relative animate-fadeIn"
                     >
                         {/* Badge TOP */}
                         {index < 3 && (

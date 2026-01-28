@@ -140,6 +140,12 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
     // Desestruturar ads reais do estado
     const { activeRealAds, adminAds } = state;
 
+    // Helper to trigger Skeletons: return undefined if !isAppReady, otherwise the filtered list
+    const getListOrUndefined = (source: AdItem[], filterFn: (ad: AdItem) => boolean) => {
+        if (!isAppReady) return undefined;
+        return source.filter(filterFn);
+    };
+
     // 1. Meus Anúncios Ativos (já filtrados no hook ou aqui)
     const activeMyAds = myAds.filter(ad => ad.status === AdStatus.ACTIVE);
 
@@ -147,19 +153,17 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
     const allAds = activeRealAds;
 
     // 3. Lista para o Dashboard (Veículos)
-    const dashboardVehicleAds = activeRealAds.filter(ad =>
-        ad.category === 'veiculos'
-    ).slice(0, 20);
+    const dashboardVehicleAds = getListOrUndefined(activeRealAds, ad => ad.category === 'veiculos')?.slice(0, 20);
 
     // 4. Destaques (Reais Pagos/Destaques)
-    const displayFeaturedAds = activeRealAds.filter(ad =>
+    const displayFeaturedAds = getListOrUndefined(activeRealAds, ad =>
         ad.category === 'veiculos' &&
         (ad.isFeatured || (ad.boostPlan && ad.boostPlan !== 'gratis'))
     );
 
     // 5. Veículos na Feira (Lógica Atualizada)
-    const fairAds = activeRealAds.filter(ad =>
-        ad.category === 'veiculos' && ad.isInFair === true
+    const fairAds = getListOrUndefined(activeRealAds, ad =>
+        ad.category === 'veiculos' && (ad as any).isInFair === true
     );
 
     // 6. Lista Completa para o Admin - Veículos
@@ -176,12 +180,10 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
 
     // 10. Lista para Dashboard (Imóveis em Alta)
     // Passamos uma lista maior para que o componente TrendingRealEstateSection faça seu próprio score/filtro interno
-    const dashboardRealEstateAds = activeRealAds.filter(ad =>
-        ad.category === 'imoveis'
-    ).slice(0, 20);
+    const dashboardRealEstateAds = getListOrUndefined(activeRealAds, ad => ad.category === 'imoveis')?.slice(0, 20);
 
     // 11. Lista para Página de Peças e Serviços
-    const serviceAds = activeRealAds.filter(ad =>
+    const serviceAds = getListOrUndefined(activeRealAds, ad =>
         ad.category === 'servicos' || ad.category === 'pecas'
     );
 
@@ -563,7 +565,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
             <ScrollToTop currentScreen={currentScreen} />
             {/* App Loading Overlay - Bloqueia interação até carregamento completo */}
             <AppLoadingOverlay
-                isActive={(!isAppReady || !authInitialized)}
+                isActive={!state.sessionReady}
                 message={state.loadingMessage}
             />
 

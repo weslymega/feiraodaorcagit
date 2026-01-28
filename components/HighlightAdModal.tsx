@@ -4,14 +4,16 @@ import { AdItem, HighlightPlan } from '../types';
 import { api } from '../services/api';
 import MercadoPagoBrick from './MercadoPagoBrick';
 import { supabase } from '../services/api';
+import { getPlanMetadata } from '../utils/planConstants';
 
 interface HighlightAdModalProps {
     ad: AdItem;
     onClose: () => void;
     onSuccess?: () => void;
+    initialPlanId?: string;
 }
 
-export const HighlightAdModal: React.FC<HighlightAdModalProps> = ({ ad, onClose, onSuccess }) => {
+export const HighlightAdModal: React.FC<HighlightAdModalProps> = ({ ad, onClose, onSuccess, initialPlanId }) => {
     const [plans, setPlans] = useState<HighlightPlan[]>([]);
     const [selectedPlan, setSelectedPlan] = useState<HighlightPlan | null>(null);
     const [step, setStep] = useState<'plans' | 'payment' | 'success' | 'processing'>('plans');
@@ -24,8 +26,12 @@ export const HighlightAdModal: React.FC<HighlightAdModalProps> = ({ ad, onClose,
             try {
                 const data = await api.getHighlightPlans();
                 setPlans(data);
-                // Pre-select middle plan if available
-                if (data.length > 0) {
+                // Pre-select plan based on initialPlanId or default to middle
+                if (initialPlanId) {
+                    const found = data.find(p => p.id === initialPlanId);
+                    if (found) setSelectedPlan(found);
+                    else if (data.length > 0) setSelectedPlan(data[Math.floor(data.length / 2)]);
+                } else if (data.length > 0) {
                     setSelectedPlan(data[Math.floor(data.length / 2)]);
                 }
             } catch (err) {
@@ -127,47 +133,51 @@ export const HighlightAdModal: React.FC<HighlightAdModalProps> = ({ ad, onClose,
                                 Escolha um plano para que seu anúncio apareça nas primeiras posições e venda até 10x mais rápido!
                             </p>
 
-                            {plans.map((plan) => (
-                                <button
-                                    key={plan.id}
-                                    onClick={() => handleSelectPlan(plan)}
-                                    className={`w-full p-5 rounded-2xl border-2 text-left transition-all relative overflow-hidden flex justify-between items-center group ${selectedPlan?.id === plan.id
-                                        ? 'border-primary bg-blue-50/30'
-                                        : 'border-gray-100 hover:border-gray-200'
-                                        }`}
-                                >
-                                    {selectedPlan?.id === plan.id && (
-                                        <div className="absolute top-0 right-0">
-                                            <div className="bg-primary text-white p-1 rounded-bl-xl shadow-md animate-in slide-in-from-top slide-in-from-right duration-300">
-                                                <Check className="w-4 h-4" />
+                            {plans.map((plan) => {
+                                const metadata = getPlanMetadata(plan.name);
+                                return (
+                                    <button
+                                        key={plan.id}
+                                        onClick={() => handleSelectPlan(plan)}
+                                        className={`w-full p-5 rounded-2xl border-2 text-left transition-all relative overflow-hidden flex justify-between items-center group ${selectedPlan?.id === plan.id
+                                            ? `border-primary bg-blue-50/30`
+                                            : 'border-gray-100 hover:border-gray-200'
+                                            } ${metadata.color.replace('text-', 'border-')}`} // Fallback simples para borda cor
+                                    >
+                                        {selectedPlan?.id === plan.id && (
+                                            <div className="absolute top-0 right-0">
+                                                <div className="bg-primary text-white p-1 rounded-bl-xl shadow-md animate-in slide-in-from-top slide-in-from-right duration-300">
+                                                    <Check className="w-4 h-4" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-2">
+                                                {metadata.icon}
+                                                <span className="font-black text-gray-900 uppercase tracking-tight text-lg">
+                                                    {plan.name}
+                                                </span>
+                                                {plan.priority_level >= 3 && (
+                                                    <span className="bg-accent/10 text-accent text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest">
+                                                        Melhor Valor
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-sm text-gray-500 font-medium">
+                                                Duração de {plan.duration_days} dias
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-xl font-black text-primary">
+                                                R$ {Number(plan.price).toFixed(2).replace('.', ',')}
+                                            </div>
+                                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                                Pagamento Único
                                             </div>
                                         </div>
-                                    )}
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-black text-gray-900 uppercase tracking-tight text-lg">
-                                                {plan.name}
-                                            </span>
-                                            {plan.priority_level >= 3 && (
-                                                <span className="bg-accent/10 text-accent text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest">
-                                                    Melhor Valor
-                                                </span>
-                                            )}
-                                        </div>
-                                        <span className="text-sm text-gray-500 font-medium">
-                                            Duração de {plan.duration_days} dias
-                                        </span>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-xl font-black text-primary">
-                                            R$ {Number(plan.price).toFixed(2).replace('.', ',')}
-                                        </div>
-                                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                                            Pagamento Único
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
+                                    </button>
+                                )
+                            })}
 
                             <div className="mt-8 space-y-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
                                 <div className="flex items-center gap-3 text-gray-600">

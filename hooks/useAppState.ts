@@ -148,7 +148,7 @@ export const useAppState = () => {
       } finally {
         setAuthInitialized(true);
         setSessionReady(true);
-        setIsAppReady(true);
+        // setIsAppReady(true); -> Removed to allow skeletons to show until fetchData completes
       }
     };
 
@@ -313,6 +313,9 @@ export const useAppState = () => {
   const [viewingProfile, setViewingProfile] = useState<User | null>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' | 'error' } | null>(null);
 
+  // Pending Highlight State (Flow: Create Ad -> My Ads -> Highlight Modal)
+  const [pendingHighlightAd, setPendingHighlightAd] = useState<{ adId: string, planId: string } | null>(null);
+
   // --- PERSISTÊNCIA ---
   useEffect(() => {
     if (user) {
@@ -359,6 +362,7 @@ export const useAppState = () => {
     partsServicesPromotions, setPartsServicesPromotions,
     vehiclesPromotions, setVehiclesPromotions,
     conversations, setConversations,
-    chatMessages, setChatMessages
+    chatMessages, setChatMessages,
+    pendingHighlightAd, setPendingHighlightAd
   };
 };

@@ -4,7 +4,7 @@ import { Wrench, ChevronRight, MessageCircle } from 'lucide-react';
 import { AdItem, Screen } from '../../types';
 
 import { SmartImage } from '../ui/SmartImage';
-import { HorizontalAdCardSkeleton } from '../../screens/Dashboard';
+import { AdCardSkeleton } from '../skeletons/AdCardSkeleton';
 
 interface AutomotiveServicesProps {
     ads?: AdItem[];
@@ -26,7 +26,7 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
                     <h2 className="font-bold text-gray-900 text-lg">Serviços</h2>
                 </div>
                 <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
-                    {[1, 2, 3].map(i => <HorizontalAdCardSkeleton key={i} />)}
+                    {[1, 2, 3].map(i => <AdCardSkeleton key={i} />)}
                 </div>
             </div>
         );
@@ -57,7 +57,7 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
                     <div
                         key={service.id}
                         onClick={() => onAdClick(service)} // Main click for details
-                        className="min-w-[200px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow relative"
+                        className="min-w-[200px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow relative animate-fadeIn"
                     >
                         <div className="h-28 w-full relative">
                             <SmartImage

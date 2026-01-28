@@ -3,7 +3,7 @@ import { ChevronRight, Sparkles } from 'lucide-react';
 import { AdItem, AdStatus, Screen } from '../../types';
 
 import { SmartImage } from '../ui/SmartImage';
-import { HorizontalAdCardSkeleton } from '../../screens/Dashboard';
+import { AdCardSkeleton } from '../skeletons/AdCardSkeleton';
 
 interface PersonalizedFeedProps {
     ads?: AdItem[];
@@ -51,7 +51,7 @@ export const PersonalizedFeedSection: React.FC<PersonalizedFeedProps> = ({ ads, 
                     </div>
                 </div>
                 <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
-                    {[1, 2, 3].map(i => <HorizontalAdCardSkeleton key={i} />)}
+                    {[1, 2, 3].map(i => <AdCardSkeleton key={i} />)}
                 </div>
             </div>
         );
@@ -82,7 +82,7 @@ export const PersonalizedFeedSection: React.FC<PersonalizedFeedProps> = ({ ads, 
                     <div
                         key={ad.id}
                         onClick={() => onAdClick(ad)}
-                        className="min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+                        className="min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-all active:scale-[0.98] animate-fadeIn"
                     >
                         <div className="h-28 w-full relative bg-gray-100">
                             <SmartImage

@@ -33,7 +33,8 @@ export const useAppActions = (state: AppState) => {
         vehiclesPromotions, setVehiclesPromotions,
         activeRealAds, setRealAds,
         conversations, setConversations,
-        chatMessages, setChatMessages
+        chatMessages, setChatMessages,
+        pendingHighlightAd, setPendingHighlightAd
     } = state;
 
     // Fix for Stale State in Event Handlers
@@ -593,7 +594,7 @@ export const useAppActions = (state: AppState) => {
         setCurrentScreen(Screen.PUBLIC_PROFILE);
     };
 
-    const handleCreateAdFinish = async (adData: Partial<AdItem>) => {
+    const handleCreateAdFinish = async (adData: Partial<AdItem>, createdAd?: AdItem) => {
         try {
             if (adToEdit) {
                 // Edit Logic (Simplification: Editing allows direct update if RLS permits, or use a function)
@@ -616,8 +617,14 @@ export const useAppActions = (state: AppState) => {
                     return ad;
                 }));
                 setToast({ message: "Anúncio atualizado!", type: 'success' });
+            } else if (createdAd) {
+                // --- FLOW: ANÚNCIO JÁ CRIADO (PAGO) ---
+                // O anúncio já foi criado no CreateAd.tsx para permitir o pagamento imediato.
+                // Apenas atualizamos o estado local e redirecionamos.
+                setMyAds((prev: AdItem[]) => [createdAd, ...prev]);
+                setToast({ message: "Anúncio publicado com sucesso!", type: 'success' });
             } else {
-                // --- ZERO TRUST CREATION ---
+                // --- ZERO TRUST CREATION (GRÁTIS) ---
                 setToast({ message: "Validando limite e criando...", type: 'info' });
 
                 const payload: CreateAdPayload = {
@@ -635,6 +642,13 @@ export const useAppActions = (state: AppState) => {
 
                     setMyAds((prev: AdItem[]) => [newAd, ...prev]);
                     setToast({ message: "Anúncio criado com sucesso!", type: 'success' });
+
+                    // CHECK FOR BOOST INTENTION (Legacy/Fallback if not handled in CreateAd)
+                    if (adData.boostPlan && adData.boostPlan !== 'gratis') {
+                        setPendingHighlightAd({ adId: newAd.id, planId: adData.boostPlan });
+                        console.log("Setting pending highlight for:", newAd.id, adData.boostPlan);
+                    }
+
                 } catch (backendError: any) {
                     // Check if error is related to connection/availability (not limit reached)
                     // "failed to send a request to the edge function" is standard supabase-js error for connection failure
@@ -1041,7 +1055,7 @@ export const useAppActions = (state: AppState) => {
         handleViewProfile,
         handleViewProfileFromChat,
         handleCreateAdFinish,
-        handleSubscribe,
+        // handleSubscribe, // REMOVED
         handleAdminSaveAd,
         handleAdminAdUpdate,
         handleModerationBlockUser,

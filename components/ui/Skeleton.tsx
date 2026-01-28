@@ -7,9 +7,9 @@ interface SkeletonProps {
 export const Skeleton: React.FC<SkeletonProps> = ({ className }) => {
     return (
         <div
-            className={`relative overflow-hidden bg-slate-200 animate-pulse ${className}`}
+            className={`relative overflow-hidden bg-slate-200 ${className}`}
         >
-            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+            <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent will-change-transform" />
         </div>
     );
 };

@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAppState } from '../hooks/useAppState';
 import { Plus, MoreVertical, Trash2, Edit2, X, AlertTriangle, Clock, TrendingUp, Calendar, Zap, Lock, Info } from 'lucide-react';
 import { Header, PriceTag } from '../components/Shared';
 import { AdItem, AdStatus } from '../types';
@@ -16,6 +17,8 @@ interface MyAdsProps {
 }
 
 export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onCreateNew, onAdClick, initialTab }) => {
+  const { pendingHighlightAd, setPendingHighlightAd } = useAppState();
+
   const [activeTab, setActiveTab] = useState<'ativos' | 'inativos' | 'pendentes'>(initialTab || 'ativos');
 
   React.useEffect(() => {
@@ -29,6 +32,20 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editAd, setEditAd] = useState<AdItem | null>(null);
   const [highlightAd, setHighlightAd] = useState<AdItem | null>(null);
+  const [highlightInitialPlanId, setHighlightInitialPlanId] = useState<string | undefined>(undefined);
+
+  // Effect to handle Pending Highlight Flow
+  useEffect(() => {
+    if (pendingHighlightAd && ads.length > 0) {
+      const targetAd = ads.find(a => a.id === pendingHighlightAd.adId);
+      if (targetAd) {
+        setHighlightAd(targetAd);
+        setHighlightInitialPlanId(pendingHighlightAd.planId);
+        setPendingHighlightAd(null); // Clear pending state immediately to prevent loop
+      }
+    }
+  }, [pendingHighlightAd, ads, setPendingHighlightAd]);
+
 
   // Group Pending with Active in the tab logic, but they are technically distinct states
   const filteredAds = ads.filter(ad => {
@@ -359,9 +376,12 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
       {highlightAd && (
         <HighlightAdModal
           ad={highlightAd}
-          onClose={() => setHighlightAd(null)}
+          onClose={() => { setHighlightAd(null); setHighlightInitialPlanId(undefined); }}
+          initialPlanId={highlightInitialPlanId}
           onSuccess={() => {
-            // No needed for explicit refresh if using Realtime, but good for UX
+            // Optional: refresh ads or show toast
+            setHighlightAd(null);
+            setHighlightInitialPlanId(undefined);
             console.log("Destaque contratado com sucesso!");
           }}
         />

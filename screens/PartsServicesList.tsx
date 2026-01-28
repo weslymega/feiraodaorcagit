@@ -6,6 +6,7 @@ import { AdItem, FilterContext, AdStatus, PartsServicesPromotion } from '../type
 import { PARTS_SERVICES_PROMO_BANNERS } from '../constants';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
+import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 
 interface PartsServicesListProps {
   ads: AdItem[];
@@ -283,14 +284,16 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
       {/* Results */}
       <div className="px-4 flex flex-col gap-4 relative z-0">
-        {filteredAds.length > 0 ? (
+        {ads === undefined ? (
+          [1, 2, 3].map(i => <AdCardSkeleton key={i} variant="vertical" className="h-32" />)
+        ) : filteredAds.length > 0 ? (
           filteredAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);
             return (
               <div
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-all flex h-32"
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-all flex h-32 animate-fadeIn"
               >
                 <div className="w-32 h-full relative flex-shrink-0">
                   <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
