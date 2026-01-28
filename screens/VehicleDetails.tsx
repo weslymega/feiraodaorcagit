@@ -115,20 +115,24 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
     }
   };
 
-  const handleReportSubmit = (reason: string, description: string) => {
+  const handleReportSubmit = async (reason: string, description: string) => {
     if (onReport) {
       const newReport: ReportItem = {
         id: `rep_${Date.now()}`,
-        adId: ad.id,
-        adTitle: ad.title,
+        targetId: ad.id,
+        targetName: ad.title || 'Anúncio',
+        targetType: 'ad',
+        targetImage: ad.image || (ad.images && ad.images[0]) || null,
+        reportedUserId: ad.user_id, // CRITICAL: Link the report to the owner
         reason: reason,
         description: description,
-        reporterId: 'user_current', // Placeholder or actual user ID if available in context
+        reporterId: 'user_current',
         reporterName: 'Usuário (Você)',
-        status: 'pending',
-        date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+        severity: 'medium',
+        date: new Date().toLocaleDateString('pt-BR'),
+        status: 'pending'
       };
-      onReport(newReport);
+      await onReport(newReport);
       setToastMessage("Denúncia enviada para análise.");
     } else {
       console.log('Report submitted:', { adId: ad.id, reason, description });

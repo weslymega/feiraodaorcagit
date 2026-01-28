@@ -201,12 +201,18 @@ export interface NotificationItem {
 
 export interface ReportItem {
   id: string;
-  adId: string;
-  adTitle: string;
+  adId?: string;
+  adTitle?: string;
+  targetId: string;
+  targetName: string;
+  targetType: 'ad' | 'user';
+  targetImage?: string;
+  reportedUserId?: string;
   reason: string;
   description: string;
   reporterId: string;
   reporterName: string;
+  severity: 'low' | 'medium' | 'high';
   status: 'pending' | 'resolved' | 'dismissed';
   date: string;
 }

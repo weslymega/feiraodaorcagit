@@ -77,20 +77,24 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
     } else { alert("Compartilhamento não suportado neste dispositivo."); }
   };
 
-  const handleReportSubmit = (reason: string, description: string) => {
+  const handleReportSubmit = async (reason: string, description: string) => {
     if (onReport) {
       const newReport: ReportItem = {
         id: `rep_${Date.now()}`,
-        adId: ad.id,
-        adTitle: ad.title || 'Anúncio',
+        targetId: ad.id,
+        targetName: ad.title || 'Anúncio',
+        targetType: 'ad',
+        targetImage: ad.image || (ad.images && ad.images[0]) || null,
+        reportedUserId: ad.user_id, // CRITICAL: Link the report to the owner
         reason: reason,
         description: description,
         reporterId: 'user_current',
         reporterName: 'Usuário (Você)',
-        date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+        severity: 'medium',
+        date: new Date().toLocaleDateString('pt-BR'),
         status: 'pending'
       };
-      onReport(newReport);
+      await onReport(newReport);
       setToastMessage("Denúncia enviada para análise.");
     } else {
       console.log('Report submitted:', { adId: ad.id, reason, description });
@@ -169,10 +173,14 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
           className="flex items-center gap-3 bg-gray-50 p-4 rounded-xl mb-6 cursor-pointer hover:bg-gray-100 transition-colors group active:scale-[0.98]"
         >
           <div className="w-12 h-12 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden">
-            <UserIcon className="w-6 h-6 text-gray-400" />
+            {ad.ownerAvatar ? (
+              <img src={ad.ownerAvatar} alt={ad.ownerName} className="w-full h-full object-cover" />
+            ) : (
+              <UserIcon className="w-6 h-6 text-gray-400" />
+            )}
           </div>
           <div className="flex-1">
-            <p className="font-bold text-gray-900 group-hover:text-primary">Anunciante</p>
+            <p className="font-bold text-gray-900 group-hover:text-primary">{ad.ownerName || 'Vendedor'}</p>
             <p className="text-xs text-gray-500">Ver perfil completo</p>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary" />

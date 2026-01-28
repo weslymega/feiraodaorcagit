@@ -1,0 +1,10 @@
+project_id = "xkkjjvrucnlilegwnoey"
+
+[functions.admin_manage_users]
+verify_jwt = false
+
+[functions.admin_manage_roles]
+verify_jwt = false
+
+[functions.admin_manage_reports]
+verify_jwt = false

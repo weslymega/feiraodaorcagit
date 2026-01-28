@@ -55,10 +55,31 @@ export const useAppState = () => {
         if (ads) setRealAds(ads);
 
         // Fetch My Ads (if logged in)
-        // Ideally we check if user.id is valid (not the mock default)
-        // But fetchMyAds handles "no user" safely.
         const userAds = await api.getMyAds();
         if (userAds) setMyAds(userAds);
+
+        // Fetch Reports (if admin)
+        if (user.isAdmin) {
+          const reportsData = await api.getReports();
+          if (reportsData) {
+            const mappedReports = reportsData.map((r: any) => ({
+              id: r.id,
+              targetId: r.target_id || r.ad_id,
+              targetName: r.target_name || (r.ads?.title) || 'Alvo desconhecido',
+              targetType: r.target_type || (r.ad_id ? 'ad' : 'user'),
+              targetImage: r.target_image || (r.ads?.image) || null,
+              reportedUserId: r.reported_user_id || (r.ads?.user_id) || null,
+              reason: r.reason,
+              description: r.description,
+              reporterId: r.reporter_id,
+              reporterName: r.reporter?.name || 'Anon',
+              severity: r.severity || 'medium',
+              status: r.status,
+              date: new Date(r.created_at).toLocaleDateString('pt-BR')
+            } as ReportItem));
+            setReports(mappedReports);
+          }
+        }
 
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);

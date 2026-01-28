@@ -21,13 +21,10 @@ import {
 } from 'lucide-react';
 import { AdStatus, Screen } from '../types';
 import {
-  MOCK_USERS_LIST,
-  MOCK_ADMIN_VEHICLES,
-  MOCK_ADMIN_REAL_ESTATE,
-  MOCK_ADMIN_PARTS_SERVICES,
-  FEATURED_VEHICLES,
   POPULAR_CARS
 } from '../constants';
+import { api, supabase } from '../services/api';
+import { Loader2 } from 'lucide-react';
 
 interface AdminPanelProps {
   onBack: () => void;
@@ -84,36 +81,57 @@ const ManagementItem: React.FC<{
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) => {
 
-  // Calculate Stats based on Mock Data
-  const stats = useMemo(() => {
-    // Combine all ads from various sources to represent the platform's total database
-    const allAds = [
-      ...MOCK_ADMIN_VEHICLES,
-      ...MOCK_ADMIN_REAL_ESTATE,
-      ...MOCK_ADMIN_PARTS_SERVICES,
-      ...FEATURED_VEHICLES,
-      ...POPULAR_CARS
-    ];
+  const [loading, setLoading] = React.useState(true);
+  const [counts, setCounts] = React.useState({
+    totalUsers: 0,
+    activeAds: 0,
+    pendingAds: 0,
+    revenue: 0
+  });
 
-    const totalUsers = MOCK_USERS_LIST.length;
-    const activeAds = allAds.filter(ad => ad.status === AdStatus.ACTIVE).length;
-    const pendingAds = allAds.filter(ad => ad.status === AdStatus.PENDING).length;
-
-    // Calculate revenue based on Boost Plans
-    const revenue = allAds.reduce((acc, ad) => {
-      if (ad.boostPlan === 'premium') return acc + 100;
-      if (ad.boostPlan === 'advanced') return acc + 60;
-      if (ad.boostPlan === 'basic') return acc + 30;
-      return acc;
-    }, 0);
-
-    return {
-      totalUsers,
-      activeAds,
-      pendingAds,
-      revenue
-    };
+  React.useEffect(() => {
+    loadStats();
   }, []);
+
+  const loadStats = async () => {
+    try {
+      setLoading(true);
+
+      // 1. Fetch Users Count
+      const users = await api.getAllUsers();
+
+      // 2. Fetch Ads for stats
+      // For now we fetch all profile metadata and ads from our API
+      // In a very large app, we would use a specialized RPC function for counts
+      const { data: adsCountData, error: adsError } = await supabase
+        .from('anuncios')
+        .select('status, boost_plan');
+
+      if (adsError) throw adsError;
+
+      const activeCount = adsCountData?.filter(ad => ad.status === 'active').length || 0;
+      const pendingCount = adsCountData?.filter(ad => ad.status === 'pendente' || ad.status === 'pending').length || 0;
+
+      // Calculate revenue
+      const revenue = adsCountData?.reduce((acc, ad) => {
+        if (ad.boost_plan === 'premium') return acc + 100;
+        if (ad.boost_plan === 'advanced') return acc + 60;
+        if (ad.boost_plan === 'basic') return acc + 30;
+        return acc;
+      }, 0) || 0;
+
+      setCounts({
+        totalUsers: users.length,
+        activeAds: activeCount,
+        pendingAds: pendingCount,
+        revenue: revenue
+      });
+    } catch (err: any) {
+      console.error('Failed to load admin stats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-6 animate-in slide-in-from-right duration-300">
@@ -141,35 +159,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
         <div className="grid grid-cols-2 gap-4 mb-8">
           <StatCard
             title="Total de Usuários"
-            value={stats.totalUsers}
-            growth="12%"
-            icon={<Users className="w-5 h-5" />}
+            value={loading ? '-' : counts.totalUsers}
+            growth={loading ? '' : "12%"}
+            icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-5 h-5" />}
             bgClass="bg-blue-100"
             textClass="text-blue-700"
           />
           <StatCard
             title="Anúncios Ativos"
-            value={stats.activeAds}
-            growth="5.4%"
-            icon={<ShoppingBag className="w-5 h-5" />}
+            value={loading ? '-' : counts.activeAds}
+            growth={loading ? '' : "5.4%"}
+            icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-5 h-5" />}
             bgClass="bg-purple-100"
             textClass="text-purple-700"
           />
           <StatCard
             title="Pendentes"
-            value={stats.pendingAds}
-            growth="Ação Req."
+            value={loading ? '-' : counts.pendingAds}
+            growth={loading ? '' : "Ação Req."}
             growthColor="text-orange-600"
             isPositive={false}
-            icon={<AlertTriangle className="w-5 h-5" />}
+            icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-5 h-5" />}
             bgClass="bg-orange-100"
             textClass="text-orange-700"
           />
           <StatCard
             title="Receita Total"
-            value={`R$ ${stats.revenue.toLocaleString('pt-BR')}`}
-            growth="8.3%"
-            icon={<DollarSign className="w-5 h-5" />}
+            value={loading ? '-' : `R$ ${counts.revenue.toLocaleString('pt-BR')}`}
+            growth={loading ? '' : "8.3%"}
+            icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-5 h-5" />}
             bgClass="bg-green-100"
             textClass="text-green-700"
           />

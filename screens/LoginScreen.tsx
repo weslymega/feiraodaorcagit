@@ -48,14 +48,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
         const user: User = {
           id: data.user.id,
           email: data.user.email || email,
-          name: profile?.full_name || data.user.user_metadata?.name || "Usuário",
-          avatarUrl: profile?.avatar_url || data.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${data.user.email}&background=random`,
+          name: profile?.name || data.user.user_metadata?.name || "Usuário",
+          avatarUrl: profile?.avatarUrl || data.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${data.user.email}&background=random`,
           balance: profile?.balance || 0,
           adsCount: 0, // Should fetch real count if needed
-          activePlan: profile?.active_plan || 'free',
-          isAdmin: profile?.is_admin || false,
+          activePlan: profile?.activePlan || 'free',
+          isAdmin: profile?.isAdmin || false,
           verified: !!data.user.email_confirmed_at,
-          joinDate: new Date(data.user.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+          joinDate: profile?.joinDate || new Date(data.user.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
           phone: profile?.phone || "",
           location: profile?.location || "Brasília, DF",
           bio: profile?.bio || ""

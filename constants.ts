@@ -66,7 +66,7 @@ export const MOCK_SELLER: User = {
 // --- MOCK USERS LIST FOR ADMIN PANEL ---
 export const MOCK_USERS_LIST: User[] = [
   {
-    id: 'u1',
+    id: '00000000-0000-0000-0000-000000000003',
     name: "Marcos Paulo",
     email: "marcos@email.com",
     avatarUrl: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=200",
@@ -80,7 +80,7 @@ export const MOCK_USERS_LIST: User[] = [
     isBlocked: false
   },
   {
-    id: 'u2',
+    id: '00000000-0000-0000-0000-000000000004',
     name: "Ana Clara",
     email: "ana.clara@test.com",
     avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200",
@@ -222,11 +222,14 @@ export const MOCK_REPORTS: ReportItem[] = [
   {
     id: 'rep_1',
     reporterId: 'user_regular_01',
-    adId: 'v_rejected_1',
-    adTitle: 'Fiat Uno Mille 1995 (Sem documento)',
+    targetId: 'v_rejected_1',
+    targetName: 'Fiat Uno Mille 1995 (Sem documento)',
+    targetType: 'ad',
+    targetImage: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=400',
     reason: 'Fraude / Golpe',
     description: 'Veículo sem documentação e preço muito abaixo do mercado. Suspeita de golpe.',
     reporterName: 'João Cliente',
+    severity: 'low',
     date: 'Hoje, 10:45',
 
     status: 'pending'
@@ -234,11 +237,13 @@ export const MOCK_REPORTS: ReportItem[] = [
   {
     id: 'rep_2',
     reporterId: 'user_regular_01',
-    adId: 'u5',
-    adTitle: 'Carlos Vendas Rápidas',
+    targetId: 'u5',
+    targetName: 'Carlos Vendas Rápidas',
+    targetType: 'user',
     reason: 'Comportamento Abusivo',
     description: 'Vendedor enviando mensagens ofensivas no chat.',
     reporterName: 'Maria Silva',
+    severity: 'medium',
     date: 'Ontem, 15:30',
 
     status: 'pending'
@@ -246,11 +251,14 @@ export const MOCK_REPORTS: ReportItem[] = [
   {
     id: 'rep_3',
     reporterId: 'system_auto',
-    adId: 'ps_rejected_1',
-    adTitle: 'Desbloqueio de Multimidia (Serviço Ilegal)',
+    targetId: 'ps_rejected_1',
+    targetName: 'Desbloqueio de Multimidia (Serviço Ilegal)',
+    targetType: 'ad',
+    targetImage: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
     reason: 'Conteúdo Ilegal',
     description: 'Serviço que viola os termos de uso e a legislação de trânsito.',
     reporterName: 'Sistema (Auto)',
+    severity: 'high',
     date: '12 Out, 09:00',
 
     status: 'pending'

@@ -90,7 +90,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         handleViewProfile, handleRemoveFavorite, handleSelectChat,
         navigateToAdDetails, handleViewProfileFromChat, handleDeleteAccount,
         handleAdminAdUpdate, handleModerationBlockUser, handleModerationDeleteAd,
-        handleReportAction, handleAdminSaveAd,
+        handleReportAction, handleDeleteReport, handleAdminSaveAd,
         handleSavePromotion, handleDeletePromotion, handleTogglePromotionActive,
         handleSaveRealEstatePromotion, handleDeleteRealEstatePromotion, handleToggleRealEstatePromotionActive,
         handleSavePartsServicesPromotion, handleDeletePartsServicesPromotion, handleTogglePartsServicesPromotionActive,
@@ -429,7 +429,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
             case Screen.ADMIN_SYSTEM_SETTINGS:
                 return user.isAdmin ? <AdminSystemSettings onBack={() => navigateTo(Screen.ADMIN_PANEL)} fairActive={fairActive} onToggleFair={toggleFairActive} maintenanceMode={maintenanceMode} onToggleMaintenance={toggleMaintenanceModeAction} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} />;
             case Screen.ADMIN_CONTENT_MODERATION:
-                return user.isAdmin ? <AdminContentModeration onBack={() => navigateTo(Screen.ADMIN_PANEL)} onBlockUser={handleModerationBlockUser} onDeleteAd={handleModerationDeleteAd} reports={reports} onUpdateReport={handleReportAction} ads={allModerationAds} onSaveAd={handleAdminSaveAd} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} />;
+                return user.isAdmin ? <AdminContentModeration onBack={() => navigateTo(Screen.ADMIN_PANEL)} onBlockUser={handleModerationBlockUser} onDeleteAd={handleModerationDeleteAd} reports={reports} onUpdateReport={handleReportAction} onDeleteReport={handleDeleteReport} onViewProfile={handleViewProfile} ads={allModerationAds} onSaveAd={handleAdminSaveAd} /> : <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} />;
             case Screen.ADMIN_DASHBOARD_PROMOTIONS:
                 return user.isAdmin ? (
                     <AdminDashboardPromotions

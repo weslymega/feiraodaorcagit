@@ -493,8 +493,19 @@ export const useAppActions = (state: AppState) => {
         });
     };
 
-    const handleAddReport = (newReport: ReportItem) => {
-        setReports((prev: ReportItem[]) => [newReport, ...prev]);
+    const handleAddReport = async (newReport: ReportItem) => {
+        try {
+            await api.createReport(newReport);
+
+            // Still update locally for immediate UX
+            setReports((prev: ReportItem[]) => [newReport, ...prev]);
+
+            setToast({ message: "Sua denúncia foi enviada para análise. Obrigado por nos ajudar a manter a comunidade segura!", type: 'success' });
+        } catch (error: any) {
+            console.error("Erro ao enviar denúncia:", error);
+            setToast({ message: "Erro ao enviar denúncia. Tente novamente mais tarde.", type: 'error' });
+            throw error; // RE-THROW so the UI knows it failed
+        }
     };
 
     const handleToggleFairPresence = (ad: AdItem) => {
@@ -809,18 +820,37 @@ export const useAppActions = (state: AppState) => {
         setToast({ message: `Anúncio "${adTitle}" foi removido por violação.`, type: 'success' });
     };
 
-    const handleReportAction = (reportId: string, action: 'resolved' | 'dismissed') => {
-        setReports((prev: ReportItem[]) => prev.map(r => {
-            if (r.id === reportId) {
-                return { ...r, status: action };
-            }
-            return r;
-        }));
-        setToast({
-            message: action === 'dismissed' ? "Denúncia ignorada e removida da lista." : "Denúncia marcada como resolvida.",
-            type: action === 'dismissed' ? 'info' : 'success'
-        });
+    const handleReportAction = async (reportId: string, action: 'resolved' | 'dismissed') => {
+        try {
+            await api.updateReportStatus(reportId, action);
+
+            setReports((prev: ReportItem[]) => prev.map(r => {
+                if (r.id === reportId) {
+                    return { ...r, status: action };
+                }
+                return r;
+            }));
+
+            setToast({
+                message: action === 'dismissed' ? "Denúncia ignorada e removida da lista." : "Denúncia marcada como resolvida.",
+                type: action === 'dismissed' ? 'info' : 'success'
+            });
+        } catch (error: any) {
+            setToast({ message: "Erro ao atualizar denúncia: " + error.message, type: 'error' });
+        }
     }
+
+    const handleDeleteReport = async (reportId: string) => {
+        if (!window.confirm("Deseja realmente EXCLUIR esta denúncia do banco de dados?")) return;
+
+        try {
+            await api.deleteReport(reportId);
+            setReports((prev: ReportItem[]) => prev.filter(r => r.id !== reportId));
+            setToast({ message: "Denúncia excluída permanentemente.", type: 'success' });
+        } catch (error: any) {
+            setToast({ message: "Erro ao excluir denúncia: " + error.message, type: 'error' });
+        }
+    };
 
     const handleDeleteAccount = () => {
         if (window.confirm("Tem certeza absoluta? Isso apagará seus dados locais.")) {
@@ -946,6 +976,7 @@ export const useAppActions = (state: AppState) => {
         handleModerationBlockUser,
         handleModerationDeleteAd,
         handleReportAction,
+        handleDeleteReport,
         handleDeleteAccount,
         handleSelectChat,
         handleStartChatFromAd,

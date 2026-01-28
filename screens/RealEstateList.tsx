@@ -237,10 +237,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
           <button
             key={num}
             onClick={() => onChange(isSelected ? null : num)}
-            className={`flex - 1 py - 3 rounded - lg text - sm font - bold transition - all ${isSelected
+            className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${isSelected
               ? 'bg-white text-primary shadow-sm border border-gray-100 ring-1 ring-black/5'
               : 'text-gray-500 hover:text-gray-700'
-              } `}
+              }`}
           >
             {num}{num === 4 ? '+' : ''}
           </button>
@@ -257,10 +257,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         rightElement={
           <button
             onClick={() => setIsFilterOpen(true)}
-            className={`px - 4 py - 2 rounded - full transition - colors flex items - center gap - 2 ${activeFiltersCount > 0
+            className={`px-4 py-2 rounded-full transition-colors flex items-center gap-2 ${activeFiltersCount > 0
               ? 'bg-primary text-white shadow-md'
               : 'bg-white text-primary border border-primary/20 hover:bg-blue-50'
-              } `}
+              }`}
           >
             <span className="text-sm font-bold">Filtros</span>
             {activeFiltersCount > 0 && (
@@ -364,7 +364,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                         }}
                         className="p-2 bg-white/80 backdrop-blur-md rounded-full text-gray-500 hover:text-red-500 transition-colors shadow-sm"
                       >
-                        <Heart className={`w - 5 h - 5 ${isFav ? 'fill-red-500 text-red-500' : ''} `} />
+                        <Heart className={`w-5 h-5 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
                       </button>
                     </div>
 
@@ -462,10 +462,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                         <button
                           key={type}
                           onClick={() => toggleFilterArray('propertyType', type)}
-                          className={`px - 5 py - 2.5 rounded - xl text - sm font - bold whitespace - nowrap transition - all border ${isSelected
+                          className={`px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all border ${isSelected
                             ? 'bg-primary border-primary text-white shadow-md shadow-blue-200'
                             : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                            } `}
+                            }`}
                         >
                           {type}
                         </button>
@@ -580,10 +580,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                           onClick={() => toggleFilterArray('amenities', amenity)}
                           className="flex items-center gap-3 p-1 group"
                         >
-                          <div className={`w - 6 h - 6 rounded - md border flex items - center justify - center transition - colors ${isChecked ? 'bg-primary border-primary' : 'bg-white border-gray-300'} `}>
+                          <div className={`w-6 h-6 rounded-md border flex items-center justify-center transition-colors ${isChecked ? 'bg-primary border-primary' : 'bg-white border-gray-300'}`}>
                             {isChecked && <Check className="w-4 h-4 text-white" />}
                           </div>
-                          <span className={`text - sm ${isChecked ? 'text-gray-900 font-medium' : 'text-gray-600'} `}>
+                          <span className={`text-sm ${isChecked ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
                             {amenity}
                           </span>
                         </button>
