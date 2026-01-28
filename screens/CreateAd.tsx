@@ -348,15 +348,22 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
         else next = CreateStep.CATEGORY;
         break;
       case CreateStep.VEHICLE_TYPE: next = CreateStep.PHOTOS; break;
-      case CreateStep.REAL_ESTATE_TYPE: next = CreateStep.PHOTOS; break;
+      case CreateStep.REAL_ESTATE_TYPE:
+        if (!formData.realEstateType) return;
+        next = CreateStep.PHOTOS;
+        break;
       case CreateStep.PARTS_TYPE:
+        if (!formData.partType) return;
         if (formData.partType === 'Serviços Automotivos' || formData.partType === 'Limpeza e Estética') {
           next = CreateStep.PHOTOS;
         } else {
           next = CreateStep.PARTS_CONDITION;
         }
         break;
-      case CreateStep.PARTS_CONDITION: next = CreateStep.PHOTOS; break;
+      case CreateStep.PARTS_CONDITION:
+        if (!formData.condition) return;
+        next = CreateStep.PHOTOS;
+        break;
       case CreateStep.PHOTOS:
         if (formData.category === 'veiculos') next = CreateStep.PLATE;
         else if (formData.category === 'imoveis') next = CreateStep.REAL_ESTATE_SPECS;
@@ -534,7 +541,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     const boostConfig = calculateBoostConfig(formData.boostPlan);
     const adData = {
       title,
-      price: formData.price,
+      price: (formData.price && formData.price > 0) ? formData.price : null,
       fipePrice: formData.fipePrice,
       location: formData.location || "Localização não informada",
       image: formData.images[0] || "https://placehold.co/400",
@@ -629,53 +636,70 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   };
 
   const renderRealEstateType = () => (
-    <StepContainer title="Tipo de Imóvel" progress={0.1} onNext={nextStep} onBack={goBack}>
+    <StepContainer title="Tipo de Imóvel" progress={0.1} onNext={nextStep} nextDisabled={!formData.realEstateType} onBack={goBack}>
       <div className="flex flex-col gap-4">
         {["Apartamento", "Casa", "Terreno", "Comercial", "Rural"].map(type => (
-          <button key={type} onClick={() => { setFormData(p => ({ ...p, realEstateType: type })); nextStep(); }} className="flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.99]">
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl"><Home className="w-6 h-6" /></div>
-            <span className="font-bold text-gray-800 text-lg flex-1 text-left">{type}</span>
-            <ChevronLeft className="w-5 h-5 text-gray-300 rotate-180" />
+          <button key={type} onClick={() => { setFormData(p => ({ ...p, realEstateType: type })); nextStep(); }} className={`flex items-center gap-4 p-5 border shadow-sm rounded-2xl transition-all active:scale-[0.99] ${formData.realEstateType === type ? 'border-primary bg-blue-50/30' : 'bg-white border-gray-100 hover:border-primary hover:shadow-md'}`}>
+            <div className={`p-3 rounded-xl ${formData.realEstateType === type ? 'bg-primary text-white' : 'bg-purple-50 text-purple-600'}`}><Home className="w-6 h-6" /></div>
+            <span className={`font-bold text-lg flex-1 text-left ${formData.realEstateType === type ? 'text-gray-900' : 'text-gray-800'}`}>{type}</span>
+            <ChevronLeft className={`w-5 h-5 rotate-180 ${formData.realEstateType === type ? 'text-primary' : 'text-gray-300'}`} />
           </button>
         ))}
       </div>
     </StepContainer>
   );
 
-  const renderRealEstateSpecs = () => (
-    <StepContainer title="Detalhes do Imóvel" progress={0.5} onNext={nextStep} onBack={goBack}>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Área Total (m²)</label>
-          <input type="text" inputMode="numeric" value={formData.area} onChange={(e) => setFormData(p => ({ ...p, area: e.target.value.replace(/\D/g, '') }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary outline-none" placeholder="0" />
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Quartos</label>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} onClick={() => setFormData(p => ({ ...p, bedrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bedrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>
-            ))}
+  const renderRealEstateSpecs = () => {
+    const canProceed = !!formData.area && !!formData.bedrooms && !!formData.bathrooms && !!formData.parking;
+
+    return (
+      <StepContainer title="Detalhes do Imóvel" progress={0.5} onNext={nextStep} nextDisabled={!canProceed} onBack={goBack}>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Área Total (m²)</label>
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={formatMileageInput(formData.area)}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  setFormData(p => ({ ...p, area: raw }));
+                }}
+                className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary outline-none"
+                placeholder="0"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-gray-400">m²</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Quartos</label>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button key={n} onClick={() => setFormData(p => ({ ...p, bedrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border transition-all ${formData.bedrooms === n.toString() ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{n}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Banheiros</label>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map(n => (
+                <button key={n} onClick={() => setFormData(p => ({ ...p, bathrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border transition-all ${formData.bathrooms === n.toString() ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{n}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Vagas</label>
+            <div className="flex gap-2">
+              {[0, 1, 2, 3].map(n => (
+                <button key={n} onClick={() => setFormData(p => ({ ...p, parking: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border transition-all ${formData.parking === n.toString() ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{n}</button>
+              ))}
+            </div>
           </div>
         </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Banheiros</label>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4].map(n => (
-              <button key={n} onClick={() => setFormData(p => ({ ...p, bathrooms: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.bathrooms === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Vagas</label>
-          <div className="flex gap-2">
-            {[0, 1, 2, 3].map(n => (
-              <button key={n} onClick={() => setFormData(p => ({ ...p, parking: n.toString() }))} className={`flex-1 py-3 rounded-xl font-bold border ${formData.parking === n.toString() ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>{n}+</button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </StepContainer>
-  );
+      </StepContainer>
+    );
+  };
 
   const renderRealEstateFeatures = () => (
     <StepContainer title="Comodidades" progress={0.6} onNext={nextStep} onBack={goBack}>
@@ -688,13 +712,13 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   );
 
   const renderPartsType = () => (
-    <StepContainer title="Categoria da Peça/Serviço" progress={0.1} onNext={nextStep} onBack={goBack}>
+    <StepContainer title="Categoria da Peça/Serviço" progress={0.1} onNext={nextStep} nextDisabled={!formData.partType} onBack={goBack}>
       <div className="flex flex-col gap-4">
         {["Peças Mecânicas", "Som e Vídeo", "Acessórios", "Pneus e Rodas", "Serviços Automotivos", "Limpeza e Estética"].map(type => (
-          <button key={type} onClick={() => { setFormData(p => ({ ...p, partType: type })); nextStep(); }} className="flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.99]">
-            <div className="p-3 bg-orange-50 text-orange-600 rounded-xl"><Wrench className="w-6 h-6" /></div>
-            <span className="font-bold text-gray-800 text-lg flex-1 text-left">{type}</span>
-            <ChevronLeft className="w-5 h-5 text-gray-300 rotate-180" />
+          <button key={type} onClick={() => { setFormData(p => ({ ...p, partType: type })); nextStep(); }} className={`flex items-center gap-4 p-5 border shadow-sm rounded-2xl transition-all active:scale-[0.99] ${formData.partType === type ? 'border-primary bg-blue-50/30' : 'bg-white border-gray-100 hover:border-primary hover:shadow-md'}`}>
+            <div className={`p-3 rounded-xl ${formData.partType === type ? 'bg-primary text-white' : 'bg-orange-50 text-orange-600'}`}><Wrench className="w-6 h-6" /></div>
+            <span className={`font-bold text-lg flex-1 text-left ${formData.partType === type ? 'text-gray-900' : 'text-gray-800'}`}>{type}</span>
+            <ChevronLeft className={`w-5 h-5 rotate-180 ${formData.partType === type ? 'text-primary' : 'text-gray-300'}`} />
           </button>
         ))}
       </div>
@@ -702,13 +726,13 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   );
 
   const renderPartsCondition = () => (
-    <StepContainer title="Condição" progress={0.2} onNext={nextStep} onBack={goBack}>
+    <StepContainer title="Condição" progress={0.2} onNext={nextStep} nextDisabled={!formData.condition} onBack={goBack}>
       <div className="flex flex-col gap-4">
         {["Novo", "Usado"].map(cond => (
-          <button key={cond} onClick={() => { setFormData(p => ({ ...p, condition: cond })); nextStep(); }} className="flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.99]">
-            <div className="p-3 bg-gray-50 text-gray-600 rounded-xl"><Package className="w-6 h-6" /></div>
-            <span className="font-bold text-gray-800 text-lg flex-1 text-left">{cond}</span>
-            <ChevronLeft className="w-5 h-5 text-gray-300 rotate-180" />
+          <button key={cond} onClick={() => { setFormData(p => ({ ...p, condition: cond })); nextStep(); }} className={`flex items-center gap-4 p-5 border shadow-sm rounded-2xl transition-all active:scale-[0.99] ${formData.condition === cond ? 'border-primary bg-blue-50/30' : 'bg-white border-gray-100 hover:border-primary hover:shadow-md'}`}>
+            <div className={`p-3 rounded-xl ${formData.condition === cond ? 'bg-primary text-white' : 'bg-gray-50 text-gray-600'}`}><Package className="w-6 h-6" /></div>
+            <span className={`font-bold text-lg flex-1 text-left ${formData.condition === cond ? 'text-gray-900' : 'text-gray-800'}`}>{cond}</span>
+            <ChevronLeft className={`w-5 h-5 rotate-180 ${formData.condition === cond ? 'text-primary' : 'text-gray-300'}`} />
           </button>
         ))}
       </div>
@@ -848,6 +872,12 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     const isExceeded = charCount > 500 || wordCount > 200;
     const canContinue = charCount >= 5 && !isExceeded;
 
+    const descriptionPlaceholder = formData.category === 'imoveis'
+      ? "Ex: Apartamento reformado, ventilado, com vista livre, armários embutidos e ótima localização..."
+      : formData.category === 'veiculos'
+        ? "Ex: Carro em perfeito estado, revisado recentemente, único dono e com manual..."
+        : "Ex: Peça original, sem uso, na embalagem de fábrica e com garantia...";
+
     return (
       <StepContainer
         title="Descrição"
@@ -862,7 +892,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
             onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
             className={`w-full h-64 border-2 bg-gray-50 rounded-2xl p-5 focus:bg-white focus:ring-4 outline-none resize-none text-gray-800 text-lg leading-relaxed shadow-inner transition-all ${isExceeded ? 'border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-primary focus:ring-primary/10'
               }`}
-            placeholder="Ex: Carro em perfeito estado, revisado recentemente..."
+            placeholder={descriptionPlaceholder}
           />
           <div className="flex justify-between items-center px-1">
             <div className="flex gap-4">
@@ -892,7 +922,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       if (formData.price === 0) { } else if (diff < 0) { fipeComparison = { text: `${percentage.toFixed(1)}% abaixo da Tabela`, color: 'text-green-700', bg: 'bg-green-100', barColor: 'bg-green-500', width: `${Math.max(10, (formData.price / formData.fipePrice) * 80)}%` }; } else if (diff > 0) { fipeComparison = { text: `${percentage.toFixed(1)}% acima da Tabela`, color: 'text-orange-700', bg: 'bg-orange-100', barColor: 'bg-orange-500', width: `${Math.min(100, (formData.price / formData.fipePrice) * 80)}%` }; } else { fipeComparison = { text: `Igual à Tabela FIPE`, color: 'text-blue-700', bg: 'bg-blue-100', barColor: 'bg-blue-500', width: '80%' }; }
     }
     return (
-      <StepContainer title="Preço" progress={0.9} onNext={nextStep} onBack={goBack} nextDisabled={!formData.price || Number(formData.price) <= 0}>
+      <StepContainer title="Preço" progress={0.9} onNext={nextStep} onBack={goBack}>
         <div className="flex flex-col items-center justify-center py-6"><p className="text-gray-500 font-medium mb-4">Quanto você quer pedir?</p><div className="relative w-full mb-8"><input type="text" inputMode="numeric" value={formData.price ? formData.price.toLocaleString('pt-BR') : ''} onChange={(e) => { const raw = e.target.value.replace(/\D/g, ''); if (raw.length > 9) return; const val = raw ? Number(raw) : 0; setFormData(p => ({ ...p, price: val })); }} placeholder="0" className="w-full text-center text-5xl font-bold text-primary bg-transparent outline-none placeholder-blue-200" /><span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-primary opacity-50">R$</span></div>{formData.fipePrice > 0 && (<div className="w-full bg-gray-50 rounded-2xl p-5 border border-gray-200 animate-in fade-in slide-in-from-bottom-2"><div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200"><div className="flex flex-col"><span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Referência FIPE</span><span className="text-xs text-gray-400 font-medium">{formData.year} • {formData.fuel}</span></div><span className="font-bold text-gray-900 text-xl">R$ {formData.fipePrice.toLocaleString('pt-BR')}</span></div>{formData.price > 0 && fipeComparison ? (<><div className={`flex items-center justify-between mb-2 text-xs font-bold ${fipeComparison.color}`}><span>Seu Preço</span><span>{fipeComparison.text}</span></div><div className="relative h-3 bg-gray-200 rounded-full overflow-hidden mb-4"><div className="absolute top-0 bottom-0 w-1 bg-gray-400 left-[80%] z-10" title="Marca FIPE"></div><div className={`h-full rounded-full transition-all duration-500 ${fipeComparison.barColor}`} style={{ width: fipeComparison.width }}></div></div><div className={`p-3 rounded-xl ${fipeComparison.bg} border border-transparent`}><p className={`text-xs text-center font-medium ${fipeComparison.color}`}>{fipeComparison.text === 'Igual à Tabela FIPE' ? 'Preço justo aumenta suas chances de venda!' : (formData.price < formData.fipePrice ? 'Preço competitivo! Alta chance de venda rápida.' : 'Acima da média. Justifique com opcionais e estado de conservação.')}</p></div></>) : (<div className="flex items-center gap-2 justify-center py-2 text-gray-400 bg-white rounded-xl border border-gray-100"><Info className="w-4 h-4" /><p className="text-xs font-medium">Digite um valor para comparar com a tabela.</p></div>)}</div>)}</div>
       </StepContainer>
     );
