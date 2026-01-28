@@ -44,7 +44,7 @@ export const useAppActions = (state: AppState) => {
 
     // Real-time Subscription for Messages
     useEffect(() => {
-        if (!user.id) return;
+        if (!user || !user.id || user.id === 'guest') return;
 
         console.log("📡 Subscribing to messages real-time...");
         const channel = supabase
@@ -60,9 +60,8 @@ export const useAppActions = (state: AppState) => {
                 // Sempre atualiza a lista de conversas para refletir última mensagem ou status de lido
                 handleLoadConversations();
 
-                // 1. Tratar INSERT (Nova mensagem)
                 if (payload.eventType === 'INSERT') {
-                    if (selectedChat && selectedAd && updatedMessage.ad_id === selectedAd.id) {
+                    if (selectedChat && selectedAd && updatedMessage.ad_id === selectedAd.id && user) {
                         const isRelevant = (updatedMessage.sender_id === user.id && updatedMessage.receiver_id === selectedChat.otherUserId) ||
                             (updatedMessage.sender_id === selectedChat.otherUserId && updatedMessage.receiver_id === user.id);
 
@@ -71,7 +70,7 @@ export const useAppActions = (state: AppState) => {
                             handleLoadMessages(selectedAd.id, selectedChat.otherUserId);
 
                             // Se eu sou o receptor, marco como lido no banco IMEDIATAMENTE pois estou com o chat aberto
-                            if (updatedMessage.receiver_id === user.id && updatedMessage.is_read === false) {
+                            if (user && updatedMessage.receiver_id === user.id && updatedMessage.is_read === false) {
                                 await api.markMessagesAsRead(selectedAd.id, selectedChat.otherUserId);
                             }
                         }
@@ -94,7 +93,7 @@ export const useAppActions = (state: AppState) => {
             console.log("🔌 Unsubscribing from messages...");
             supabase.removeChannel(channel);
         };
-    }, [user.id, selectedChat?.id, selectedAd?.id]);
+    }, [user?.id, selectedChat?.id, selectedAd?.id]);
 
     // --- AUTH ACTIONS ---
     const handleForgotPassword = async (email: string) => {
@@ -108,22 +107,6 @@ export const useAppActions = (state: AppState) => {
         }
     };
 
-    // Global Auth Listener (Password Recovery ONLY - SIGNED_IN handled in useAppState.ts)
-    useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            // CRITICAL: Only handle PASSWORD_RECOVERY here
-            // SIGNED_IN is handled in useAppState.ts to prevent duplicate processing
-            if (event === 'PASSWORD_RECOVERY') {
-                console.log("🔄 Detected password recovery flow! Redirecting...");
-                setCurrentScreen(Screen.RESET_PASSWORD);
-            }
-            // Explicitly ignore all other events to prevent interference
-        });
-
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, []);
 
     const handleSavePromotion = async (promoData: Partial<DashboardPromotion>) => {
         try {
@@ -265,7 +248,19 @@ export const useAppActions = (state: AppState) => {
         setCurrentScreen(Screen.DASHBOARD);
     };
 
-    const handleLogout = () => setCurrentScreen(Screen.LOGIN);
+    const handleLogout = async () => {
+        try {
+            // Force state reset before signout to avoid any race in listener
+            state.setIsAppReady(false);
+            await supabase.auth.signOut();
+            // Note: useAppState.ts listener will catch SIGNED_OUT and handle state reset
+        } catch (error) {
+            console.error("❌ Erro ao deslogar do Supabase:", error);
+            // Fallback: Force screen change if signOut fails
+            setCurrentScreen(Screen.LOGIN);
+            state.setIsAppReady(true);
+        }
+    };
 
     const handleRegister = async (newUserData: any) => {
         try {
@@ -331,13 +326,17 @@ export const useAppActions = (state: AppState) => {
     };
 
     const handleToggleRole = () => {
+        if (!user) return;
         const newRoleIsAdmin = !user.isAdmin;
-        setUser((prev: User) => ({
-            ...prev,
-            isAdmin: newRoleIsAdmin,
-            name: newRoleIsAdmin ? "Administrador (Dev)" : "João Usuário",
-            email: newRoleIsAdmin ? "admin@orca.com" : "joao@email.com"
-        }));
+        setUser((prev: User | null) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                isAdmin: newRoleIsAdmin,
+                name: newRoleIsAdmin ? "Administrador (Dev)" : "João Usuário",
+                email: newRoleIsAdmin ? "admin@orca.com" : "joao@email.com"
+            };
+        });
         setToast({
             message: `Modo alterado para: ${newRoleIsAdmin ? 'Administrador' : 'Usuário Padrão'}`,
             type: 'success'

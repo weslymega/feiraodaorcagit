@@ -30,14 +30,18 @@ export const useAppState = () => {
 
   // App Ready State (Interaction Lock)
   const [isAppReady, setIsAppReady] = useState<boolean>(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>("");
 
   // Temporary Filter Context
   const [filterContext, setFilterContext] = useState<FilterContext | null>(null);
 
   // Initialize state - CLEAN SLATE (No Mocks)
-  const [user, setUser] = useState<User>(() => loadFromStorage('orca_user', CURRENT_USER));
-  const [myAds, setMyAds] = useState<AdItem[]>([]); // Init empty, fetch later
-  const [favorites, setFavorites] = useState<AdItem[]>(() => loadFromStorage('orca_favorites', [])); // Keep empty default
+  // CRITICAL: Default to null until session is confirmed
+  const [user, setUser] = useState<User | null>(null);
+  const [authInitialized, setAuthInitialized] = useState<boolean>(false);
+
+  const [myAds, setMyAds] = useState<AdItem[]>([]);
+  const [favorites, setFavorites] = useState<AdItem[]>(() => loadFromStorage('orca_favorites', []));
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [reports, setReports] = useState<ReportItem[]>([]);
@@ -96,153 +100,202 @@ export const useAppState = () => {
   // 1.1 Auth State Change Listener (Single Source of Truth)
   // Guard to prevent duplicate SIGNED_IN processing (fixes infinite loop)
   const authenticatedUserIdRef = useRef<string | null>(null);
+  const isRecoveringRef = useRef<boolean>(false);
+  const authInitializedRef = useRef<boolean>(false);
+
+  // Sincronizar ref com estado para uso dentro do listener (que tem closure fixa)
+  useEffect(() => {
+    authInitializedRef.current = authInitialized;
+  }, [authInitialized]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("🔐 Auth State Change:", event, session?.user?.id);
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        // CRITICAL GUARD: If we're already authenticated with this exact user, ignore
-        if (authenticatedUserIdRef.current === session.user.id) {
-          console.log(`⚠️ Already authenticated with user ${session.user.id}, ignoring duplicate SIGNED_IN`);
+      // REGRA 5: INITIAL_SESSION não deve interromper o boot se houver sessão
+      if (event === 'INITIAL_SESSION') {
+        console.log("📍 Initial session check complete.");
+        if (!session) {
+          console.log("📍 No initial session found, showing login.");
+          setUser(null);
+          setCurrentScreen(Screen.LOGIN);
+          setAuthInitialized(true);
+          setIsAppReady(true);
+          return;
+        }
+        // Se houver sessão, o fluxo continua para o processamento do usuário abaixo
+      }
+
+      const isRecoveryEvent = event === 'PASSWORD_RECOVERY';
+      if (isRecoveryEvent) {
+        console.log("🔑 Password Recovery event detected.");
+        isRecoveringRef.current = true;
+        setCurrentScreen(Screen.RESET_PASSWORD);
+        setIsAppReady(true);
+        setAuthInitialized(true);
+        return;
+      }
+
+      if ((event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && session)) && session?.user) {
+        // Identificar se é um login novo (estava deslogado ou mudou de usuário)
+        const isNewLogin = authenticatedUserIdRef.current !== session.user.id;
+        const isBoot = !authInitializedRef.current;
+
+        // REGRA 2 & 4: Auth NÃO pode redirecionar ou resetar appReady se JÁ estiver estável
+        if (!isBoot && !isNewLogin) {
+          console.log(`⚠️ Stable session for user ${session.user.id}, ignoring duplicate/refresh event`);
           return;
         }
 
-        console.log("✅ Processing SIGNED_IN event...");
-
-        // Mark this user as authenticated BEFORE async operations
+        console.log("✅ Processing auth event for user:", session.user.id);
         authenticatedUserIdRef.current = session.user.id;
 
-        // Fetch Profile details safely
-        let profile = null;
-        try {
-          profile = await api.getProfile(); // Handles PGRST116 gracefully internally
-        } catch (err) {
-          console.warn("Could not fetch extra profile details", err);
-        }
-
-        const authenticatedUser: User = {
+        setUser({
           id: session.user.id,
           email: session.user.email || '',
-          name: profile?.name || session.user.user_metadata?.name || "Usuário",
-          avatarUrl: profile?.avatarUrl || session.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${session.user.email}&background=random`,
-          balance: profile?.balance || 0,
+          name: session.user.user_metadata?.name || "Usuário",
+          avatarUrl: session.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${session.user.email}&background=random`,
+          balance: 0,
           adsCount: 0,
-          activePlan: profile?.activePlan || 'free',
-          isAdmin: profile?.isAdmin || false,
+          activePlan: 'free',
+          isAdmin: false,
           verified: !!session.user.email_confirmed_at,
-          joinDate: profile?.joinDate || new Date(session.user.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-          phone: profile?.phone || "",
-          location: profile?.location || "Brasília, DF",
-          bio: profile?.bio || ""
-        };
+          joinDate: new Date(session.user.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+          phone: "",
+          location: "Brasília, DF",
+          bio: ""
+        });
 
-        setUser(authenticatedUser);
-        setIsAppReady(false); // Reset loading state on login
-        setCurrentScreen(Screen.DASHBOARD);
-        console.log("✅ User authenticated, navigating to Dashboard");
+        // REGRA 3: Overlay global só em "Login inicial" (novo login) ou "Restauração de boot"
+        if (isBoot || isNewLogin) {
+          console.log(`🚀 ${isBoot ? 'Boot Restoration' : 'Initial Login'} detected. Preparing Dashboard.`);
+          setIsAppReady(false); // Bloqueia para carregar dados do Dashboard
+          setLoadingMessage("");
+
+          if (isRecoveringRef.current) {
+            console.log("🛡️ Staying on RESET_PASSWORD due to recovery.");
+            isRecoveringRef.current = false;
+            setCurrentScreen(Screen.RESET_PASSWORD);
+          } else {
+            setCurrentScreen(Screen.DASHBOARD);
+            console.log("✅ User authenticated, navigating to Dashboard");
+          }
+        }
+
+        setAuthInitialized(true);
 
       } else if (event === 'SIGNED_OUT') {
-        // Reset guard on logout
         authenticatedUserIdRef.current = null;
-
-        setUser(CURRENT_USER); // Reset to default/guest
+        setUser(null);
         setCurrentScreen(Screen.LOGIN);
+        setIsAppReady(true);
+        setAuthInitialized(true); // Garante que o estado de "boot" terminou
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // REGRA 1: Auth NÃO pode depender de currentScreen
 
-  // Fetch Data Effect
+  // Fetch Data Effect State
+  const lastFetchedUserIdRef = useRef<string | null>(null);
+  const isFetchingRef = useRef<boolean>(false);
+
   useEffect(() => {
+    // CRITICAL SECURITY GUARD: Do not fetch if auth is not initialized or no user
+    if (!authInitialized || !user || !user.id || user.id === 'guest') {
+      if (authInitialized && (!user || user.id === 'guest')) {
+        setIsAppReady(true);
+      }
+      return;
+    }
+
+    if (lastFetchedUserIdRef.current === user.id && isAppReady) {
+      return;
+    }
+
     const fetchData = async () => {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+
+      console.log(`[Dashboard-Loading] 🚀 Iniciando carregamento para usuário: ${user.id}`);
+      lastFetchedUserIdRef.current = user.id;
+
+      // 1. Safeguard: Soft & Hard Timeouts
+      const softTimeout = setTimeout(() => {
+        setLoadingMessage("Estamos carregando seus dados...");
+      }, 3000);
+
+      const hardTimeout = setTimeout(() => {
+        console.warn("[Dashboard-Loading] ⚠️ HARD TIMEOUT! Liberando interface.");
+        setIsAppReady(true);
+      }, 8000);
+
       try {
-        // Fetch Feed (Active Only)
-        console.log("🔄 Fetching Public Feed...");
+        // 2. CRITICAL SYNC DATA
         const ads = await api.getAds();
         if (ads) setRealAds(ads);
 
-        // Fetch My Ads (if logged in)
-        console.log("🔄 Fetching My Ads...");
-        const userAds = await api.getMyAds();
-        if (userAds) setMyAds(userAds);
-
-        // FORCE SYNC: Check if user is REALLY admin in DB
         const freshProfile = await api.getProfile();
-        console.log("👤 Fresh Profile Fetch:", freshProfile);
-
         if (freshProfile) {
-          setUser(prev => ({ ...prev, ...freshProfile }));
+          setUser(prev => prev ? ({ ...prev, ...freshProfile }) : null);
         }
 
-        const isAdminInDB = freshProfile?.isAdmin || false;
+        // 3. PARALLEL NON-BLOCKING DATA
+        const parallelTasks = [
+          api.getMyAds().then(res => res && setMyAds(res)),
+          api.getUserConversations().then(res => res && setConversations(res)),
+          api.getFavorites().then(res => res && setFavorites(res)),
+          api.getPromotions('dashboard').then(res => res.length > 0 && setDashboardPromotions(res)),
+          api.getPromotions('veiculos').then(res => res.length > 0 && setVehiclesPromotions(res)),
+          api.getPromotions('imoveis').then(res => res.length > 0 && setRealEstatePromotions(res)),
+          api.getPromotions('pecas_servicos').then(res => res.length > 0 && setPartsServicesPromotions(res))
+        ];
 
-        // Fetch Reports & ALL ADS (if admin)
+        const isAdminInDB = freshProfile?.isAdmin || user.isAdmin;
         if (isAdminInDB) {
-          console.log("🛡️ Admin Detected in DB. Fetching ALL ads...");
-          const allAdsData = await api.getAllAdsForAdmin();
-          if (allAdsData) setAdminAds(allAdsData);
-
-          const reportsData = await api.getReports();
-          if (reportsData) {
-            const mappedReports = reportsData.map((r: any) => ({
-              id: r.id,
-              targetId: r.target_id || r.ad_id,
-              targetName: r.target_name || (r.ads?.title) || 'Alvo desconhecido',
-              targetType: r.target_type || (r.ad_id ? 'ad' : 'user'),
-              targetImage: r.target_image || (r.ads?.image) || null,
-              reportedUserId: r.reported_user_id || (r.ads?.user_id) || null,
-              reason: r.reason,
-              description: r.description,
-              reporterId: r.reporter_id,
-              reporterName: r.reporter?.name || 'Anon',
-              severity: r.severity || 'medium',
-              status: r.status,
-              date: new Date(r.created_at).toLocaleDateString('pt-BR')
-            } as ReportItem));
-            setReports(mappedReports);
-          }
+          parallelTasks.push(api.getAllAdsForAdmin().then(res => res && setAdminAds(res)));
+          parallelTasks.push(api.getReports().then(reportsData => {
+            if (reportsData) {
+              const mappedReports = reportsData.map((r: any) => ({
+                id: r.id,
+                targetId: r.target_id || r.ad_id,
+                targetName: r.target_name || (r.ads?.title) || 'Alvo desconhecido',
+                targetType: r.target_type || (r.ad_id ? 'ad' : 'user'),
+                targetImage: r.target_image || (r.ads?.image) || null,
+                reportedUserId: r.reported_user_id || (r.ads?.user_id) || null,
+                reason: r.reason,
+                description: r.description,
+                reporterId: r.reporter_id,
+                reporterName: r.reporter?.name || 'Anon',
+                severity: r.severity || 'medium',
+                status: r.status,
+                date: new Date(r.created_at).toLocaleDateString('pt-BR')
+              } as ReportItem));
+              setReports(mappedReports);
+            }
+          }));
         }
 
-        // Fetch Conversations
-        console.log("💬 Fetching Conversations...");
-        const convs = await api.getUserConversations();
-        if (convs) setConversations(convs);
-
-        // Fetch Favorites
-        console.log("❤️ Fetching Favorites...");
-        const favs = await api.getFavorites();
-        if (favs) setFavorites(favs);
-
-        // Fetch Promotions
-        console.log("📣 Fetching Promotions...");
-        const dPromos = await api.getPromotions('dashboard');
-        if (dPromos.length > 0) setDashboardPromotions(dPromos);
-
-        const vPromos = await api.getPromotions('veiculos');
-        if (vPromos.length > 0) setVehiclesPromotions(vPromos);
-
-        const rPromos = await api.getPromotions('imoveis');
-        if (rPromos.length > 0) setRealEstatePromotions(rPromos);
-
-        const pPromos = await api.getPromotions('pecas_servicos');
-        if (pPromos.length > 0) setPartsServicesPromotions(pPromos);
-
-        // Liberar app após carregamento completo
-        setIsAppReady(true);
-
+        await Promise.allSettled(parallelTasks);
       } catch (error) {
-        console.error("❌ Erro ao buscar dados:", error);
-        // Liberar mesmo com erro para não travar o app
+        console.error("[Dashboard-Loading] ❌ Erro:", error);
+      } finally {
+        clearTimeout(softTimeout);
+        clearTimeout(hardTimeout);
+        isFetchingRef.current = false;
+        setLoadingMessage("");
         setIsAppReady(true);
       }
     };
 
     fetchData();
-  }, [user.id]); // Refetch if user changes
+
+    // Cleanup function para o useEffect
+    return () => {
+    };
+  }, [user?.id, authInitialized]); // Fix: Re-run when auth initializes to avoid F5 race condition
 
   // Dashboard Promotions State
   const [dashboardPromotions, setDashboardPromotions] = useState<DashboardPromotion[]>([]);
@@ -268,10 +321,11 @@ export const useAppState = () => {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' | 'error' } | null>(null);
 
   // --- PERSISTÊNCIA ---
-  useEffect(() => localStorage.setItem('orca_user', JSON.stringify(user)), [user]);
-  // Don't persist myAds to localStorage excessively if we are syncing with DB, but keeping it for cache is ok.
-  // Actually, let's stop writing myAds to LS to avoid 'stale' mock data fighting with DB.
-  // useEffect(() => localStorage.setItem('orca_my_ads', JSON.stringify(myAds)), [myAds]); 
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('orca_user', JSON.stringify(user));
+    }
+  }, [user]);
 
   useEffect(() => localStorage.setItem('orca_favorites', JSON.stringify(favorites)), [favorites]);
   // ... others ...
@@ -284,6 +338,8 @@ export const useAppState = () => {
     previousScreen, setPreviousScreen,
     filterContext, setFilterContext,
     isAppReady, setIsAppReady,
+    authInitialized, setAuthInitialized,
+    loadingMessage,
     user, setUser,
     myAds, setMyAds,
     favorites, setFavorites,

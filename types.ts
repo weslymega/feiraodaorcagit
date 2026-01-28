@@ -255,3 +255,21 @@ export interface DashboardPromotion {
 export interface RealEstatePromotion extends DashboardPromotion { }
 export interface PartsServicesPromotion extends DashboardPromotion { }
 export interface VehiclesPromotion extends DashboardPromotion { }
+export interface HighlightPlan {
+  id: string;
+  name: string;
+  price: number;
+  duration_days: number;
+  priority_level: number;
+  active: boolean;
+}
+
+export interface AdHighlight {
+  id: string;
+  ad_id: string;
+  user_id: string;
+  plan_id: string;
+  starts_at: string;
+  ends_at: string;
+  status: 'active' | 'expired' | 'cancelled';
+}

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Plus, MoreVertical, Trash2, Edit2, X, AlertTriangle, Clock, TrendingUp, Calendar, Zap, Lock, Info } from 'lucide-react';
 import { Header, PriceTag } from '../components/Shared';
 import { AdItem, AdStatus } from '../types';
+import { HighlightAdModal } from '../components/HighlightAdModal';
 
 interface MyAdsProps {
   ads: AdItem[];
@@ -27,6 +28,7 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
   // States for Modals
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editAd, setEditAd] = useState<AdItem | null>(null);
+  const [highlightAd, setHighlightAd] = useState<AdItem | null>(null);
 
   // Group Pending with Active in the tab logic, but they are technically distinct states
   const filteredAds = ads.filter(ad => {
@@ -133,8 +135,8 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
             key={ad.id}
             onClick={() => onAdClick && onAdClick(ad)}
             className={`bg-white p-4 rounded-2xl shadow-sm border flex flex-col gap-3 relative active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${ad.status === AdStatus.PENDING ? 'border-orange-200 bg-orange-50/20' :
-                ad.status === AdStatus.REJECTED ? 'border-red-200 bg-red-50/20' :
-                  ad.isFeatured ? 'border-l-4 border-l-accent border-y-gray-100 border-r-gray-100' : 'border-gray-100'
+              ad.status === AdStatus.REJECTED ? 'border-red-200 bg-red-50/20' :
+                ad.isFeatured ? 'border-l-4 border-l-accent border-y-gray-100 border-r-gray-100' : 'border-gray-100'
               }`}
           >
             {/* Boost Visual Indicator (Background watermark for premium) */}
@@ -147,9 +149,9 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
             <div className="flex justify-between items-start z-10">
               <div className="flex gap-2 items-center">
                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1 ${ad.status === AdStatus.ACTIVE ? 'bg-green-100 text-green-700' :
-                    ad.status === AdStatus.PENDING ? 'bg-orange-100 text-orange-700' :
-                      ad.status === AdStatus.REJECTED ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-500'
+                  ad.status === AdStatus.PENDING ? 'bg-orange-100 text-orange-700' :
+                    ad.status === AdStatus.REJECTED ? 'bg-red-100 text-red-700' :
+                      'bg-gray-100 text-gray-500'
                   }`}>
                   {ad.status === AdStatus.PENDING && <Clock className="w-3 h-3" />}
                   {ad.status === AdStatus.REJECTED && <AlertTriangle className="w-3 h-3" />}
@@ -192,6 +194,18 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                     >
                       {ad.status === AdStatus.PENDING ? <Lock className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
                       Editar
+                    </button>
+                    <div className="h-[1px] bg-gray-100"></div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHighlightAd(ad);
+                        setActiveMenuId(null);
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm text-accent hover:bg-green-50 flex items-center gap-2 transition-colors font-bold"
+                    >
+                      <Zap className="w-4 h-4 fill-accent" />
+                      Destacar
                     </button>
                     <div className="h-[1px] bg-gray-100"></div>
                     <button
@@ -330,8 +344,8 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
               <button
                 onClick={confirmEdit}
                 className={`flex-1 py-3.5 text-white font-bold rounded-xl shadow-lg transition-colors ${isPaidAd
-                    ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200'
-                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                  ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200'
+                  : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
                   }`}
               >
                 Continuar
@@ -339,6 +353,18 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
             </div>
           </div>
         </div>
+      )}
+
+      {/* --- MODAL DE DESTAQUE --- */}
+      {highlightAd && (
+        <HighlightAdModal
+          ad={highlightAd}
+          onClose={() => setHighlightAd(null)}
+          onSuccess={() => {
+            // No needed for explicit refresh if using Realtime, but good for UX
+            console.log("Destaque contratado com sucesso!");
+          }}
+        />
       )}
 
     </div>

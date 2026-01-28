@@ -60,9 +60,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
     } catch (err: any) {
       console.error("Login error:", err);
       setErrorMsg(err.message === "Invalid login credentials" ? "Credenciais inválidas." : "Erro ao entrar. Verifique seus dados.");
-      setIsSubmitting(false);
-    } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -200,7 +199,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
             disabled={loading || isSubmitting}
             className="w-full py-4 bg-primary hover:bg-primary-dark text-white rounded-2xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Entrar'}
+            {loading ? (
+              <>
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span className="text-sm">Entrando...</span>
+              </>
+            ) : 'Entrar'}
           </button>
 
           {/* Login Options for Demo - Removed for production */}

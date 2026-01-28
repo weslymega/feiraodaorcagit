@@ -7,8 +7,8 @@ export const APP_LOGOS = {
   // Logo Horizontal: Imagem correta carregada pelo usuário
   FULL: "/assets/logo_orca_correct.png",
 
-  // Ícone Quadrado: Apenas o símbolo (Mantido SVG por enquanto ou atualizado se necessário)
-  ICON: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect x='15' y='15' width='90' height='90' rx='20' fill='none' stroke='%23287ba8' stroke-width='14' /%3E%3Cpath d='M 60 110 C 60 110, 65 75, 30 60 C 15 55, -5 55, 10 40 C 20 30, 50 45, 60 65 C 70 45, 100 30, 110 40 C 120 50, 100 55, 90 60 C 55 75, 60 110, 60 110 Z' fill='%230f172a' stroke='white' stroke-width='3' /%3E%3C/svg%3E"
+  // Ícone Quadrado: Apenas o símbolo (Asset Oficial Correto)
+  ICON: "/assets/logo_orca_correct.png"
 };
 export const CATEGORY_ICONS = {
   VEHICLES: "/assets/categories/car.png",
@@ -1057,6 +1057,7 @@ export const HISTORY_DATA: AdItem[] = [
 export const MESSAGES_DATA: MessageItem[] = [
   {
     id: '1',
+    otherUserId: '1',
     senderName: 'Maria Silva',
     avatarUrl: 'https://picsum.photos/100/100?random=20',
     lastMessage: 'Olá! O apartamento ainda está disponível?',
@@ -1067,6 +1068,7 @@ export const MESSAGES_DATA: MessageItem[] = [
   },
   {
     id: '2',
+    otherUserId: '2',
     senderName: 'João Ferreira',
     avatarUrl: 'https://picsum.photos/100/100?random=21',
     lastMessage: 'Ok, combinado. Obrigado!',
@@ -1077,6 +1079,7 @@ export const MESSAGES_DATA: MessageItem[] = [
   },
   {
     id: '3',
+    otherUserId: '3',
     senderName: 'Carla Souza',
     avatarUrl: 'https://picsum.photos/100/100?random=22',
     lastMessage: 'Tenho interesse no veículo.',
@@ -1087,6 +1090,7 @@ export const MESSAGES_DATA: MessageItem[] = [
   },
   {
     id: '4',
+    otherUserId: '4',
     senderName: 'Pedro Martins',
     avatarUrl: 'https://picsum.photos/100/100?random=23',
     lastMessage: 'Qual o melhor preço que você faz?',

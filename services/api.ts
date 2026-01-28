@@ -4,6 +4,7 @@ import { AdStatus, User, ReportItem, MessageItem, ChatMessage } from '../types';
 // NOTE: These should be in .env
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const MP_PUBLIC_KEY = (import.meta.env.VITE_MP_PUBLIC_KEY || '').trim();
 
 // Safe initialization
 const isValidUrl = (url: string) => {
@@ -292,6 +293,37 @@ export const api = {
             readReceipts: data.read_receipts ?? true
         };
     },
+
+    /**
+     * Get available highlight plans
+     */
+    getHighlightPlans: async (): Promise<HighlightPlan[]> => {
+        const { data, error } = await supabase
+            .from('highlight_plans')
+            .select('*')
+            .eq('active', true)
+            .order('priority_level', { ascending: true });
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    /**
+     * Process Highlight Payment (Mercado Pago Brick)
+     */
+    processHighlightPayment: async (adId: string, planId: string, paymentData: any) => {
+        const { data, error } = await supabase.functions.invoke('create-highlight-payment', {
+            body: { ad_id: adId, plan_id: planId, payment_data: paymentData }
+        });
+
+        if (error) throw error;
+        return data; // Result from MP API
+    },
+
+    /**
+     * Get MP Public Key
+     */
+    getMPPublicKey: () => MP_PUBLIC_KEY,
 
     /**
      * Update Privacy Settings
