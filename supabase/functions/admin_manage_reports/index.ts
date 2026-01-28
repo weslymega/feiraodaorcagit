@@ -59,6 +59,45 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
+        // 4. DELETAR ANÚNCIO (E RESOLVER REPORT)
+        if (action === 'delete_ad') {
+            const { adId, reportId } = body; // reportId is optional
+            if (!adId) return new Response(JSON.stringify({ error: "adId obrigatório" }), { status: 400, headers: corsHeaders });
+
+            console.log(`[Edge] Tentando deletar anúncio ID: ${adId}`);
+
+            // 1. Deletar o anúncio e retornar o registro deletado
+            const { data: deletedAd, error: deleteError } = await supabase
+                .from('anuncios')
+                .delete()
+                .eq('id', adId)
+                .select(); // Retorna os dados deletados
+
+            if (deleteError) {
+                console.error(`[Edge] Erro ao deletar: ${deleteError.message}`);
+                throw deleteError;
+            }
+
+            // Checa se algo foi realmente deletado
+            if (!deletedAd || deletedAd.length === 0) {
+                console.warn(`[Edge] Anúncio não encontrado ou já deletado. ID: ${adId}`);
+                // Não retorna erro 400/500 para não travar a UI, mas avisa
+                // Opcional: retornar { success: false, reason: 'not_found' }
+            } else {
+                console.log(`[Edge] Anúncio deletado com sucesso: ${deletedAd[0].titulo}`);
+            }
+
+            // 2. Se houver reportId, marcar como resolvido
+            if (reportId) {
+                await supabase.from('reports').update({ status: 'resolved' }).eq('id', reportId);
+            }
+
+            return new Response(JSON.stringify({
+                success: true,
+                deletedCount: deletedAd ? deletedAd.length : 0
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
         return new Response("Ação inválida", { status: 400, headers: corsHeaders });
 
     } catch (err) {

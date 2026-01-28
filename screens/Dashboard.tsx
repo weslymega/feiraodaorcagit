@@ -15,11 +15,10 @@ interface DashboardProps {
   featuredAds?: AdItem[]; // Veículos em destaque (Dinâmico)
   recentVehicles?: AdItem[]; // Veículos gerais (incluindo do usuário)
   fairActive?: boolean; // Controls global visibility of the Fair section
-  onOpenNewArrivals: () => void;
-  onOpenServices: () => void;
   onOpenTrending: () => void;
   serviceAds?: AdItem[]; // Lista unificada de serviços
   dashboardPromotions?: DashboardPromotion[]; // Nova prop
+  hasNotifications?: boolean;
 }
 
 const isPromotionVisible = (promo: DashboardPromotion): boolean => {
@@ -149,7 +148,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenServices,
   onOpenTrending,
   serviceAds = POPULAR_SERVICES,
-  dashboardPromotions = []
+  dashboardPromotions = [],
+  hasNotifications
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -218,7 +218,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <Bell className="w-6 h-6 text-gray-700" />
-            <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+            {hasNotifications && (
+              <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+            )}
           </button>
         </div>
 

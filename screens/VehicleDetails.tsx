@@ -227,7 +227,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
 
           <div className="flex justify-center -mt-2 mb-4"><div className="w-12 h-1 bg-gray-200 rounded-full"></div></div>
 
-          {ad.fairPresence?.active && !ad.isOwner && (
+          {(ad.isInFair || ad.fairPresence?.active) && !ad.isOwner && (
             <div className="mb-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-4 shadow-lg shadow-green-200 text-white flex items-center justify-between animate-in zoom-in duration-300">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm relative">
@@ -240,21 +240,21 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
                   <p className="text-green-100 text-xs mt-1 font-medium">Veículo disponível para visitação agora.</p>
                 </div>
               </div>
-              <div className="text-right"><span className="text-[10px] font-bold bg-black/20 px-2 py-1 rounded-full">{timeLeft}</span></div>
+              <div className="text-right"><span className="text-[10px] font-bold bg-black/20 px-2 py-1 rounded-full">{timeLeft || "AO VIVO"}</span></div>
             </div>
           )}
 
           {ad.isOwner && (
-            <div className={`mb-6 rounded-2xl p-4 border-2 transition-all ${ad.fairPresence?.active ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-dashed border-gray-300'}`}>
+            <div className={`mb-6 rounded-2xl p-4 border-2 transition-all ${ad.isInFair || ad.fairPresence?.active ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-dashed border-gray-300'}`}>
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <Map className={`w-5 h-5 ${ad.fairPresence?.active ? 'text-green-600' : 'text-gray-400'}`} />
-                  <h3 className={`font-bold ${ad.fairPresence?.active ? 'text-green-800' : 'text-gray-600'}`}>{ad.fairPresence?.active ? 'Você está na feira!' : 'Vai à feira hoje?'}</h3>
+                  <Map className={`w-5 h-5 ${ad.isInFair || ad.fairPresence?.active ? 'text-green-600' : 'text-gray-400'}`} />
+                  <h3 className={`font-bold ${ad.isInFair || ad.fairPresence?.active ? 'text-green-800' : 'text-gray-600'}`}>{ad.isInFair || ad.fairPresence?.active ? 'Você está na feira!' : 'Vai à feira hoje?'}</h3>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={ad.fairPresence?.active || false} onChange={onToggleFairPresence} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label>
+                <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={ad.isInFair || ad.fairPresence?.active || false} onChange={onToggleFairPresence} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label>
               </div>
-              <p className="text-xs text-gray-500 mb-2">{ad.fairPresence?.active ? 'Seu veículo está destacado para compradores próximos. O status desativará automaticamente em:' : 'Ative para avisar aos compradores que o veículo está disponível para visitação presencial agora. (Disponível todo domingo)'}</p>
-              {ad.fairPresence?.active && (<div className="flex items-center gap-2 bg-green-100 w-fit px-3 py-1 rounded-lg"><Clock className="w-3 h-3 text-green-700" /><span className="text-xs font-bold text-green-800">{timeLeft}</span></div>)}
+              <p className="text-xs text-gray-500 mb-2">{ad.isInFair || ad.fairPresence?.active ? 'Seu veículo está destacado para compradores próximos. O status desativará automaticamente em:' : 'Ative para avisar aos compradores que o veículo está disponível para visitação presencial agora. (Disponível todo domingo)'}</p>
+              {(ad.isInFair || ad.fairPresence?.active) && (<div className="flex items-center gap-2 bg-green-100 w-fit px-3 py-1 rounded-lg"><Clock className="w-3 h-3 text-green-700" /><span className="text-xs font-bold text-green-800">{timeLeft || "6h 00m restantes"}</span></div>)}
             </div>
           )}
 

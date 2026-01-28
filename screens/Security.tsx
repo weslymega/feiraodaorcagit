@@ -9,31 +9,34 @@ interface SecurityProps {
   onDeleteAccount: () => void;
 }
 
-const ToggleRow: React.FC<{ 
-  icon: React.ReactNode; 
-  label: string; 
+const ToggleRow: React.FC<{
+  icon: React.ReactNode;
+  label: string;
   description?: string;
   checked: boolean;
   onChange: () => void;
-}> = ({ icon, label, description, checked, onChange }) => (
-  <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
+  isDisabled?: boolean;
+}> = ({ icon, label, description, checked, onChange, isDisabled }) => (
+  <div className={`flex items-center justify-between py-4 border-b border-gray-100 last:border-0 ${isDisabled ? 'opacity-50 grayscale' : ''}`}>
     <div className="flex items-start gap-4 pr-4">
       <div className="text-gray-500 mt-0.5">{icon}</div>
       <div>
-        <h4 className="text-sm font-medium text-gray-900">{label}</h4>
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-medium text-gray-900">{label}</h4>
+          {isDisabled && <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded uppercase">Em breve</span>}
+        </div>
         {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
       </div>
     </div>
-    <button 
-      onClick={onChange}
-      className={`w-12 h-6 rounded-full relative transition-colors duration-200 flex-shrink-0 ${
-        checked ? 'bg-primary' : 'bg-gray-300'
-      }`}
+    <button
+      onClick={isDisabled ? undefined : onChange}
+      disabled={isDisabled}
+      className={`w-12 h-6 rounded-full relative transition-colors duration-200 flex-shrink-0 ${checked ? (isDisabled ? 'bg-gray-400' : 'bg-primary') : 'bg-gray-300'
+        } ${isDisabled ? 'cursor-not-allowed' : ''}`}
     >
-      <div 
-        className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-          checked ? 'left-7' : 'left-1'
-        }`} 
+      <div
+        className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? 'left-7' : 'left-1'
+          }`}
       />
     </button>
   </div>
@@ -49,12 +52,12 @@ export const Security: React.FC<SecurityProps> = ({ onBack, onChangePassword, on
       <Header title="Segurança" onBack={onBack} />
 
       <div className="p-4 space-y-6">
-        
+
         {/* Acesso */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider p-4 pb-2">Acesso e Senha</h3>
-          
-          <button 
+
+          <button
             onClick={onChangePassword}
             className="w-full flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left"
           >
@@ -69,44 +72,57 @@ export const Security: React.FC<SecurityProps> = ({ onBack, onChangePassword, on
           </button>
 
           <div className="px-4">
-            <ToggleRow 
+            <ToggleRow
               icon={<ShieldAlert className="w-5 h-5" />}
               label="Autenticação em Dois Fatores"
               description="Adicione uma camada extra de segurança via SMS ou E-mail."
               checked={twoFactor}
               onChange={() => setTwoFactor(!twoFactor)}
+              isDisabled={true}
             />
 
-            <ToggleRow 
+            <ToggleRow
               icon={<Smartphone className="w-5 h-5" />}
               label="Face ID / Biometria"
               description="Usar biometria para entrar no aplicativo."
               checked={biometrics}
               onChange={() => setBiometrics(!biometrics)}
+              isDisabled={true}
             />
           </div>
         </div>
 
         {/* Atividade */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Dispositivos Ativos</h3>
-            
+        <div className="bg-white rounded-xl shadow-sm p-4 relative overflow-hidden group">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Dispositivos Ativos</h3>
+            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded uppercase">Em breve</span>
+          </div>
+
+          <div className="opacity-40 grayscale pointer-events-none">
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                        <Smartphone className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-gray-900">iPhone 13 Pro</p>
-                        <p className="text-xs text-green-600 font-medium">Este dispositivo • São Paulo, BR</p>
-                    </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Smartphone className="w-5 h-5 text-gray-600" />
                 </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">iPhone 13 Pro</p>
+                  <p className="text-xs text-green-600 font-medium">Este dispositivo • São Paulo, BR</p>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-gray-900/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full backdrop-blur-md">
+              FUNCIONALIDADE BLOQUEADA
+            </div>
+          </div>
         </div>
 
         {/* Zona de Perigo */}
         <div className="pt-6">
-          <button 
+          <button
             onClick={() => setShowDeleteModal(true)}
             className="w-full bg-white border border-red-100 text-red-500 p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition-colors shadow-sm"
           >
@@ -131,14 +147,14 @@ export const Security: React.FC<SecurityProps> = ({ onBack, onChangePassword, on
               Essa ação é <strong>irreversível</strong>. Você perderá acesso a todos os seus anúncios, mensagens e favoritos.
             </p>
             <div className="flex flex-col gap-3">
-              <button 
-                onClick={onDeleteAccount} 
+              <button
+                onClick={onDeleteAccount}
                 className="w-full py-3.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-lg shadow-red-200 transition-colors"
               >
                 Sim, Excluir Minha Conta
               </button>
-              <button 
-                onClick={() => setShowDeleteModal(false)} 
+              <button
+                onClick={() => setShowDeleteModal(false)}
                 className="w-full py-3.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
               >
                 Cancelar

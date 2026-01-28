@@ -53,7 +53,8 @@ export enum Screen {
   HELP_SUPPORT = 'HELP_SUPPORT',
   ABOUT_US = 'ABOUT_US',
   TERMS_OF_USE = 'TERMS_OF_USE',
-  PRIVACY_POLICY = 'PRIVACY_POLICY'
+  PRIVACY_POLICY = 'PRIVACY_POLICY',
+  RESET_PASSWORD = 'RESET_PASSWORD'
 }
 
 export interface User {
@@ -75,6 +76,8 @@ export interface User {
   verified?: boolean;
   isAdmin?: boolean; // Controle de acesso administrativo
   isBlocked?: boolean; // Status de bloqueio
+  showOnlineStatus?: boolean;
+  readReceipts?: boolean;
 }
 
 export enum AdStatus {
@@ -166,7 +169,8 @@ export interface AdItem {
 }
 
 export interface MessageItem {
-  id: string;
+  id: string; // Message UUID (as per user directive)
+  otherUserId: string; // ID of the other participant for chat detail fetching
   senderName: string;
   avatarUrl: string;
   lastMessage: string;
@@ -174,6 +178,10 @@ export interface MessageItem {
   unreadCount: number;
   online?: boolean;
   adTitle?: string; // Context
+  adId?: string; // Para marcação de lido
+  adImage?: string;
+  adPrice?: number;
+  readReceipts?: boolean; // Se o outro usuário permite ver se ele leu
 }
 
 export interface ChatMessage {
@@ -182,6 +190,7 @@ export interface ChatMessage {
   imageUrl?: string; // Optional image URL
   isMine: boolean;
   time: string;
+  isRead?: boolean;
 }
 
 export interface TransactionData {

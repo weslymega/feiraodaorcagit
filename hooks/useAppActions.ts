@@ -18,6 +18,8 @@ export const useAppActions = (state: AppState) => {
         fairActive, setFairActive,
         maintenanceMode, setMaintenanceMode,
         adminMockAds, setAdminMockAds,
+        adminAds, setAdminAds, // NEW: Full Admin List (Pending/Rejected/Active)
+
         selectedAd, setSelectedAd,
         adToEdit, setAdToEdit,
         cameFromMyAds, setCameFromMyAds,
@@ -28,7 +30,10 @@ export const useAppActions = (state: AppState) => {
         dashboardPromotions, setDashboardPromotions,
         realEstatePromotions, setRealEstatePromotions,
         partsServicesPromotions, setPartsServicesPromotions,
-        vehiclesPromotions, setVehiclesPromotions
+        vehiclesPromotions, setVehiclesPromotions,
+        activeRealAds, setRealAds,
+        conversations, setConversations,
+        chatMessages, setChatMessages
     } = state;
 
     // Fix for Stale State in Event Handlers
@@ -36,6 +41,87 @@ export const useAppActions = (state: AppState) => {
     useEffect(() => {
         userRef.current = user;
     }, [user]);
+
+    // Real-time Subscription for Messages
+    useEffect(() => {
+        if (!user.id) return;
+
+        console.log("📡 Subscribing to messages real-time...");
+        const channel = supabase
+            .channel('realtime_messages')
+            .on('postgres_changes', {
+                event: '*', // Listen to INSERT, UPDATE, etc.
+                schema: 'public',
+                table: 'messages'
+            }, async (payload) => {
+                const updatedMessage = payload.new as any;
+                console.log("📩 Mudança em mensagens real-time:", payload.eventType, updatedMessage);
+
+                // Sempre atualiza a lista de conversas para refletir última mensagem ou status de lido
+                handleLoadConversations();
+
+                // 1. Tratar INSERT (Nova mensagem)
+                if (payload.eventType === 'INSERT') {
+                    if (selectedChat && selectedAd && updatedMessage.ad_id === selectedAd.id) {
+                        const isRelevant = (updatedMessage.sender_id === user.id && updatedMessage.receiver_id === selectedChat.otherUserId) ||
+                            (updatedMessage.sender_id === selectedChat.otherUserId && updatedMessage.receiver_id === user.id);
+
+                        if (isRelevant) {
+                            console.log("🆕 Nova mensagem recebida, recarregando...");
+                            handleLoadMessages(selectedAd.id, selectedChat.otherUserId);
+
+                            // Se eu sou o receptor, marco como lido no banco IMEDIATAMENTE pois estou com o chat aberto
+                            if (updatedMessage.receiver_id === user.id && updatedMessage.is_read === false) {
+                                await api.markMessagesAsRead(selectedAd.id, selectedChat.otherUserId);
+                            }
+                        }
+                    }
+                }
+
+                // 2. Tratar UPDATE (Confirmação de leitura / Ticks azuis)
+                if (payload.eventType === 'UPDATE') {
+                    console.log("🔵 Reconciliando UPDATE de mensagem por ID...");
+                    setChatMessages(prev => prev.map(msg =>
+                        msg.id === updatedMessage.id
+                            ? { ...msg, isRead: updatedMessage.is_read }
+                            : msg
+                    ));
+                }
+            })
+            .subscribe();
+
+        return () => {
+            console.log("🔌 Unsubscribing from messages...");
+            supabase.removeChannel(channel);
+        };
+    }, [user.id, selectedChat?.id, selectedAd?.id]);
+
+    // --- AUTH ACTIONS ---
+    const handleForgotPassword = async (email: string) => {
+        try {
+            await api.sendPasswordReset(email);
+            setToast({ message: "Link de recuperação enviado! Verifique seu e-mail.", type: 'success' });
+        } catch (error: any) {
+            console.error("❌ Erro no envio de recuperação:", error);
+            // Mensagem neutra conforme requisitos
+            setToast({ message: "Se o e-mail existir no sistema, você receberá um link.", type: 'success' });
+        }
+    };
+
+    // Global Auth Listener (Reset Password Flow)
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log("🔐 Auth Event:", event);
+            if (event === 'PASSWORD_RECOVERY') {
+                console.log("🔄 Detetado fluxo de recuperação de senha! Redirecionando...");
+                setCurrentScreen(Screen.RESET_PASSWORD);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, []);
 
     const handleSavePromotion = (promoData: Partial<DashboardPromotion>) => {
         const startDate = new Date(promoData.startDate || '');
@@ -481,16 +567,46 @@ export const useAppActions = (state: AppState) => {
         setCurrentScreen(Screen.CREATE_AD);
     };
 
-    const handleRemoveFavorite = (id: string) => {
+    const handleRemoveFavorite = async (id: string) => {
+        // Atualização Otimista
         setFavorites((prev: AdItem[]) => prev.filter(item => item.id !== id));
+
+        try {
+            await api.removeFavorite(id);
+            setToast({ message: "Anúncio removido dos favoritos.", type: 'info' });
+        } catch (error) {
+            console.error("❌ Erro ao remover favorito:", error);
+            // Sincronizar com o banco para garantir consistência
+            const freshFavs = await api.getFavorites();
+            setFavorites(freshFavs);
+        }
     };
 
-    const handleToggleFavorite = (ad: AdItem) => {
+    const handleToggleFavorite = async (ad: AdItem) => {
+        const isFavorite = (favorites || []).some(item => item.id === ad.id);
+
+        // Atualização Otimista
         setFavorites((prev: AdItem[]) => {
             const exists = prev.some(item => item.id === ad.id);
             if (exists) return prev.filter(item => item.id !== ad.id);
             return [...prev, ad];
         });
+
+        try {
+            if (isFavorite) {
+                await api.removeFavorite(ad.id);
+                setToast({ message: "Removido dos favoritos.", type: 'info' });
+            } else {
+                await api.addFavorite(ad.id);
+                setToast({ message: "Adicionado aos favoritos! ❤️", type: 'success' });
+            }
+        } catch (error) {
+            console.error("❌ Erro ao alternar favorito:", error);
+            // Sincronizar com o banco para garantir consistência em caso de erro
+            const freshFavs = await api.getFavorites();
+            setFavorites(freshFavs);
+            setToast({ message: "Erro ao atualizar favoritos.", type: 'error' });
+        }
     };
 
     const handleAddReport = async (newReport: ReportItem) => {
@@ -508,7 +624,38 @@ export const useAppActions = (state: AppState) => {
         }
     };
 
-    const handleToggleFairPresence = (ad: AdItem) => {
+    const handleUpdatePrivacySettings = async (settings: { showOnlineStatus?: boolean, readReceipts?: boolean }) => {
+        console.log("🔒 Atualizando configurações de privacidade:", settings);
+        // Atualização Otimista
+        setUser(prev => ({
+            ...prev,
+            ...settings
+        }));
+
+        try {
+            await api.updatePrivacySettings(settings);
+            setToast({ message: "Configurações de privacidade atualizadas!", type: 'success' });
+        } catch (error) {
+            console.error("❌ Erro ao atualizar privacidade:", error);
+            setToast({ message: "Erro ao salvar privacidade. Tente novamente.", type: 'error' });
+            // Rollback (Opcional: buscar perfil novamente)
+            const freshProfile = await api.getProfile();
+            if (freshProfile) setUser(freshProfile);
+        }
+    };
+
+    const handleChangePassword = async (newPassword: string) => {
+        try {
+            await api.updatePassword(newPassword);
+            setToast({ message: "Senha atualizada com sucesso!", type: 'success' });
+        } catch (error: any) {
+            console.error("❌ Erro ao trocar senha:", error);
+            setToast({ message: "Erro ao atualizar senha: " + error.message, type: 'error' });
+            throw error;
+        }
+    };
+
+    const handleToggleFairPresence = async (ad: AdItem) => {
         if (!fairActive) {
             setToast({ message: "A feira não está ativa no momento.", type: 'error' });
             return;
@@ -517,49 +664,64 @@ export const useAppActions = (state: AppState) => {
         const isMyAd = myAds.some((my: AdItem) => my.id === ad.id);
         if (!isMyAd) return;
 
-        let isActivating = false;
+        // Determinar novo estado
+        const currentAd = myAds.find(m => m.id === ad.id);
+        const newState = !currentAd?.fairPresence?.active;
+        const newIsInFair = newState; // Mapeando para o campo do banco
 
+        // Atualização Otimista
         setMyAds((prev: AdItem[]) => prev.map(item => {
             if (item.id === ad.id) {
-                if (item.fairPresence?.active) {
-                    isActivating = false;
-                    return {
-                        ...item,
-                        fairPresence: { active: false, expiresAt: new Date().toISOString() }
-                    };
-                } else {
-                    isActivating = true;
-                    const now = new Date();
-                    const expireTime = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-                    return {
-                        ...item,
-                        fairPresence: { active: true, expiresAt: expireTime.toISOString() }
-                    };
-                }
+                return {
+                    ...item,
+                    fairPresence: { active: newState, expiresAt: new Date(Date.now() + 6 * 3600 * 1000).toISOString() },
+                    isInFair: newIsInFair
+                };
             }
             return item;
         }));
 
-        if (isActivating) {
-            setToast({ message: "Sua presença na feira foi ativada! 🚗", type: 'success' });
-        } else {
-            setToast({ message: "Modo feira desativado.", type: 'info' });
-        }
-
+        // Atualizar também o selecionado se for o mesmo
         setSelectedAd((prev: AdItem | null) => {
             if (prev && prev.id === ad.id) {
-                const isActive = prev.fairPresence?.active;
-                const now = new Date();
-                const expireTime = new Date(now.getTime() + 6 * 60 * 60 * 1000);
                 return {
                     ...prev,
-                    fairPresence: isActive
-                        ? { active: false, expiresAt: new Date().toISOString() }
-                        : { active: true, expiresAt: expireTime.toISOString() }
+                    fairPresence: { active: newState, expiresAt: new Date(Date.now() + 6 * 3600 * 1000).toISOString() },
+                    isInFair: newIsInFair
                 };
             }
             return prev;
         });
+
+        // Feedback Imediato
+        if (newState) {
+            setToast({ message: "Ativando presença na feira...", type: 'info' });
+        }
+
+        // Persistência
+        try {
+            await api.updateAnuncio(ad.id, { is_in_fair: newIsInFair });
+            setToast({
+                message: newState ? "Sua presença na feira foi ativada! 🚗" : "Modo feira desativado.",
+                type: newState ? 'success' : 'info'
+            });
+        } catch (error) {
+            console.error("❌ Erro ao atualizar presença na feira:", error);
+            setToast({ message: "Erro ao salvar alteração. Tente novamente.", type: 'error' });
+
+            // Rollback em caso de erro
+            const originalState = !newState;
+            setMyAds((prev: AdItem[]) => prev.map(item => {
+                if (item.id === ad.id) {
+                    return {
+                        ...item,
+                        fairPresence: { active: originalState, expiresAt: new Date().toISOString() },
+                        isInFair: originalState
+                    };
+                }
+                return item;
+            }));
+        }
     };
 
     const handleAdClick = (ad: AdItem) => {
@@ -627,7 +789,7 @@ export const useAppActions = (state: AppState) => {
         if (!selectedChat) return;
 
         const profileUser: User = {
-            id: selectedChat.id,
+            id: selectedChat.otherUserId,
             name: selectedChat.senderName,
             email: "usuario@chat.com",
             avatarUrl: selectedChat.avatarUrl,
@@ -754,60 +916,76 @@ export const useAppActions = (state: AppState) => {
         setToast({ message: "Anúncio atualizado com sucesso!", type: 'success' });
     };
 
-    const handleAdminAdUpdate = (id: string, newStatus: AdStatus) => {
-        const updateAdProps = (ad: AdItem) => {
-            if (ad.id !== id) return ad;
-            const updated = { ...ad, status: newStatus };
-            if (newStatus === AdStatus.ACTIVE) {
-                if (ad.boostPlan && ad.boostPlan !== 'gratis') {
-                    updated.isFeatured = true;
+    const handleAdminAdUpdate = async (id: string, newStatus: AdStatus) => {
+        try {
+            // 1. Call real API first (Mandate: Confirm before UI feedback)
+            setToast({ message: "Processando atualização no servidor...", type: 'info' });
+            await api.adminUpdateAdStatus(id, newStatus);
+
+            // 2. Local State Sync (only after DB success)
+            const updateAdProps = (ad: AdItem) => {
+                if (ad.id !== id) return ad;
+                const updated = { ...ad, status: newStatus };
+                if (newStatus === AdStatus.ACTIVE) {
+                    if (ad.boostPlan && ad.boostPlan !== 'gratis') {
+                        updated.isFeatured = true;
+                    }
+                    updated.fairPresence = { active: false, expiresAt: '' };
                 }
-                updated.fairPresence = { active: false, expiresAt: '' };
+                else if (newStatus === AdStatus.REJECTED) {
+                    updated.isFeatured = false;
+                    updated.fairPresence = { active: false, expiresAt: '' };
+                }
+                return updated;
+            };
+
+            const isMyAd = myAds.some((ad: AdItem) => ad.id === id);
+            let targetAdTitle = '';
+
+            if (isMyAd) {
+                const target = myAds.find((ad: AdItem) => ad.id === id);
+                targetAdTitle = target?.title || 'Seu anúncio';
+                setMyAds((prev: AdItem[]) => prev.map(updateAdProps));
             }
-            else if (newStatus === AdStatus.REJECTED) {
-                updated.isFeatured = false;
-                updated.fairPresence = { active: false, expiresAt: '' };
+
+            setAdminMockAds((prev: AdItem[]) => prev.map(updateAdProps));
+
+            // CRÍTICO: Atualizar lista REAL de admins
+            if (adminAds && setAdminAds) {
+                setAdminAds((prev: AdItem[]) => prev.map(updateAdProps));
             }
-            return updated;
-        };
 
-        const isMyAd = myAds.some((ad: AdItem) => ad.id === id);
-        let targetAdTitle = '';
+            if (!targetAdTitle) {
+                const target = adminMockAds.find((ad: AdItem) => ad.id === id);
+                targetAdTitle = target?.title || 'Anúncio';
+            }
 
-        if (isMyAd) {
-            const target = myAds.find((ad: AdItem) => ad.id === id);
-            targetAdTitle = target?.title || 'Seu anúncio';
-            setMyAds((prev: AdItem[]) => prev.map(updateAdProps));
+            // 3. UI Feedback (Confirmed Success)
+            if (newStatus === AdStatus.ACTIVE) {
+                setToast({ message: "Anúncio APROVADO! Já está visível na plataforma.", type: 'success' });
+            } else if (newStatus === AdStatus.REJECTED) {
+                setToast({ message: "Anúncio Rejeitado.", type: 'error' });
+            } else {
+                setToast({ message: `Status alterado para: ${newStatus}`, type: 'info' });
+            }
+
+            const newNotification: NotificationItem = {
+                id: Date.now(),
+                type: 'system',
+                title: newStatus === AdStatus.ACTIVE ? 'Anúncio Aprovado!' : 'Anúncio Rejeitado',
+                message: newStatus === AdStatus.ACTIVE
+                    ? `O anúncio "${targetAdTitle}" foi aprovado e já está online.`
+                    : `O anúncio "${targetAdTitle}" não atendeu às diretrizes.`,
+                time: 'Agora',
+                unread: true,
+                image: null
+            };
+            setNotifications((prev: NotificationItem[]) => [newNotification, ...prev]);
+
+        } catch (error: any) {
+            console.error("❌ Erro ao atualizar status do anúncio:", error);
+            setToast({ message: "Falha na comunicação com o banco: Anúncio não atualizado.", type: 'error' });
         }
-
-
-        setAdminMockAds((prev: AdItem[]) => prev.map(updateAdProps));
-
-        if (!targetAdTitle) {
-            const target = adminMockAds.find((ad: AdItem) => ad.id === id);
-            targetAdTitle = target?.title || 'Anúncio';
-        }
-
-        if (newStatus === AdStatus.ACTIVE) {
-            setToast({ message: "Anúncio APROVADO! Já está visível na plataforma.", type: 'success' });
-        } else if (newStatus === AdStatus.REJECTED) {
-            setToast({ message: "Anúncio Rejeitado.", type: 'error' });
-        } else {
-            setToast({ message: `Status alterado para: ${newStatus}`, type: 'info' });
-        }
-
-        const newNotification: NotificationItem = {
-            id: Date.now(),
-            type: 'system',
-            title: newStatus === AdStatus.ACTIVE ? 'Anúncio Aprovado!' : 'Anúncio Rejeitado',
-            message: newStatus === AdStatus.ACTIVE
-                ? `O anúncio "${targetAdTitle}" foi aprovado e já está online.`
-                : `O anúncio "${targetAdTitle}" não atendeu às diretrizes.`,
-            time: 'Agora',
-            unread: true,
-            image: null
-        };
-        setNotifications((prev: NotificationItem[]) => [newNotification, ...prev]);
     };
 
     const handleModerationBlockUser = (userId: string, userName: string) => {
@@ -815,9 +993,43 @@ export const useAppActions = (state: AppState) => {
         console.log('Blocked User:', userId);
     };
 
-    const handleModerationDeleteAd = (adId: string, adTitle: string) => {
-        handleAdminAdUpdate(adId, AdStatus.REJECTED);
-        setToast({ message: `Anúncio "${adTitle}" foi removido por violação.`, type: 'success' });
+    const handleModerationDeleteAd = async (adId: string, adTitle: string, reportId?: string) => {
+        if (!window.confirm(`Tem certeza que deseja EXCLUIR DEFINITIVAMENTE o anúncio "${adTitle}"?`)) return;
+
+        try {
+            // Chamada Real à API
+            const result: any = await api.adminDeleteAd(adId, reportId);
+
+            // Verifica se houve exclusão real (se a Edge Function retornar contagem)
+            if (result && typeof result.deletedCount === 'number' && result.deletedCount === 0) {
+                setToast({ message: `Aviso: O anúncio "${adTitle}" não foi encontrado no banco (provavelmente já excluído ou é Mock).`, type: 'warning' });
+            } else {
+                setToast({ message: `Anúncio "${adTitle}" excluído com sucesso.`, type: 'success' });
+            }
+
+            // Remove das listas locais
+            setMyAds((prev: AdItem[]) => prev.filter(ad => ad.id !== adId));
+            setAdminMockAds((prev: AdItem[]) => prev.filter(ad => ad.id !== adId));
+
+            // Remove da lista REAL de admins
+            if (adminAds && setAdminAds) {
+                setAdminAds((prev: AdItem[]) => prev.filter(ad => ad.id !== adId));
+            }
+
+            // CRÍTICO: Remove do feed global de anúncios reais para sumir do Dashboard instantaneamente
+            if (activeRealAds && setRealAds) {
+                setRealAds((prev: AdItem[]) => prev.filter(ad => ad.id !== adId));
+            }
+
+            // Atualiza reports se necessário
+            if (reportId) {
+                setReports((prev: ReportItem[]) => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' } : r));
+            }
+
+        } catch (error: any) {
+            console.error("Erro ao excluir anúncio:", error);
+            setToast({ message: "Erro ao excluir: " + error.message, type: 'error' });
+        }
     };
 
     const handleReportAction = async (reportId: string, action: 'resolved' | 'dismissed') => {
@@ -852,41 +1064,97 @@ export const useAppActions = (state: AppState) => {
         }
     };
 
-    const handleDeleteAccount = () => {
-        if (window.confirm("Tem certeza absoluta? Isso apagará seus dados locais.")) {
-            localStorage.clear();
-            setUser(CURRENT_USER);
-            setMyAds(MY_ADS_DATA);
-            setFavorites(FAVORITES_DATA);
+    const handleDeleteAccount = async () => {
+        try {
+            await api.requestAccountDeletion();
+            setToast({ message: "Sua conta foi desativada com sucesso. Sentiremos sua falta!", type: 'success' });
 
-            setNotifications(MOCK_NOTIFICATIONS);
-            setReports(MOCK_REPORTS);
-            setFairActive(true);
-            setMaintenanceMode(false);
-            alert("Sua conta e dados locais foram redefinidos.");
-            handleLogout();
+            // Logout Forçado
+            setUser(CURRENT_USER);
+            setMyAds([]);
+            setFavorites([]);
+            setCurrentScreen(Screen.LOGIN);
+
+            // Limpar localStorage para garantir que a sessão foi removida
+            localStorage.clear();
+            await supabase.auth.signOut();
+        } catch (error: any) {
+            console.error("❌ Erro ao deletar conta:", error);
+            setToast({ message: "Erro ao solicitar exclusão de conta. Tente novamente.", type: 'error' });
         }
     };
 
-    const handleSelectChat = (chat: MessageItem) => {
+    const handleLoadConversations = async () => {
+        const convs = await api.getUserConversations();
+        setConversations(convs);
+    };
+
+    const handleLoadMessages = async (adId: string, otherUserId: string) => {
+        const msgs = await api.getChatMessages(adId, otherUserId);
+        setChatMessages(msgs);
+    };
+
+    const handleSendMessage = async (adId: string, receiverId: string, content: string, imageUrl?: string) => {
+        try {
+            await api.sendMessage(adId, receiverId, content, imageUrl);
+            // Re-carrega mensagens para garantir sincronismo (ou espera o realtime)
+            handleLoadMessages(adId, receiverId);
+            handleLoadConversations(); // Atualiza a lista de conversas (last message)
+        } catch (error) {
+            setToast({ message: "Erro ao enviar mensagem", type: 'error' });
+        }
+    };
+
+    const handleSelectChat = async (chat: MessageItem) => {
         setSelectedChat(chat);
+
+        // Identificar o adId correto (da conversa ou do anúncio selecionado)
+        const adId = chat.adId || (selectedAd?.id);
+
+        if (adId) {
+            handleLoadMessages(adId, chat.otherUserId);
+            // Marcar como lido no banco (aguardar persistência)
+            await api.markMessagesAsRead(adId, chat.otherUserId);
+
+            // OTIMIZAÇÃO: Limpar contador localmente IMEDIATAMENTE para feedback visual instantâneo
+            setConversations(prev => prev.map(c =>
+                (c.otherUserId === chat.otherUserId && c.adId === adId) ? { ...c, unreadCount: 0 } : c
+            ));
+
+            // Sincronizar o selectedAd para que o cabeçalho e navegação fiquem corretos
+            try {
+                const fullAd = await api.getAdById(adId);
+                setSelectedAd(fullAd);
+            } catch (e) {
+                console.error("Erro ao sincronizar anúncio do chat:", e);
+            }
+        }
+
         setPreviousScreen(Screen.MESSAGES);
         setCurrentScreen(Screen.CHAT_DETAIL);
     };
 
     const handleStartChatFromAd = () => {
         if (!selectedAd) return;
-        const newChat: MessageItem = {
-            id: `new_${Date.now()}`,
-            senderName: selectedAd.isOwner ? user.name : MOCK_SELLER.name,
-            avatarUrl: selectedAd.isOwner ? user.avatarUrl : MOCK_SELLER.avatarUrl,
-            lastMessage: "Tenho interesse no seu anúncio",
+
+        const existingChat = conversations.find(c => c.otherUserId === selectedAd.userId && c.adId === selectedAd.id);
+
+        const chatToOpen: MessageItem = existingChat || {
+            id: `new_${selectedAd.userId}_${selectedAd.id}`,
+            otherUserId: selectedAd.userId,
+            senderName: selectedAd.ownerName || 'Vendedor',
+            avatarUrl: `https://ui-avatars.com/api/?name=${selectedAd.ownerName || 'V'}`,
+            lastMessage: "",
             time: "Agora",
             unreadCount: 0,
-            online: true,
-            adTitle: selectedAd.title
+            adTitle: selectedAd.title,
+            adId: selectedAd.id,
+            adImage: selectedAd.image,
+            adPrice: selectedAd.price
         };
-        setSelectedChat(newChat);
+
+        setSelectedChat(chatToOpen);
+        handleLoadMessages(selectedAd.id, selectedAd.userId);
         setPreviousScreen(currentScreen);
         setCurrentScreen(Screen.CHAT_DETAIL);
     };
@@ -923,8 +1191,25 @@ export const useAppActions = (state: AppState) => {
         setCurrentScreen(previousScreen);
     };
 
-    const toggleFairActive = (active: boolean) => setFairActive(active);
-    const toggleMaintenanceMode = (active: boolean) => setMaintenanceMode(active);
+    const toggleFairActive = async (active: boolean) => {
+        try {
+            await api.updateSystemSetting({ fair_active: active });
+            setToast({ message: `Seção da Feira ${active ? 'ativada' : 'desativada'} globalmente!`, type: 'info' });
+        } catch (error) {
+            console.error("❌ Erro ao atualizar status da feira:", error);
+            setToast({ message: "Erro ao atualizar configuração global.", type: 'error' });
+        }
+    };
+
+    const toggleMaintenanceMode = async (active: boolean) => {
+        try {
+            await api.updateSystemSetting({ maintenance_mode: active });
+            setToast({ message: `Modo Manutenção ${active ? 'ativado' : 'desativado'} globalmente!`, type: 'info' });
+        } catch (error) {
+            console.error("❌ Erro ao atualizar modo manutenção:", error);
+            setToast({ message: "Erro ao atualizar configuração global.", type: 'error' });
+        }
+    };
 
     const prepareCreateAd = (ad?: AdItem) => {
         setAdToEdit(ad);
@@ -988,6 +1273,8 @@ export const useAppActions = (state: AppState) => {
         openAutomotiveServices,
         openTrendingRealEstate,
         setAdToEdit,
+        handleUpdatePrivacySettings,
+        handleChangePassword,
 
         handleSavePromotion,
         handleDeletePromotion,
@@ -1004,9 +1291,15 @@ export const useAppActions = (state: AppState) => {
         handleSaveVehiclesPromotion,
         handleDeleteVehiclesPromotion,
         handleToggleVehiclesPromotionActive,
+        handleForgotPassword,
 
         favorites,
         setToast,
         adToEdit,
+        conversations,
+        chatMessages,
+        handleSendMessage,
+        handleLoadMessages,
+        handleLoadConversations
     };
 };

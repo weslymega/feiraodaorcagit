@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Screen, AdItem, AdStatus } from '../types';
+import { Screen, AdItem, AdStatus, NotificationItem } from '../types';
 import {
     HISTORY_DATA,
     HISTORY_CHART_DATA,
@@ -31,6 +31,7 @@ import { Settings } from '../screens/Settings';
 import { Messages } from '../screens/Messages';
 import { EditProfile } from '../screens/EditProfile';
 import { ChangePassword } from '../screens/ChangePassword';
+import { ResetPassword } from '../screens/ResetPassword';
 import { CreateAd } from '../screens/CreateAd';
 import { VehicleDetails } from '../screens/VehicleDetails';
 import { RealEstateDetails } from '../screens/RealEstateDetails';
@@ -100,7 +101,9 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         handleMarkNotificationRead, handleDeleteNotification, handleResolveReport,
         handleToggleMaintenanceMode,
         toggleFairActive, toggleMaintenanceMode: toggleMaintenanceModeAction, prepareCreateAd,
-        openNewArrivals, openAutomotiveServices, openTrendingRealEstate
+        openNewArrivals, openAutomotiveServices, openTrendingRealEstate,
+        handleSendMessage, handleUpdatePrivacySettings, handleChangePassword,
+        handleForgotPassword
     } = actions;
 
     const handleBackFromDetails = () => {
@@ -147,12 +150,8 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         (ad.isFeatured || (ad.boostPlan && ad.boostPlan !== 'gratis'))
     );
 
-    // 5. Veículos na Feira
-    const fairAds = activeRealAds.filter(ad => {
-        if (!ad.fairPresence?.active) return false;
-        const expires = new Date(ad.fairPresence.expiresAt);
-        return expires > new Date();
-    });
+    // 5. Veículos na Feira (Lógica Atualizada)
+    const fairAds = activeRealAds.filter(ad => ad.isInFair === true);
 
     // 6. Lista Completa para o Admin - Veículos
     const allAdminVehicleAds = Array.isArray(adminAds) ? adminAds.filter(ad => ad.category === 'veiculos' || ad.category === 'autos') : [];
@@ -217,7 +216,22 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
 
     const showBottomNav = currentScreen !== Screen.LOGIN && currentScreen !== Screen.REGISTER && currentScreen !== Screen.FORGOT_PASSWORD && currentScreen !== Screen.EDIT_PROFILE && currentScreen !== Screen.CHANGE_PASSWORD && currentScreen !== Screen.CREATE_AD && currentScreen !== Screen.VEHICLE_DETAILS && currentScreen !== Screen.REAL_ESTATE_DETAILS && currentScreen !== Screen.PART_SERVICE_DETAILS && currentScreen !== Screen.PUBLIC_PROFILE && currentScreen !== Screen.CHAT_DETAIL && currentScreen !== Screen.ADMIN_PANEL && currentScreen !== Screen.ADMIN_USERS && currentScreen !== Screen.ADMIN_VEHICLES && currentScreen !== Screen.ADMIN_REAL_ESTATE && currentScreen !== Screen.ADMIN_PARTS_SERVICES && currentScreen !== Screen.ADMIN_REPORTS && currentScreen !== Screen.ADMIN_SYSTEM_SETTINGS && currentScreen !== Screen.ADMIN_CONTENT_MODERATION && currentScreen !== Screen.ADMIN_DASHBOARD_PROMOTIONS && currentScreen !== Screen.ADMIN_REAL_ESTATE_PROMOTIONS && currentScreen !== Screen.ADMIN_PARTS_SERVICES_PROMOTIONS && currentScreen !== Screen.ADMIN_VEHICLES_PROMOTIONS;
 
-    const unreadMessagesCount = MESSAGES_DATA.reduce((total, msg) => total + (msg.unreadCount || 0), 0);
+    const unreadMessagesCount = state.conversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
+
+    const chatNotifications: NotificationItem[] = state.conversations
+        .filter(c => c.unreadCount > 0)
+        .map(c => ({
+            id: `chat_${c.id}`,
+            title: `Nova mensagem de ${c.senderName}`,
+            message: c.lastMessage,
+            time: c.time,
+            unread: true,
+            type: 'chat',
+            image: c.avatarUrl
+        }));
+
+    const allNotifications = [...chatNotifications, ...notifications];
+    const hasUnreadNotifications = allNotifications.some(n => n.unread);
 
     const renderScreen = () => {
         switch (currentScreen) {
@@ -226,7 +240,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
             case Screen.REGISTER:
                 return <RegisterScreen onBack={() => navigateTo(Screen.LOGIN)} onRegister={handleRegister} />;
             case Screen.FORGOT_PASSWORD:
-                return <ForgotPassword onBack={() => navigateTo(Screen.LOGIN)} />;
+                return <ForgotPassword onBack={() => navigateTo(Screen.LOGIN)} onSendResetEmail={handleForgotPassword} />;
 
             case Screen.DASHBOARD:
                 return (
@@ -245,6 +259,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
                         onOpenServices={openAutomotiveServices}
                         onOpenTrending={openTrendingRealEstate}
                         dashboardPromotions={dashboardPromotions}
+                        hasNotifications={hasUnreadNotifications}
                     />
                 );
 
@@ -252,8 +267,6 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
                 return <UserPanel user={user} onNavigate={navigateTo} onLogout={handleLogout} onToggleRole={handleToggleRole} />;
             case Screen.EDIT_PROFILE:
                 return <EditProfile user={user} onSave={handleSaveProfile} onBack={goBackToPanel} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} />;
-            case Screen.CHANGE_PASSWORD:
-                return <ChangePassword onBack={() => navigateTo(Screen.SECURITY)} />;
             case Screen.MY_ADS:
                 return (
                     <MyAds
@@ -370,24 +383,37 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
             case Screen.SETTINGS:
                 return <Settings user={user} onBack={goBackToPanel} onLogout={handleLogout} onNavigate={navigateTo} />;
             case Screen.MESSAGES:
-                return <Messages messages={MESSAGES_DATA} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />;
+                return <Messages messages={state.conversations} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />;
             case Screen.CHAT_DETAIL:
                 return selectedChat ? (
                     <ChatDetail
                         chat={selectedChat}
+                        messages={state.chatMessages}
                         onBack={() => navigateTo(Screen.MESSAGES)}
                         onAdClick={navigateToAdDetails}
                         onViewProfile={handleViewProfileFromChat}
+                        onSendMessage={(text, imageUrl) => {
+                            const adId = selectedChat.adId || (selectedAd?.id);
+                            if (adId) {
+                                handleSendMessage(adId, selectedChat.otherUserId, text, imageUrl);
+                            }
+                        }}
                     />
                 ) : (
-                    <Messages messages={MESSAGES_DATA} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />
+                    <Messages messages={state.conversations} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />
                 );
             case Screen.ACCOUNT_DATA:
                 return <AccountData user={user} onBack={() => navigateTo(Screen.SETTINGS)} onEdit={() => navigateTo(Screen.EDIT_PROFILE)} />;
             case Screen.NOTIFICATIONS:
-                return <Notifications onBack={goBackToDashboard} onGoToChat={() => navigateTo(Screen.MESSAGES)} items={notifications} />;
+                return <Notifications onBack={goBackToDashboard} onGoToChat={() => navigateTo(Screen.MESSAGES)} items={allNotifications} />;
             case Screen.PRIVACY:
-                return <Privacy onBack={() => navigateTo(Screen.SETTINGS)} />;
+                return (
+                    <Privacy
+                        user={user}
+                        onBack={() => navigateTo(Screen.SETTINGS)}
+                        onUpdateSettings={handleUpdatePrivacySettings}
+                    />
+                );
             case Screen.SECURITY:
                 return <Security onBack={() => navigateTo(Screen.SETTINGS)} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} onDeleteAccount={handleDeleteAccount} />;
             case Screen.ABOUT_APP:
@@ -400,6 +426,15 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
                 return <TermsOfUse onBack={() => navigateTo(Screen.DASHBOARD)} />;
             case Screen.PRIVACY_POLICY:
                 return <PrivacyPolicy onBack={() => navigateTo(Screen.DASHBOARD)} />;
+            case Screen.RESET_PASSWORD:
+                return <ResetPassword onBack={() => navigateTo(Screen.LOGIN)} onUpdatePassword={handleChangePassword} />;
+            case Screen.CHANGE_PASSWORD:
+                return (
+                    <ChangePassword
+                        onBack={() => navigateTo(Screen.SECURITY)}
+                        onChangePassword={handleChangePassword}
+                    />
+                );
 
             // ADMIN ROUTES
             case Screen.ADMIN_PANEL:

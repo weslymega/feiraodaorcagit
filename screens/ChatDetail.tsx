@@ -1,28 +1,25 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, CheckCheck, ArrowLeft, Loader2, ChevronRight } from 'lucide-react';
+import { Send, Paperclip, Check, CheckCheck, ArrowLeft, Loader2, ChevronRight } from 'lucide-react';
 import { MessageItem, ChatMessage } from '../types';
 
 interface ChatDetailProps {
   chat: MessageItem;
+  messages: ChatMessage[];
   onBack: () => void;
   onAdClick?: () => void;
   onViewProfile?: () => void;
+  onSendMessage: (text: string, imageUrl?: string) => void;
 }
 
-// Mock initial history
-const INITIAL_MESSAGES: ChatMessage[] = [
-  { id: '1', text: 'Olá, bom dia! Vi seu anúncio.', isMine: true, time: '10:30' },
-  { id: '2', text: 'Bom dia! Tudo bem?', isMine: false, time: '10:31' },
-  { id: '3', text: 'O item ainda está disponível para venda?', isMine: true, time: '10:32' },
-  { id: '4', text: 'Sim, ainda está disponível. Você gostaria de ver mais fotos?', isMine: false, time: '10:33' },
-];
-
-export const ChatDetail: React.FC<ChatDetailProps> = ({ chat, onBack, onAdClick, onViewProfile }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    ...INITIAL_MESSAGES,
-    { id: '5', text: chat.lastMessage, isMine: false, time: chat.time } // Add last message from list
-  ]);
+export const ChatDetail: React.FC<ChatDetailProps> = ({
+  chat,
+  messages,
+  onBack,
+  onAdClick,
+  onViewProfile,
+  onSendMessage
+}) => {
   const [inputText, setInputText] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -35,31 +32,14 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ chat, onBack, onAdClick,
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isUploading]); // Scroll when uploading starts/stops too
+  }, [messages, isUploading]);
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputText.trim()) return;
 
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      text: inputText,
-      isMine: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setMessages(prev => [...prev, newMessage]);
+    onSendMessage(inputText);
     setInputText('');
-
-    // Simulate reply
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        text: "Obrigado pelo interesse! Posso te ligar?",
-        isMine: false,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-    }, 2000);
   };
 
   const handleAttachClick = () => {
@@ -149,19 +129,10 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ chat, onBack, onAdClick,
 
       const imagesBase64 = await Promise.all(imagePromises);
 
-      // Cria as mensagens
-      const newMessages: ChatMessage[] = imagesBase64.map(imgData => ({
-        id: Date.now().toString() + Math.random(),
-        text: '',
-        imageUrl: imgData,
-        isMine: true,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }));
-
-      // Pequeno delay final para ver o 100%
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      setMessages(prev => [...prev, ...newMessages]);
+      // Envia as mensagens uma por uma
+      imagesBase64.forEach(imgData => {
+        onSendMessage('', imgData);
+      });
 
     } catch (error) {
       console.error("Erro ao processar imagens", error);
@@ -212,7 +183,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ chat, onBack, onAdClick,
             </div>
             <div>
               <h1 className="font-bold text-gray-900 text-sm group-hover:text-primary transition-colors">{chat.senderName}</h1>
-              <p className="text-xs text-green-600 font-medium">{chat.online ? 'Online agora' : 'Visto por último hoje às 09:00'}</p>
+              {chat.online && <p className="text-xs text-green-600 font-medium">Online agora</p>}
             </div>
           </div>
         </div>
@@ -226,12 +197,14 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ chat, onBack, onAdClick,
           className="bg-white/90 backdrop-blur-sm border-b border-gray-200 p-3 flex items-center gap-3 sticky top-[64px] z-10 shadow-sm w-full text-left active:bg-gray-50 transition-colors"
         >
           <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-            <img src="https://picsum.photos/100/100" className="w-full h-full object-cover" alt="Product" />
+            <img src={chat.adImage || 'https://placehold.co/100x100?text=Orca'} className="w-full h-full object-cover" alt="Product" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-gray-500">Negociando:</p>
             <p className="font-bold text-gray-800 text-sm truncate">{chat.adTitle}</p>
-            <p className="text-green-600 font-bold text-xs">R$ 1.200,00</p>
+            <p className="text-green-600 font-bold text-xs">
+              {chat.adPrice ? chat.adPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Consulte'}
+            </p>
           </div>
           {onAdClick && (
             <div className="p-1 text-gray-400">
@@ -247,8 +220,8 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ chat, onBack, onAdClick,
           <div
             key={msg.id}
             className={`max-w-[80%] rounded-xl p-3 relative shadow-sm text-sm ${msg.isMine
-                ? 'bg-[#dcf8c6] self-end rounded-tr-none'
-                : 'bg-white self-start rounded-tl-none'
+              ? 'bg-[#dcf8c6] self-end rounded-tr-none'
+              : 'bg-white self-start rounded-tl-none'
               }`}
           >
             {msg.imageUrl ? (
@@ -266,7 +239,13 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ chat, onBack, onAdClick,
             <div className={`flex items-center gap-1 mt-1 ${msg.imageUrl ? 'justify-end absolute bottom-2 right-2 bg-black/30 px-1.5 py-0.5 rounded-full backdrop-blur-sm' : 'justify-end'}`}>
               <span className={`text-[10px] ${msg.imageUrl ? 'text-white' : 'text-gray-500'}`}>{msg.time}</span>
               {msg.isMine && (
-                <CheckCheck className={`w-3 h-3 ${msg.imageUrl ? 'text-white' : 'text-blue-500'}`} />
+                <>
+                  {msg.isRead && chat.readReceipts !== false ? (
+                    <CheckCheck className={`w-3 h-3 ${msg.imageUrl ? 'text-white' : 'text-blue-500'}`} />
+                  ) : (
+                    <Check className={`w-3 h-3 ${msg.imageUrl ? 'text-white' : 'text-gray-400'}`} />
+                  )}
+                </>
               )}
             </div>
           </div>

@@ -109,7 +109,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
 
       if (adsError) throw adsError;
 
-      const activeCount = adsCountData?.filter(ad => ad.status === 'active').length || 0;
+      const activeCount = adsCountData?.filter(ad => ad.status === 'ativo' || ad.status === 'active').length || 0;
       const pendingCount = adsCountData?.filter(ad => ad.status === 'pendente' || ad.status === 'pending').length || 0;
 
       // Calculate revenue

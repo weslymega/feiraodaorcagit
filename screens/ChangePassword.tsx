@@ -4,6 +4,7 @@ import { Header } from '../components/Shared';
 
 interface ChangePasswordProps {
   onBack: () => void;
+  onChangePassword: (newPassword: string) => Promise<void>;
 }
 
 const PasswordInput: React.FC<{
@@ -40,26 +41,25 @@ const PasswordInput: React.FC<{
   );
 };
 
-export const ChangePassword: React.FC<ChangePasswordProps> = ({ onBack }) => {
-  const [currentPassword, setCurrentPassword] = useState('');
+export const ChangePassword: React.FC<ChangePasswordProps> = ({ onBack, onChangePassword }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     // Validação básica
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("Por favor, preencha todos os campos.");
+    if (!newPassword || !confirmPassword) {
+      setError("Por favor, preencha a nova senha e a confirmação.");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("A nova senha e a confirmação não coincidem.");
+      setError("As senhas não coincidem.");
       return;
     }
 
@@ -70,16 +70,17 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ onBack }) => {
 
     setIsLoading(true);
 
-    // Simulação de chamada de API
-    setTimeout(() => {
+    try {
+      await onChangePassword(newPassword);
       setIsLoading(false);
       setIsSuccess(true);
-      
-      // Voltar automaticamente após 2 segundos
       setTimeout(() => {
         onBack();
       }, 2000);
-    }, 1500);
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err.message || "Erro ao atualizar senha.");
+    }
   };
 
   if (isSuccess) {
@@ -101,63 +102,53 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ onBack }) => {
       <Header title="Alterar Senha" onBack={onBack} />
 
       <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6 animate-in slide-in-from-right duration-300">
-        
+
         <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
-            <p className="text-sm text-blue-800">
-                Para sua segurança, escolha uma senha forte que você não use em outros sites.
-            </p>
+          <p className="text-sm text-blue-800">
+            Para sua segurança, escolha uma senha forte que você não use em outros sites.
+          </p>
         </div>
 
         <div className="space-y-4">
-            <PasswordInput 
-                label="Senha Atual"
-                value={currentPassword}
-                onChange={setCurrentPassword}
-                placeholder="Digite sua senha atual"
-            />
-            
-            <div className="h-[1px] bg-gray-200 my-2"></div>
+          <PasswordInput
+            label="Nova Senha"
+            value={newPassword}
+            onChange={setNewPassword}
+            placeholder="Mínimo 6 caracteres"
+          />
 
-            <PasswordInput 
-                label="Nova Senha"
-                value={newPassword}
-                onChange={setNewPassword}
-                placeholder="Mínimo 6 caracteres"
-            />
-
-            <PasswordInput 
-                label="Confirmar Nova Senha"
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                placeholder="Repita a nova senha"
-            />
+          <PasswordInput
+            label="Confirmar Nova Senha"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            placeholder="Repita a nova senha"
+          />
         </div>
 
         {error && (
-            <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm font-medium animate-in fade-in">
-                {error}
-            </div>
+          <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm font-medium animate-in fade-in">
+            {error}
+          </div>
         )}
 
         <div className="mt-auto pt-4">
-            <button 
-                type="submit"
-                disabled={isLoading}
-                className={`w-full py-4 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all ${
-                    isLoading 
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                    : 'bg-primary text-white shadow-purple-200 active:scale-[0.98]'
-                }`}
-            >
-                {isLoading ? (
-                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                ) : (
-                    <>
-                        <Save className="w-5 h-5" />
-                        Atualizar Senha
-                    </>
-                )}
-            </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`w-full py-4 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all ${isLoading
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-primary text-white shadow-purple-200 active:scale-[0.98]'
+              }`}
+          >
+            {isLoading ? (
+              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                Atualizar Senha
+              </>
+            )}
+          </button>
         </div>
       </form>
     </div>

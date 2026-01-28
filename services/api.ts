@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { AdStatus, User, ReportItem } from '../types';
+import { AdStatus, User, ReportItem, MessageItem, ChatMessage } from '../types';
 
 // NOTE: These should be in .env
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim();
@@ -30,17 +30,40 @@ const cleanString = (val: any) => {
 };
 
 /**
+ * Centralized Status Mapping
+ * Database (values in Portuguese as per current schema) <-> Frontend Enums
+ */
+export const STATUS_DB_MAP = {
+    [AdStatus.ACTIVE]: 'ativo',
+    [AdStatus.PENDING]: 'pendente',
+    [AdStatus.REJECTED]: 'rejeitado',
+    [AdStatus.SOLD]: 'vendido',
+    [AdStatus.INACTIVE]: 'inativo',
+    [AdStatus.BOUGHT]: 'comprado'
+};
+
+const DB_STATUS_TO_ADSTATUS: Record<string, AdStatus> = {
+    'ativo': AdStatus.ACTIVE,
+    'active': AdStatus.ACTIVE,
+    'pendente': AdStatus.PENDING,
+    'pending': AdStatus.PENDING,
+    'rejeitado': AdStatus.REJECTED,
+    'rejected': AdStatus.REJECTED,
+    'vendido': AdStatus.SOLD,
+    'sold': AdStatus.SOLD,
+    'inativo': AdStatus.INACTIVE,
+    'inactive': AdStatus.INACTIVE,
+    'paused': AdStatus.INACTIVE,
+    'comprado': AdStatus.BOUGHT
+};
+
+/**
  * Helper to map DB record (PT) to Item (EN) and clean strings
  */
 const mapAdData = (ad: any, isOwner: boolean = false) => {
-    // Determine mapped status
-    let mappedStatus = AdStatus.PENDING;
-    const dbStatus = cleanString(ad.status);
-
-    if (['ativo', 'active'].includes(dbStatus)) mappedStatus = AdStatus.ACTIVE;
-    if (['inativo', 'inactive'].includes(dbStatus)) mappedStatus = AdStatus.INACTIVE;
-    if (['vendido', 'sold'].includes(dbStatus)) mappedStatus = AdStatus.SOLD;
-    if (['rejeitado', 'rejected'].includes(dbStatus)) mappedStatus = AdStatus.REJECTED;
+    // Determine mapped status using centralized logic
+    const dbStatus = cleanString(ad.status).toLowerCase();
+    const mappedStatus = DB_STATUS_TO_ADSTATUS[dbStatus] || AdStatus.PENDING;
 
     const category = cleanString(ad.categoria || ad.category);
     const detalhes = ad.detalhes || {};
@@ -59,11 +82,11 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         createdAt: ad.created_at || ad.createdAt,
         updatedAt: ad.updated_at || ad.updatedAt,
         userId: ad.user_id || ad.userId,
-        // Real Profile Info
-        ownerName: isOwner ? 'Eu' : (ad.profiles?.name || ad.ownerName || 'Vendedor'),
-        ownerAvatar: ad.profiles?.avatar_url || ad.ownerAvatar || null,
+        ownerName: isOwner ? 'Eu' : (ad.profiles?.name || 'Usuário não encontrado'),
+        ownerAvatar: ad.profiles?.avatar_url || null,
         additionalInfo: detalhes.additionalInfo || ad.additionalInfo || [],
-        isOwner: isOwner
+        isOwner: isOwner,
+        isInFair: ad.is_in_fair || false // Mapeando novo campo do banco
     };
 
     if (category === 'imoveis') {
@@ -94,7 +117,15 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         };
     }
 
-    // Default for parts/services or others
+    if (category === 'servicos' || category === 'pecas') {
+        return {
+            ...baseData,
+            partType: detalhes.partType || ad.partType,
+            condition: detalhes.condition || ad.condition
+        };
+    }
+
+    // Default for others
     return {
         ...baseData,
         ...detalhes
@@ -143,6 +174,12 @@ export const api = {
                 plate: adData.plate,
                 fipePrice: adData.fipePrice
             };
+        } else if (category === 'servicos' || category === 'pecas') {
+            details = {
+                ...details,
+                partType: adData.partType,
+                condition: adData.condition
+            };
         }
 
         try {
@@ -174,7 +211,7 @@ export const api = {
                     descricao: adData.description,
                     preco: adData.price,
                     categoria: category,
-                    status: 'pendente',
+                    status: STATUS_DB_MAP[AdStatus.PENDING],
                     imagens: adData.images || (adData.image ? [adData.image] : []),
                     localizacao: adData.location,
                     detalhes: details,
@@ -217,7 +254,16 @@ export const api = {
             .eq('id', user.id)
             .single();
 
-        if (error) return null;
+        if (error) {
+            console.error("❌ Erro no getProfile:", error);
+            return null;
+        }
+
+        console.log("👤 Perfil carregado do DB:", {
+            id: data.id,
+            show_online_status: data.show_online_status,
+            read_receipts: data.read_receipts
+        });
 
         // Map database fields to User interface
         return {
@@ -231,9 +277,118 @@ export const api = {
             phone: data.phone || '',
             location: data.location || '',
             bio: data.bio || '',
-            joinDate: data.created_at ? new Date(data.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : ''
-        } as User;
+            joinDate: data.created_at ? new Date(data.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : '',
+            showOnlineStatus: data.show_online_status ?? true,
+            readReceipts: data.read_receipts ?? true
+        };
     },
+
+    /**
+     * Update Privacy Settings
+     */
+    updatePrivacySettings: async (settings: { showOnlineStatus?: boolean, readReceipts?: boolean }) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const updateData: any = {};
+        if (settings.showOnlineStatus !== undefined) updateData.show_online_status = settings.showOnlineStatus;
+        if (settings.readReceipts !== undefined) updateData.read_receipts = settings.readReceipts;
+
+        const { error } = await supabase
+            .from('profiles')
+            .update(updateData)
+            .eq('id', user.id);
+
+        if (error) {
+            console.error("❌ Erro ao atualizar privacidade no DB:", error);
+            throw error;
+        }
+
+        console.log("✅ Privacidade atualizada com sucesso no DB:", updateData);
+    },
+
+    /**
+     * Get Single Ad by ID
+     */
+    getAdById: async (adId: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: ad, error } = await supabase
+            .from('anuncios')
+            .select('*, profiles:user_id(name, avatar_url)')
+            .eq('id', adId)
+            .single();
+
+        if (error) throw error;
+        return mapAdData(ad, ad.user_id === user?.id);
+    },
+
+    /**
+     * Get Favorites
+     */
+    getFavorites: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from('favorites')
+            .select('ad_id, anuncios:ad_id(*, profiles:user_id(name, avatar_url))')
+            .eq('user_id', user.id);
+
+        if (error) {
+            console.error("❌ Erro ao buscar favoritos:", error);
+            return [];
+        }
+
+        return (data || [])
+            .filter((f: any) => f.anuncios)
+            .map((f: any) => mapAdData(f.anuncios, f.anuncios.user_id === user.id));
+    },
+
+    /**
+     * Add to Favorites
+     */
+    addFavorite: async (adId: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Usuário não autenticado');
+
+        const { error } = await supabase
+            .from('favorites')
+            .upsert({ user_id: user.id, ad_id: adId }); // Usa upsert para evitar 409 de duplicata
+
+        if (error) {
+            console.error("❌ Erro detalhado no addFavorite:", {
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint
+            });
+
+            if (error.code === '23503') {
+                throw new Error('Erro de Banco: A tabela favorites ainda aponta para ads em vez de anuncios. Por favor, rode o script de correção SQL.');
+            }
+            throw error;
+        }
+    },
+
+    /**
+     * Remove from Favorites
+     */
+    removeFavorite: async (adId: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Usuário não autenticado');
+
+        const { error } = await supabase
+            .from('favorites')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('ad_id', adId);
+
+        if (error) {
+            console.error("❌ Erro detalhado no removeFavorite:", error);
+            throw error;
+        }
+    },
+
 
     /**
      * ADMIN: Get all users from the platform
@@ -283,6 +438,18 @@ export const api = {
     },
 
     /**
+     * ADMIN: Deletar Anúncio Permanentemente (Via Edge Function)
+     */
+    adminDeleteAd: async (adId: string, reportId?: string) => {
+        const { data, error } = await supabase.functions.invoke('admin_manage_reports', {
+            body: { action: 'delete_ad', adId, reportId }
+        });
+
+        if (error) throw error;
+        return data; // Returns { success: true, deletedCount: N }
+    },
+
+    /**
      * ADMIN: Delete User (Strict)
      */
     deleteUser: async (userId: string) => {
@@ -297,21 +464,33 @@ export const api = {
     },
 
     /**
-     * ADMIN: Moderate Ad Status
+     * Update Single Ad (Owner only - RLS)
+     * Supports updating is_in_fair status
      */
-    adminUpdateAdStatus: async (adId: string, status: AdStatus) => {
-        // Map frontend status to backend enum
-        const statusMap: Record<string, string> = {
-            [AdStatus.ACTIVE]: 'active',
-            [AdStatus.PENDING]: 'pending',
-            [AdStatus.REJECTED]: 'rejected',
-            [AdStatus.SOLD]: 'sold',
-            [AdStatus.INACTIVE]: 'paused'
-        };
+    updateAnuncio: async (adId: string, updateData: { is_in_fair?: boolean, [key: string]: any }) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Usuário não autenticado");
 
         const { error } = await supabase
             .from('anuncios')
-            .update({ status: statusMap[status] || 'pending' })
+            .update(updateData)
+            .eq('id', adId)
+            .eq('user_id', user.id); // Extra safety, though RLS handles it
+
+        if (error) {
+            console.error("❌ Erro ao atualizar anúncio:", error);
+            throw error;
+        }
+        return true;
+    },
+
+    /**
+     * ADMIN: Moderate Ad Status
+     */
+    adminUpdateAdStatus: async (adId: string, status: AdStatus) => {
+        const { error } = await supabase
+            .from('anuncios')
+            .update({ status: STATUS_DB_MAP[status] || STATUS_DB_MAP[AdStatus.PENDING] })
             .eq('id', adId);
 
         if (error) throw error;
@@ -417,16 +596,38 @@ export const api = {
     },
 
     /**
+     * Get All Ads for Admin (Pending, Active, Rejected)
+     */
+    getAllAdsForAdmin: async () => {
+        try {
+            const { data, error } = await supabase
+                .from('anuncios')
+                .select('*, profiles:user_id(name, avatar_url)')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("❌ Admin fetch error:", error);
+                throw error;
+            }
+
+            return (data || []).map((ad: any) => mapAdData(ad, false));
+        } catch (error) {
+            console.error("❌ Erro no getAllAdsForAdmin:", error);
+            return [];
+        }
+    },
+
+    /**
      * Get All Active Ads (Feed)
      */
     getAds: async () => {
         try {
-            // Postgres ENUM 'ad_status' expects lowercase 'ativo'
+            // Fetch only ACTIVE ads for public feed
             // JOIN with profiles to get seller info
             const { data, error } = await supabase
                 .from('anuncios')
                 .select('*, profiles:user_id(name, avatar_url)')
-                .eq('status', 'ativo')
+                .eq('status', STATUS_DB_MAP[AdStatus.ACTIVE])
                 .order('created_at', { ascending: false })
                 .limit(50);
 
@@ -435,7 +636,7 @@ export const api = {
                 const { data: simpleData, error: simpleError } = await supabase
                     .from('anuncios')
                     .select('*')
-                    .eq('status', 'ativo')
+                    .eq('status', STATUS_DB_MAP[AdStatus.ACTIVE])
                     .order('created_at', { ascending: false })
                     .limit(50);
 
@@ -478,5 +679,180 @@ export const api = {
             console.error('🔥 Critical error in getMyAds:', err);
             return [];
         }
+    },
+
+    /**
+     * CHAT: Get Histórico de Mensagens
+     */
+    getChatMessages: async (adId: string, otherUserId: string): Promise<ChatMessage[]> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('ad_id', adId)
+            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        return (data || []).map(m => ({
+            id: m.id,
+            text: m.content || '',
+            imageUrl: m.image_url,
+            isMine: m.sender_id === user.id,
+            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isRead: m.is_read
+        }));
+    },
+
+    /**
+     * CHAT: Enviar Mensagem
+     */
+    sendMessage: async (adId: string, receiverId: string, content: string, imageUrl?: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Não autenticado");
+
+        const { data, error } = await supabase
+            .from('messages')
+            .insert({
+                ad_id: adId,
+                sender_id: user.id,
+                receiver_id: receiverId,
+                content,
+                image_url: imageUrl
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error("❌ Erro ao enviar mensagem:", error);
+            throw error;
+        }
+        return data;
+    },
+
+    /**
+     * CHAT: Listar Conversas (Agregação Local)
+     */
+    getUserConversations: async (): Promise<MessageItem[]> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        // Buscamos todas as mensagens onde o usuário participa
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*, ads:ad_id(titulo, imagens, preco), sender:sender_id(name, avatar_url, read_receipts), receiver:receiver_id(name, avatar_url, read_receipts)')
+            .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const conversationsMap = new Map<string, MessageItem>();
+
+        (data || []).forEach(m => {
+            const isMine = m.sender_id === user.id;
+            const otherUser = isMine ? m.receiver : m.sender;
+            const otherUserId = isMine ? m.receiver_id : m.sender_id;
+
+            // Chave única por Ad + Outro Usuário
+            const key = `${m.ad_id}_${otherUserId}`;
+
+            if (!conversationsMap.has(key)) {
+                conversationsMap.set(key, {
+                    id: m.id, // ID da última mensagem (UUID único)
+                    otherUserId: otherUserId, // ID do outro usuário para o ChatDetail
+                    senderName: otherUser?.name || 'Usuário',
+                    avatarUrl: otherUser?.avatar_url || `https://ui-avatars.com/api/?name=${otherUser?.name || 'U'}`,
+                    lastMessage: m.content || (m.image_url ? '📷 Foto' : ''),
+                    time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    unreadCount: (data || []).filter(msg =>
+                        msg.ad_id === m.ad_id &&
+                        msg.sender_id === otherUserId &&
+                        msg.receiver_id === user.id &&
+                        !msg.is_read
+                    ).length,
+                    adTitle: m.ads?.titulo || 'Anúncio',
+                    adId: m.ad_id,
+                    adImage: m.ads?.imagens?.[0] || 'https://placehold.co/100x100?text=Orca',
+                    adPrice: m.ads?.preco || 0,
+                    readReceipts: otherUser?.read_receipts ?? true
+                });
+            }
+        });
+
+        return Array.from(conversationsMap.values());
+    },
+
+    /**
+     * CHAT: Marcar mensagens como lidas
+     */
+    markMessagesAsRead: async (adId: string, otherUserId: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { error } = await supabase
+            .from('messages')
+            .update({ is_read: true })
+            .eq('ad_id', adId)
+            .eq('sender_id', otherUserId)
+            .eq('receiver_id', user.id)
+            .eq('is_read', false);
+
+        if (error) {
+            console.error("❌ Erro ao marcar mensagens como lidas:", error);
+        }
+    },
+
+    /**
+     * AUTH: Recuperação de Senha
+     */
+    sendPasswordReset: async (email: string) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}`,
+        });
+        if (error) throw error;
+    },
+
+    /**
+     * AUTH: Alterar Senha
+     */
+    updatePassword: async (newPassword: string) => {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+    },
+    /**
+     * AUTH: Exclusão de Conta (Soft Delete)
+     */
+    requestAccountDeletion: async () => {
+        const { error } = await supabase.rpc('request_account_deletion');
+        if (error) throw error;
+    },
+
+    /**
+     * SYSTEM: Gestão Global (Feira e Manutenção)
+     */
+    getSystemSettings: async () => {
+        const { data, error } = await supabase
+            .from('system_settings')
+            .select('fair_active, maintenance_mode')
+            .eq('id', true)
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    updateSystemSetting: async (settings: { fair_active?: boolean, maintenance_mode?: boolean }) => {
+        const { error } = await supabase
+            .from('system_settings')
+            .update({
+                ...settings,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', true);
+
+        if (error) throw error;
     }
 };

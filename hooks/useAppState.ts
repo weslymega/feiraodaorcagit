@@ -1,6 +1,6 @@
-import { api } from '../services/api';
+import { api, supabase } from '../services/api';
 import { useState, useEffect } from 'react';
-import { Screen, User, AdItem, MessageItem, NotificationItem, ReportItem, FilterContext, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
+import { Screen, User, AdItem, MessageItem, ChatMessage, NotificationItem, ReportItem, FilterContext, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
 import {
   CURRENT_USER,
   MY_ADS_DATA,
@@ -39,27 +39,87 @@ export const useAppState = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [reports, setReports] = useState<ReportItem[]>([]);
 
-  // Configurações do Sistema
-  const [fairActive, setFairActive] = useState<boolean>(() => loadFromStorage('orca_fair_active', true));
-  const [maintenanceMode, setMaintenanceMode] = useState<boolean>(() => loadFromStorage('orca_maintenance', false));
+  // Configurações do Sistema (Realtime Pure - No localStorage)
+  const [fairActive, setFairActive] = useState<boolean>(false);
+  const [maintenanceMode, setMaintenanceMode] = useState<boolean>(false);
 
   // Global Ads State (Fetched from Supabase)
   const [realAds, setRealAds] = useState<AdItem[]>([]);
+  const [adminAds, setAdminAds] = useState<AdItem[]>([]);
+
+  // Chat/Messages state
+  const [conversations, setConversations] = useState<MessageItem[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  // 1. Subscription Realtime para Configurações Globais
+  useEffect(() => {
+    console.log("📡 Subscribing to System Settings Realtime...");
+
+    // FETCH INICIAL
+    const loadSettings = async () => {
+      try {
+        const settings = await api.getSystemSettings();
+        if (settings) {
+          setFairActive(settings.fair_active);
+          setMaintenanceMode(settings.maintenance_mode);
+        }
+      } catch (err) {
+        console.error("⚠️ Falha ao carregar system_settings inicial:", err);
+      }
+    };
+    loadSettings();
+
+    const channel = (supabase as any)
+      .channel('public:system_settings')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'system_settings'
+      }, (payload: any) => {
+        console.log("⚙️ Mudança Global Detectada:", payload.new);
+        const next = payload.new;
+        if (next.id === true) {
+          setFairActive(next.fair_active);
+          setMaintenanceMode(next.maintenance_mode);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      (supabase as any).removeChannel(channel);
+    };
+  }, []);
 
   // Fetch Data Effect
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch Feed
+        // Fetch Feed (Active Only)
+        console.log("🔄 Fetching Public Feed...");
         const ads = await api.getAds();
         if (ads) setRealAds(ads);
 
         // Fetch My Ads (if logged in)
+        console.log("🔄 Fetching My Ads...");
         const userAds = await api.getMyAds();
         if (userAds) setMyAds(userAds);
 
-        // Fetch Reports (if admin)
-        if (user.isAdmin) {
+        // FORCE SYNC: Check if user is REALLY admin in DB
+        const freshProfile = await api.getProfile();
+        console.log("👤 Fresh Profile Fetch:", freshProfile);
+
+        if (freshProfile) {
+          setUser(prev => ({ ...prev, ...freshProfile }));
+        }
+
+        const isAdminInDB = freshProfile?.isAdmin || false;
+
+        // Fetch Reports & ALL ADS (if admin)
+        if (isAdminInDB) {
+          console.log("🛡️ Admin Detected in DB. Fetching ALL ads...");
+          const allAdsData = await api.getAllAdsForAdmin();
+          if (allAdsData) setAdminAds(allAdsData);
+
           const reportsData = await api.getReports();
           if (reportsData) {
             const mappedReports = reportsData.map((r: any) => ({
@@ -80,6 +140,16 @@ export const useAppState = () => {
             setReports(mappedReports);
           }
         }
+
+        // Fetch Conversations
+        console.log("💬 Fetching Conversations...");
+        const convs = await api.getUserConversations();
+        if (convs) setConversations(convs);
+
+        // Fetch Favorites
+        console.log("❤️ Fetching Favorites...");
+        const favs = await api.getFavorites();
+        if (favs) setFavorites(favs);
 
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);
@@ -170,8 +240,9 @@ export const useAppState = () => {
     maintenanceMode, setMaintenanceMode,
     adminMockAds, setAdminMockAds,
 
-    // Updated: Expose realAds
-    activeRealAds: realAds,
+    // Updated: Expose realAds and setter
+    activeRealAds: realAds, setRealAds,
+    adminAds, setAdminAds, // NEW: Expose Admin Ads
 
     selectedAd, setSelectedAd,
     adToEdit, setAdToEdit,
@@ -183,6 +254,8 @@ export const useAppState = () => {
     dashboardPromotions, setDashboardPromotions,
     realEstatePromotions, setRealEstatePromotions,
     partsServicesPromotions, setPartsServicesPromotions,
-    vehiclesPromotions, setVehiclesPromotions
+    vehiclesPromotions, setVehiclesPromotions,
+    conversations, setConversations,
+    chatMessages, setChatMessages
   };
 };
