@@ -579,8 +579,11 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   const renderVehicleType = () => (<StepContainer title="Tipo de Veículo" progress={0.1} onNext={nextStep} onBack={goBack}><div className="flex flex-col gap-4">{[{ id: 'Passeio', label: 'Carro de Passeio', icon: <Car className="w-6 h-6" /> }, { id: 'Moto', label: 'Motocicleta', icon: <Bike className="w-6 h-6" /> }, { id: 'Caminhão', label: 'Caminhão / Ônibus', icon: <Truck className="w-6 h-6" /> }].map((type) => (<button key={type.id} onClick={() => { setFormData(p => ({ ...p, vehicleType: type.id })); nextStep(); }} className="flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.99]"><div className="p-3 bg-blue-50 text-primary rounded-xl">{type.icon}</div><span className="font-bold text-gray-800 text-lg flex-1 text-left">{type.label}</span><ChevronLeft className="w-5 h-5 text-gray-300 rotate-180" /></button>))}</div></StepContainer>);
 
   const renderPlate = () => (
-    <StepContainer title="Placa" progress={0.4} onNext={nextStep} onBack={goBack} nextDisabled={!formData.isZeroKm && formData.plate.length < 7}>
+    <StepContainer title="Placa (Opcional)" progress={0.4} onNext={nextStep} onBack={goBack} nextDisabled={formData.plate.length > 0 && formData.plate.length < 7}>
       <div className="relative mb-8"><input type="text" value={formData.plate} onChange={(e) => setFormData(p => ({ ...p, plate: e.target.value.toUpperCase() }))} placeholder="ABC1D23" className="w-full border-2 border-gray-200 rounded-2xl px-4 py-6 text-center text-4xl font-bold tracking-widest uppercase focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all" maxLength={7} /></div><div className="flex items-center gap-3 mb-8 cursor-pointer p-4 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all" onClick={() => setFormData(p => ({ ...p, isZeroKm: !p.isZeroKm }))}><div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${formData.isZeroKm ? 'bg-primary border-primary' : 'border-gray-300'}`}>{formData.isZeroKm && <div className="w-2.5 h-2.5 bg-white rounded-full" />}</div><span className="text-gray-900 font-medium">Veículo 0km (Sem placa)</span></div>
+      {!formData.plate && !formData.isZeroKm && (
+        <p className="text-center text-gray-500 text-sm animate-pulse">Você pode pular esta etapa clicando em Continuar</p>
+      )}
     </StepContainer>
   );
 

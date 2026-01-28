@@ -14,7 +14,7 @@ interface HighlightAdModalProps {
 export const HighlightAdModal: React.FC<HighlightAdModalProps> = ({ ad, onClose, onSuccess }) => {
     const [plans, setPlans] = useState<HighlightPlan[]>([]);
     const [selectedPlan, setSelectedPlan] = useState<HighlightPlan | null>(null);
-    const [step, setStep] = useState<'plans' | 'payment' | 'success'>('plans');
+    const [step, setStep] = useState<'plans' | 'payment' | 'success' | 'processing'>('plans');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [paymentResult, setPaymentResult] = useState<any>(null);
@@ -72,9 +72,10 @@ export const HighlightAdModal: React.FC<HighlightAdModalProps> = ({ ad, onClose,
         if (result.status === 'approved') {
             setStep('success');
             if (onSuccess) onSuccess();
-        } else if (result.status === 'in_process') {
-            // Probably PIX QR Code shown or card in analysis
-            console.log('Payment in process...', result);
+        } else {
+            // Statuses like 'in_process', 'pending', 'authorized'
+            setStep('processing');
+            console.log('Payment pending/in-process:', result);
         }
     };
 
@@ -131,8 +132,8 @@ export const HighlightAdModal: React.FC<HighlightAdModalProps> = ({ ad, onClose,
                                     key={plan.id}
                                     onClick={() => handleSelectPlan(plan)}
                                     className={`w-full p-5 rounded-2xl border-2 text-left transition-all relative overflow-hidden flex justify-between items-center group ${selectedPlan?.id === plan.id
-                                            ? 'border-primary bg-blue-50/30'
-                                            : 'border-gray-100 hover:border-gray-200'
+                                        ? 'border-primary bg-blue-50/30'
+                                        : 'border-gray-100 hover:border-gray-200'
                                         }`}
                                 >
                                     {selectedPlan?.id === plan.id && (
@@ -202,6 +203,34 @@ export const HighlightAdModal: React.FC<HighlightAdModalProps> = ({ ad, onClose,
                                 onError={handlePaymentError}
                             />
                         </div>
+                    ) : step === 'processing' ? (
+                        <div className="flex flex-col items-center py-8">
+                            <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-6 relative shadow-lg shadow-blue-100">
+                                <TrendingUp className="w-12 h-12 text-blue-600 animate-pulse" />
+                            </div>
+                            <h4 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tighter text-center">Pagamento em Análise</h4>
+                            <p className="text-gray-500 font-medium text-center max-w-xs mb-8">
+                                O Mercado Pago está analisando seu pagamento. Assim que for aprovado, seu destaque será ativado automaticamente!
+                            </p>
+
+                            <div className="w-full space-y-3 bg-gray-50 p-4 rounded-2xl border border-dashed border-gray-200">
+                                <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                    <span>Status</span>
+                                    <span>ID Transação</span>
+                                </div>
+                                <div className="flex justify-between font-black text-primary">
+                                    <span className="capitalize">{paymentResult?.status?.replace('_', ' ') || 'Processando'}</span>
+                                    <span>#{paymentResult?.id}</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={onClose}
+                                className="mt-8 text-sm font-black uppercase text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                Entendi, pode fechar
+                            </button>
+                        </div>
                     ) : (
                         <div className="flex flex-col items-center py-8">
                             <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 relative shadow-lg shadow-green-100">
@@ -253,7 +282,9 @@ export const HighlightAdModal: React.FC<HighlightAdModalProps> = ({ ad, onClose,
                         </button>
                     </div>
                 )}
+
             </div>
         </div>
     );
 };
+

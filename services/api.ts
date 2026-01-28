@@ -331,14 +331,17 @@ export const api = {
         console.log('[API] Access token preview:', session.access_token ? `${session.access_token.substring(0, 20)}...` : 'none');
         console.log('[API] Token length:', session.access_token?.length);
 
-        // MANUALLY pass the Authorization header
-        // This ensures the token is sent in the correct format
+        // MANUALLY pass the Authorization header is no longer needed if we disable verify_jwt in config.toml
+        // and let supabase-js handle the session.
         const { data, error } = await supabase.functions.invoke('create-highlight-payment', {
-            body: { ad_id: adId, plan_id: planId, payment_data: paymentData },
-            headers: {
-                Authorization: `Bearer ${session.access_token}`
+            body: {
+                ad_id: adId,
+                plan_id: planId,
+                device_id: paymentData.device_id,
+                payment_data: paymentData
             }
         });
+
 
         if (error) {
             console.error('[API] Edge Function Error:', error);

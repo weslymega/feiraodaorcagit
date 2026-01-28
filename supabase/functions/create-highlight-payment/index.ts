@@ -8,6 +8,7 @@ const corsHeaders = {
 interface PaymentPayload {
     ad_id: string;
     plan_id: string;
+    device_id?: string;
     payment_data: {
         payment_method_id: string;
         token?: string;
@@ -88,7 +89,7 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Bad Request', message: 'Invalid JSON body' }), { status: 400, headers: corsHeaders });
         }
 
-        const { ad_id, plan_id, payment_data } = body;
+        const { ad_id, plan_id, device_id, payment_data } = body;
 
         // 2. Business Logic: Validate Ad & Plan (Using Admin Client for trusted read)
         // adminClient already created above for auth validation
@@ -162,6 +163,8 @@ Deno.serve(async (req) => {
                 last_name: payment_data.payer?.last_name || 'Feirão',
                 identification: payment_data.payer?.identification
             },
+            // Security Identification
+            device_id: device_id || payment_data?.token, // Token can sometimes be used as fallback but device_id is preferred
             // Unique identifier for correlation
             external_reference: `FO-HIGHLIGHT-${pendingPayment.id}`,
             // Metadata for MP to return in webhook or GET /v1/payments/{id}
@@ -186,7 +189,9 @@ Deno.serve(async (req) => {
             headers: {
                 Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
                 "Content-Type": "application/json",
-                "X-Idempotency-Key": idempotencyKey
+                "X-Idempotency-Key": idempotencyKey,
+                "X-Device-Id": device_id || "", // Mandatory for Transparent Checkout security
+                "X-Platform-Id": "MLV" // Useful for MP tracking
             },
             body: JSON.stringify(mpPaymentBody)
         });

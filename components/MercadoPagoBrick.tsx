@@ -60,6 +60,7 @@ const MercadoPagoBrick: React.FC<MercadoPagoBrickProps> = ({ adId, planId, amoun
                                     adId,
                                     planId,
                                     paymentMethod: selectedPaymentMethod,
+                                    hasDeviceId: !!formData.device_id,
                                     formDataKeys: Object.keys(formData)
                                 });
 
