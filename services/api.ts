@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { AdStatus, User, ReportItem, MessageItem, ChatMessage } from '../types';
+import { AdStatus, User, ReportItem, MessageItem, ChatMessage, HighlightPlan } from '../types';
 
 // NOTE: These should be in .env
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim();
@@ -64,6 +64,30 @@ const DB_STATUS_TO_ADSTATUS: Record<string, AdStatus> = {
 };
 
 /**
+ * Normaliza o nome do plano vindo do banco (UUIDs ou nomes legados)
+ * para os nomes oficiais exigidos: Topo, Premium, Simples.
+ */
+const normalizeBoostPlan = (plan: string): string => {
+    if (!plan) return 'gratis';
+    const p = plan.toLowerCase().trim();
+
+    // Mapeamento de UUIDs oficiais (Confirmado via banco de dados)
+    if (p === 'f174fc27-88a8-4ac4-a26f-2cd0b8b81cd9') return 'Simples';
+    if (p === '90c61495-d664-464c-92f6-8c489a695283') return 'Premium';
+    if (p === '072d6be5-4e77-4c75-9ad5-2df2f3cf562b') return 'Topo';
+
+    // Mapeamento de termos legados
+    if (p === 'advanced' || p === 'premium' || p === 'turbo máx' || p === 'turbo max') return 'Premium';
+    if (p === 'basic' || p === 'simples' || p === 'turbo ágil' || p === 'turbo agil' || p === 'classic' || p === 'turbo') return 'Simples';
+    if (p === 'top' || p === 'topo') return 'Topo';
+    if (p === 'none' || p === 'gratis' || p === 'grátis' || p === '') return 'gratis';
+
+    // Se for um UUID não mapeado ou valor desconhecido, tenta capitalizar o primeiro caractere
+    // para manter a consistência estética se for um nome legível
+    return plan.charAt(0).toUpperCase() + plan.slice(1);
+};
+
+/**
  * Helper to map DB record (PT) to Item (EN) and clean strings
  */
 const mapAdData = (ad: any, isOwner: boolean = false) => {
@@ -84,7 +108,7 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         images: Array.isArray(ad.imagens) ? ad.imagens : (ad.image ? [ad.image] : []),
         location: cleanString(ad.localizacao || ad.location) || 'Brasil',
         status: mappedStatus,
-        boostPlan: cleanString(ad.boost_plan || ad.boostPlan) || 'gratis',
+        boostPlan: normalizeBoostPlan(cleanString(ad.boost_plan || ad.boostPlan)),
         createdAt: ad.created_at || ad.createdAt,
         updatedAt: ad.updated_at || ad.updatedAt,
         userId: ad.user_id || ad.userId,
@@ -452,8 +476,11 @@ export const api = {
                     bumpsRemaining: 0
                 }
             };
-            if (!ad.boost_plan || ad.boost_plan === 'gratis') {
-                ad.boost_plan = 'active_highlight';
+            if (activeHighlight && (!ad.boost_plan || ad.boost_plan === 'gratis')) {
+                // Ao remover 'active_highlight', garantimos que o plano venha do banco.
+                // Se houver um destaque ativo mas o campo boost_plan estiver vazio, 
+                // poderíamos tentar inferir aqui, mas o plano pede para vir direto.
+                // Para manter a Ribbon ativa, o boostPlan não pode ser 'gratis'.
             }
         }
 
@@ -882,8 +909,8 @@ export const api = {
                             bumpsRemaining: 0
                         }
                     };
-                    if (!ad.boost_plan || ad.boost_plan === 'gratis') {
-                        ad.boost_plan = 'active_highlight';
+                    if (activeHighlight && (!ad.boost_plan || ad.boost_plan === 'gratis')) {
+                        // Removido active_highlight
                     }
                 }
                 return mapAdData(ad);
@@ -941,8 +968,8 @@ export const api = {
                         // ad.boost_plan = 'premium' (or map plan_id to name if needed)
                     };
                     // Override boost_plan to ensure UI sees it
-                    if (!ad.boost_plan || ad.boost_plan === 'gratis') {
-                        ad.boost_plan = 'active_highlight';
+                    if (activeHighlight && (!ad.boost_plan || ad.boost_plan === 'gratis')) {
+                        // Removido active_highlight
                     }
                 }
 

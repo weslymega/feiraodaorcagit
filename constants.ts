@@ -33,7 +33,7 @@ export const ADMIN_USER: User = {
   isAdmin: true, // Permite acesso ao painel de administrador
   adsCount: 0,
   verified: true,
-  activePlan: 'premium',
+  activePlan: 'Premium',
   monthlyUsage: { month: '2024-03', count: 0 }
 };
 
@@ -160,7 +160,7 @@ export const REPORTS_USER_GROWTH = [
 export const REPORTS_REVENUE_BY_PLAN = [
   {
     userId: 'u_mock',
-    id: 'premium',
+    id: 'Premium',
     name: 'Diamante',
     count: 42,
     revenue: 4200,
@@ -169,7 +169,7 @@ export const REPORTS_REVENUE_BY_PLAN = [
   },
   {
     userId: 'u_mock',
-    id: 'advanced',
+    id: 'Topo',
     name: 'Ouro',
     count: 85,
     revenue: 5100,
@@ -178,7 +178,7 @@ export const REPORTS_REVENUE_BY_PLAN = [
   },
   {
     userId: 'u_mock',
-    id: 'basic',
+    id: 'Simples',
     name: 'Prata',
     count: 120,
     revenue: 3600,
@@ -290,7 +290,7 @@ export const MOCK_ADMIN_VEHICLES: AdItem[] = [
     date: 'Hoje, 10:30',
     year: 2023,
     mileage: 5000,
-    boostPlan: 'advanced' // Simulating a paid plan
+    boostPlan: 'Topo' // Simulating a paid plan
   },
   {
     userId: 'u_mock',
@@ -497,7 +497,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     status: AdStatus.ACTIVE,
     category: 'veiculos',
     isFeatured: true,
-    boostPlan: 'premium',
+    boostPlan: 'Premium',
     year: 2023,
     mileage: 5000,
     vehicleType: 'SUV Premium'
@@ -512,7 +512,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     status: AdStatus.ACTIVE,
     category: 'veiculos',
     isFeatured: true,
-    boostPlan: 'premium',
+    boostPlan: 'Premium',
     year: 2024,
     mileage: 0,
     vehicleType: 'Picape'
@@ -527,7 +527,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     status: AdStatus.ACTIVE,
     category: 'veiculos',
     isFeatured: true,
-    boostPlan: 'advanced',
+    boostPlan: 'Topo',
     year: 2023,
     mileage: 12000,
     vehicleType: 'Sedã'
@@ -542,7 +542,7 @@ export const FEATURED_VEHICLES: AdItem[] = [
     status: AdStatus.ACTIVE,
     category: 'veiculos',
     isFeatured: true,
-    boostPlan: 'basic',
+    boostPlan: 'Simples',
     year: 2022,
     mileage: 8000,
     vehicleType: 'Esportivo'

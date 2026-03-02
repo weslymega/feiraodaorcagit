@@ -166,8 +166,8 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
     if (isTrending) {
       return filtered.sort((a, b) => {
-        const scoreA = (a.views || 0) + (a.favoriteCount || 0) * 5 + (a.chatCount || 0) * 10 + (a.boostPlan === 'premium' ? 1000 : (a.boostPlan === 'advanced' ? 500 : 0));
-        const scoreB = (b.views || 0) + (b.favoriteCount || 0) * 5 + (b.chatCount || 0) * 10 + (b.boostPlan === 'premium' ? 1000 : (b.boostPlan === 'advanced' ? 500 : 0));
+        const scoreA = (a.views || 0) + (a.favoriteCount || 0) * 5 + (a.chatCount || 0) * 10 + (a.boostPlan === 'Premium' ? 1000 : (a.boostPlan === 'Topo' ? 500 : 0));
+        const scoreB = (b.views || 0) + (b.favoriteCount || 0) * 5 + (b.chatCount || 0) * 10 + (b.boostPlan === 'Premium' ? 1000 : (b.boostPlan === 'Topo' ? 500 : 0));
         return scoreB - scoreA;
       });
     }

@@ -164,7 +164,7 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
               }`}
           >
             {/* Boost Visual Indicator (Background watermark for premium) */}
-            {ad.boostPlan === 'premium' && ad.status === AdStatus.ACTIVE && (
+            {ad.boostPlan === 'Premium' && ad.status === AdStatus.ACTIVE && (
               <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none">
                 <TrendingUp className="w-24 h-24" />
               </div>
@@ -182,10 +182,10 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                   {ad.status}
                 </span>
 
-                {ad.isFeatured && ad.boostConfig && ad.status === AdStatus.ACTIVE && (
-                  <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 flex items-center gap-1">
+                {ad.boostPlan && ad.boostPlan !== 'gratis' && ad.boostPlan !== 'none' && ad.status === AdStatus.ACTIVE && (
+                  <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 flex items-center gap-1 uppercase tracking-wider">
                     <Zap className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                    {ad.boostPlan === 'premium' ? 'Turbo Máx' : ad.boostPlan === 'advanced' ? 'Turbo Ágil' : 'Turbo'}
+                    {ad.boostPlan}
                   </span>
                 )}
               </div>

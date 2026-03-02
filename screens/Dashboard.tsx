@@ -123,30 +123,35 @@ const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, 
   let boostBadge = null;
   let borderColor = "border-gray-100";
 
-  if (ad.boostPlan === 'premium') {
+  const plan = ad.boostPlan;
+  const isPremium = plan === 'Premium';
+  const isTopo = plan === 'Topo';
+  const isSimples = plan === 'Simples' || ad.isFeatured;
+
+  if (isPremium) {
     borderColor = "border-yellow-400 ring-1 ring-yellow-400";
     boostBadge = (
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-        <div className="absolute top-3 -left-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-white text-[9px] font-black px-6 py-1 transform -rotate-45 shadow-md border-y border-white/20 z-20 flex items-center justify-center">
-          TURBO MÁX
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+        <div className="absolute top-3 -left-8 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-white text-[9px] font-black px-8 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider">
+          {plan}
         </div>
       </div>
     );
-  } else if (ad.boostPlan === 'advanced') {
+  } else if (isTopo) {
     borderColor = "border-cyan-400";
     boostBadge = (
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-        <div className="absolute top-3 -left-3 bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-[9px] font-black px-6 py-1 transform -rotate-45 shadow-md border-y border-white/20 z-20 flex items-center justify-center">
-          TURBO ÁGIL
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+        <div className="absolute top-3 -left-8 bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-[9px] font-black px-8 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider">
+          {plan}
         </div>
       </div>
     );
-  } else if (ad.boostPlan === 'basic' || ad.isFeatured) {
-    // Basic or Legacy isFeatured
+  } else if (isSimples) {
+    borderColor = "border-gray-200";
     boostBadge = (
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-        <div className="absolute top-3 -left-3 bg-gradient-to-r from-gray-400 to-gray-500 text-white text-[9px] font-black px-6 py-1 transform -rotate-45 shadow-md border-y border-white/20 z-20 flex items-center justify-center">
-          TURBO
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+        <div className="absolute top-3 -left-8 bg-gradient-to-r from-gray-400 to-gray-500 text-white text-[9px] font-black px-8 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider">
+          {plan === 'gratis' ? 'DESTAQUE' : plan.toUpperCase()}
         </div>
       </div>
     );
@@ -229,10 +234,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // --- SORTING LOGIC FOR FEATURED ---
   const getBoostPriority = (plan?: string) => {
-    if (plan === 'premium') return 3;
-    if (plan === 'advanced') return 2;
-    if (plan === 'basic') return 1;
-    return 0;
+    const p = (plan || '').toLowerCase();
+    switch (p) {
+      case 'topo': return 3;
+      case 'premium': return 2;
+      case 'simples': return 1;
+      default: return 0;
+    }
   };
 
   const sortedFeaturedVehicles = [...(featuredAds || [])].sort((a, b) => {

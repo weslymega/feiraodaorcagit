@@ -1,36 +1,17 @@
 -- =============================================================================
--- ETAPA 3: RLS HARDENING — tabela public.anuncios
+-- RLS HARDENING CONSOLIDADO — Tabela public.anuncios
 -- =============================================================================
--- OBJETIVO: Reescrever policies FOR UPDATE com USING + WITH CHECK
---           para bloquear troca de user_id e updates em anúncios de terceiros.
---
--- TABELA CONFIRMADA: public.anuncios
---   (verificado em fix_admin_rls_v2.sql linha 18 e 100% do código TypeScript)
---
--- NOTA IMPORTANTE: O arquivo protect_ads_fields.sql (ETAPA 2) usou 'public.ads'
---   por engano. O trigger da ETAPA 2 deve ser REAPLICADO em public.anuncios
---   se ainda não estiver. Este script NÃO modifica triggers.
---
--- ARQUITETURA DE DEFESA (após ETAPA 3):
---   User Request → RLS (USING + WITH CHECK) → Trigger BEFORE UPDATE → Database
---
--- VERIFICAÇÃO DE DEPENDÊNCIA:
---   Requer: public.is_admin() (SECURITY DEFINER, criada em fix_admin_rls_v2.sql)
---
--- DATA: 2026-01-28
+-- OBJETIVO: 
+--   1. Corrigir vazamento de dados (Visualizacao Publica Total)
+--   2. Prevenir Mass Assignment em user_id (Troca de dono)
+--   3. Unificar lógica de Admin com public.is_admin()
+--   4. Eliminar polices redundantes/conflitantes
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- PASSO 0: Garantir que RLS está habilitado (idempotente)
+-- 1. LIMPEZA TOTAL (Idempotência)
 -- -----------------------------------------------------------------------------
-ALTER TABLE public.anuncios ENABLE ROW LEVEL SECURITY;
-
--- -----------------------------------------------------------------------------
--- PASSO 1: Remover TODAS as policies UPDATE existentes da tabela anuncios
---          (previne duplicatas e garante idempotência total)
--- -----------------------------------------------------------------------------
-
--- Nomes históricos conhecidos que podem existir no banco:
+-- Remove TODAS as policies conhecidas para evitar conflitos de OR/redundância
 DROP POLICY IF EXISTS "Users can update own ads"             ON public.anuncios;
 DROP POLICY IF EXISTS "Users can update their own ads"       ON public.anuncios;
 DROP POLICY IF EXISTS "Allow users to update their own ads"  ON public.anuncios;
@@ -40,14 +21,53 @@ DROP POLICY IF EXISTS "Admins can update all ads"            ON public.anuncios;
 DROP POLICY IF EXISTS "Admin update ads"                     ON public.anuncios;
 DROP POLICY IF EXISTS "anuncios_update_owner"                ON public.anuncios;
 DROP POLICY IF EXISTS "anuncios_update_admin"                ON public.anuncios;
+DROP POLICY IF EXISTS "Public view active ads"               ON public.anuncios;
+DROP POLICY IF EXISTS "Visualizacao Publica Total"           ON public.anuncios;
+DROP POLICY IF EXISTS "Users view own ads"                   ON public.anuncios;
+DROP POLICY IF EXISTS "Users insert their own ads"           ON public.anuncios;
+DROP POLICY IF EXISTS "Owner can delete ad"                  ON public.anuncios;
+
+-- Nomes novos (para garantir que o script possa ser rodado várias vezes)
+DROP POLICY IF EXISTS "anuncios_select_policy"               ON public.anuncios;
+DROP POLICY IF EXISTS "anuncios_insert_owner"                ON public.anuncios;
+DROP POLICY IF EXISTS "anuncios_delete_policy"               ON public.anuncios;
 
 -- -----------------------------------------------------------------------------
--- PASSO 2: CAMADA 1 — Policy UPDATE para o dono do anúncio
+-- 2. HABILITAR RLS
 -- -----------------------------------------------------------------------------
--- USING:      Garante que só pode iniciar UPDATE em anúncio que lhe pertence.
--- WITH CHECK: Garante que o resultado do UPDATE ainda pertence ao mesmo user.
---             → Bloqueia tentativa de trocar user_id (Mass Assignment).
+ALTER TABLE public.anuncios ENABLE ROW LEVEL SECURITY;
+
 -- -----------------------------------------------------------------------------
+-- 3. POLICIES DE SELECT (Visualização)
+-- -----------------------------------------------------------------------------
+-- Regra: Pode ver se (é ativo) OU (é o dono) OU (é admin)
+CREATE POLICY "anuncios_select_policy"
+ON public.anuncios
+FOR SELECT
+USING (
+    (status = 'ativo')                    -- Público (apenas ativos)
+    OR (auth.uid() = user_id)             -- Dono (vê rascunhos/pendentes)
+    OR (public.is_admin())                -- Admin (vê tudo)
+);
+
+-- -----------------------------------------------------------------------------
+-- 4. POLICIES DE INSERT (Criação)
+-- -----------------------------------------------------------------------------
+-- Regra: Pode inserir apenas se o user_id for o seu próprio
+CREATE POLICY "anuncios_insert_owner"
+ON public.anuncios
+FOR INSERT
+WITH CHECK (
+    auth.uid() = user_id
+);
+
+-- -----------------------------------------------------------------------------
+-- 5. POLICIES DE UPDATE (Edição)
+-- -----------------------------------------------------------------------------
+
+-- CAMADA 1: Dono (Restrito)
+-- USING: Só tenta atualizar se for dono.
+-- WITH CHECK: Só permite o update se o user_id não for alterado (imutabilidade).
 CREATE POLICY "anuncios_update_owner"
 ON public.anuncios
 FOR UPDATE
@@ -58,13 +78,7 @@ WITH CHECK (
     auth.uid() = user_id
 );
 
--- -----------------------------------------------------------------------------
--- PASSO 3: CAMADA 2 — Policy UPDATE para admins
--- -----------------------------------------------------------------------------
--- USING:      Admin pode ver e iniciar UPDATE em qualquer anúncio.
--- WITH CHECK: Admin pode definir qualquer estado final (aprovação, rejeição).
--- DEPENDE:    public.is_admin() — SECURITY DEFINER, sem risco de recursão RLS.
--- -----------------------------------------------------------------------------
+-- CAMADA 2: Admin (Total)
 CREATE POLICY "anuncios_update_admin"
 ON public.anuncios
 FOR UPDATE
@@ -75,97 +89,21 @@ WITH CHECK (
     true
 );
 
--- =============================================================================
--- FIM DO SCRIPT PRINCIPAL
--- =============================================================================
-
-
--- =============================================================================
--- ROLLBACK — Execute APENAS em caso de problema
--- =============================================================================
-/*
--- Para reverter completamente a ETAPA 3, execute o bloco abaixo:
-
-DROP POLICY IF EXISTS "anuncios_update_owner" ON public.anuncios;
-DROP POLICY IF EXISTS "anuncios_update_admin"  ON public.anuncios;
-
--- ATENÇÃO: Após o rollback, updates de usuários ficam BLOQUEADOS por padrão
--- (RLS habilitado sem policy permissiva = deny all).
--- Recrie uma policy permissiva temporária se necessário:
---
--- CREATE POLICY "temp_allow_own_updates"
--- ON public.anuncios FOR UPDATE
--- USING (auth.uid() = user_id);
-*/
-
+-- -----------------------------------------------------------------------------
+-- 6. POLICIES DE DELETE (Exclusão)
+-- -----------------------------------------------------------------------------
+-- Regra: Dono ou Admin podem deletar
+CREATE POLICY "anuncios_delete_policy"
+ON public.anuncios
+FOR DELETE
+USING (
+    (auth.uid() = user_id)
+    OR (public.is_admin())
+);
 
 -- =============================================================================
--- AUDITORIA — Execute após o script principal para verificar as policies
+-- VERIFICAÇÃO DE SEGURANÇA (Auditoria de Políticas)
 -- =============================================================================
-/*
--- Query de auditoria das policies ativas na tabela anuncios:
-
-SELECT
-    policyname,
-    cmd,
-    qual        AS using_clause,
-    with_check  AS with_check_clause,
-    permissive
-FROM pg_policies
-WHERE schemaname = 'public'
-  AND tablename  = 'anuncios'
-ORDER BY cmd, policyname;
-
--- Resultado esperado para UPDATE:
--- policyname              | cmd    | using_clause              | with_check_clause
--- anuncios_update_owner   | UPDATE | (uid() = user_id)         | (uid() = user_id)
--- anuncios_update_admin   | UPDATE | public.is_admin()         | true
-*/
-
-
--- =============================================================================
--- QUERIES DE TESTE MANUAL — Execute no SQL Editor do Supabase
--- =============================================================================
-/*
--- ╔══════════════════════════════════════════════════════════════════════════╗
--- ║  IMPORTANTE: substitua <SEU_ANUNCIO_ID> e <OUTRO_USER_ID> por UUIDs    ║
--- ║  reais do seu banco antes de executar.                                  ║
--- ╚══════════════════════════════════════════════════════════════════════════╝
-
--- TESTE 1 — UPDATE legítimo pelo dono → deve PASSAR (1 row affected)
---   (Execute logado como usuário comum via anon key)
-UPDATE public.anuncios
-SET titulo = 'Título Atualizado Legitimamente'
-WHERE id = '<SEU_ANUNCIO_ID>'
-  AND user_id = auth.uid();
--- Esperado: UPDATE 1
-
--- TESTE 2 — Tentar trocar user_id → deve FALHAR (0 rows affected, sem erro)
---   (RLS bloqueia no WITH CHECK antes do trigger)
-UPDATE public.anuncios
-SET user_id = '<OUTRO_USER_ID>'
-WHERE id = '<SEU_ANUNCIO_ID>';
--- Esperado: UPDATE 0
-
--- TESTE 3 — UPDATE em anúncio de outro usuário → deve FALHAR (0 rows affected)
-UPDATE public.anuncios
-SET titulo = 'Hack'
-WHERE id = '<ANUNCIO_DE_OUTRO_USUARIO>';
--- Esperado: UPDATE 0
-
--- TESTE 4 — Tentar setar USING(true) inexistente (apenas verificação de auditoria)
---   Garanta que nenhuma policy "USING (true)" existe na query abaixo:
-SELECT policyname, qual
-FROM pg_policies
-WHERE tablename = 'anuncios'
-  AND cmd = 'UPDATE'
-  AND qual = 'true';
--- Esperado: 0 rows
-
--- TESTE 5 — Admin pode atualizar qualquer anúncio
---   (Execute com service_role key ou como usuário com is_admin = true)
-UPDATE public.anuncios
-SET status = 'ativo'
-WHERE id = '<QUALQUER_ANUNCIO_ID>';
--- Esperado: UPDATE 1
-*/
+-- SELECT policyname, cmd, qual, with_check 
+-- FROM pg_policies 
+-- WHERE tablename = 'anuncios';

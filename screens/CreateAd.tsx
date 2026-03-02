@@ -507,10 +507,10 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     let bumpIntervalDays = 2;
 
     const lowerName = selectedPlan.name.toLowerCase();
-    if (lowerName.includes('topo') || lowerName.includes('max') || selectedPlan.priority_level >= 3) {
+    if (lowerName === 'topo' || selectedPlan.priority_level >= 3) {
       totalBumps = 10;
       bumpIntervalDays = 3;
-    } else if (lowerName.includes('premium') || lowerName.includes('agil') || selectedPlan.priority_level === 2) {
+    } else if (lowerName === 'premium' || selectedPlan.priority_level === 2) {
       totalBumps = 5;
       bumpIntervalDays = 3;
     }

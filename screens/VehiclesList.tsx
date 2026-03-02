@@ -297,10 +297,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     // Prioridade: Premium (4) > Advanced (3) > Basic (2) > Featured (1) > Normal (0)
     return filtered.sort((a, b) => {
       const getPriority = (item: AdItem) => {
-        if (item.boostPlan === 'premium') return 4;
-        if (item.boostPlan === 'advanced') return 3;
-        if (item.boostPlan === 'basic') return 2;
-        if (item.isFeatured) return 1;
+        const plan = (item.boostPlan || '').toLowerCase();
+        if (plan === 'topo') return 3;
+        if (plan === 'premium') return 2;
+        if (plan === 'simples') return 1;
         return 0;
       };
 
@@ -508,24 +508,29 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
             let borderClass = 'border-gray-100';
             let badge = null;
 
-            if (ad.boostPlan === 'premium') {
-              borderClass = 'border-yellow-400 ring-1 ring-yellow-400/30';
+            if (ad.boostPlan && ad.boostPlan !== 'gratis') {
+              const plan = ad.boostPlan;
+              const isTopo = plan === 'Topo';
+              const isPremium = plan === 'Premium';
+              const isSimples = plan === 'Simples';
+
+              if (isTopo) {
+                borderClass = 'border-primary ring-1 ring-primary/30';
+              } else if (isPremium) {
+                borderClass = 'border-yellow-400 ring-1 ring-yellow-400/30';
+              } else if (isSimples) {
+                borderClass = 'border-gray-200';
+              }
+
               badge = (
-                <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20">
-                  <Zap className="w-3 h-3 fill-current" /> Turbo Máx
-                </div>
-              );
-            } else if (ad.boostPlan === 'advanced') {
-              borderClass = 'border-cyan-400';
-              badge = (
-                <div className="absolute top-3 left-3 bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20">
-                  <Trophy className="w-3 h-3 fill-current" /> Turbo Ágil
-                </div>
-              );
-            } else if (ad.boostPlan === 'basic' || ad.isFeatured) {
-              badge = (
-                <div className="absolute top-3 left-3 bg-gradient-to-r from-gray-500 to-slate-600 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20">
-                  <Star className="w-3 h-3 fill-current" /> Destaque
+                <div className={`absolute top-3 left-3 bg-gradient-to-r ${isTopo ? 'from-cyan-400 to-blue-500' :
+                  isPremium ? 'from-yellow-400 to-orange-500' :
+                    'from-gray-500 to-slate-600'
+                  } text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20 uppercase tracking-wider`}>
+                  {isTopo && <Zap className="w-3 h-3 fill-current" />}
+                  {isPremium && <Trophy className="w-3 h-3 fill-current" />}
+                  {isSimples && <Star className="w-3 h-3 fill-current" />}
+                  {plan}
                 </div>
               );
             }

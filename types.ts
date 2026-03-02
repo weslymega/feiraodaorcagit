@@ -59,7 +59,7 @@ export enum Screen {
 
 export interface User {
   id?: string; // Adicionado ID opcional para facilitar gerenciamento
-  activePlan?: 'free' | 'basic' | 'advanced' | 'premium'; // Plano do usuário
+  activePlan?: 'free' | 'Simples' | 'Premium' | 'Topo'; // Plano do usuário
   monthlyUsage?: { month: string; count: number }; // Controle de uso mensal (YYYY-MM)
   name: string;
   email: string;
