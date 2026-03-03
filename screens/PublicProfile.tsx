@@ -40,12 +40,14 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
     if (onReport) {
       const newReport: ReportItem = {
         id: `rep_user_${Date.now()}`,
-        adId: user.id || 'unknown_user',
-        adTitle: `Perfil: ${user.name}`,
+        targetId: user.id || 'unknown_user',
+        targetName: user.name,
+        targetType: 'user',
         reason: reason,
         description: description,
         reporterId: 'user_current',
         reporterName: 'Usuário (Você)',
+        severity: 'medium',
         status: 'pending',
         date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
       };

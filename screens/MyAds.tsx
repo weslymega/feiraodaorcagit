@@ -4,7 +4,6 @@ import { useAppState } from '../hooks/useAppState';
 import { Plus, MoreVertical, Trash2, Edit2, X, AlertTriangle, Clock, TrendingUp, Calendar, Zap, Lock, Info } from 'lucide-react';
 import { Header, PriceTag } from '../components/Shared';
 import { AdItem, AdStatus } from '../types';
-import { HighlightAdModal } from '../components/HighlightAdModal';
 
 interface MyAdsProps {
   ads: AdItem[];
@@ -12,12 +11,12 @@ interface MyAdsProps {
   onDelete: (id: string) => void;
   onEdit: (ad: AdItem) => void;
   onCreateNew?: () => void;
+  onBoostAd?: (ad: AdItem) => void;
   onAdClick?: (ad: AdItem) => void;
   initialTab?: 'ativos' | 'inativos' | 'pendentes';
 }
 
-export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onCreateNew, onAdClick, initialTab }) => {
-  const { pendingHighlightAd, setPendingHighlightAd } = useAppState();
+export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onCreateNew, onBoostAd, onAdClick, initialTab }) => {
 
   const [activeTab, setActiveTab] = useState<'ativos' | 'inativos' | 'pendentes'>(initialTab || 'ativos');
 
@@ -31,21 +30,6 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
   // States for Modals
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editAd, setEditAd] = useState<AdItem | null>(null);
-  const [highlightAd, setHighlightAd] = useState<AdItem | null>(null);
-  const [highlightInitialPlanId, setHighlightInitialPlanId] = useState<string | undefined>(undefined);
-
-  // Effect to handle Pending Highlight Flow
-  useEffect(() => {
-    if (pendingHighlightAd && ads.length > 0) {
-      const targetAd = ads.find(a => a.id === pendingHighlightAd.adId);
-      if (targetAd) {
-        setHighlightAd(targetAd);
-        setHighlightInitialPlanId(pendingHighlightAd.planId);
-        setPendingHighlightAd(null); // Clear pending state immediately to prevent loop
-      }
-    }
-  }, [pendingHighlightAd, ads, setPendingHighlightAd]);
-
 
   // Group Pending with Active in the tab logic, but they are technically distinct states
   const filteredAds = ads.filter(ad => {
@@ -224,19 +208,21 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                       onClick={(e) => {
                         e.stopPropagation();
                         // Redundant check if disabled, but good for safety
-                        if (isHighlightActive(ad)) {
+                        if (ad.status !== AdStatus.ACTIVE || isHighlightActive(ad)) {
                           return;
                         }
-                        setHighlightAd(ad);
+                        if (onBoostAd) {
+                          onBoostAd(ad);
+                        }
                         setActiveMenuId(null);
                       }}
-                      disabled={isHighlightActive(ad)}
-                      className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 transition-colors font-bold ${isHighlightActive(ad)
+                      disabled={ad.status !== AdStatus.ACTIVE || isHighlightActive(ad)}
+                      className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 transition-colors font-bold ${ad.status !== AdStatus.ACTIVE || isHighlightActive(ad)
                         ? 'text-gray-400 cursor-not-allowed bg-gray-50'
                         : 'text-accent hover:bg-green-50'
                         }`}
                     >
-                      <Zap className={`w-4 h-4 ${isHighlightActive(ad) ? 'fill-gray-400 text-gray-400' : 'fill-accent'}`} />
+                      <Zap className={`w-4 h-4 ${ad.status !== AdStatus.ACTIVE || isHighlightActive(ad) ? 'fill-gray-400 text-gray-400' : 'fill-accent'}`} />
                       {isHighlightActive(ad) ? `Ativo até ${new Date(ad.boostConfig!.expiresAt).toLocaleDateString('pt-BR')}` : 'Destacar'}
                     </button>
                     <div className="h-[1px] bg-gray-100"></div>
@@ -385,21 +371,6 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
             </div>
           </div>
         </div>
-      )}
-
-      {/* --- MODAL DE DESTAQUE --- */}
-      {highlightAd && (
-        <HighlightAdModal
-          ad={highlightAd}
-          onClose={() => { setHighlightAd(null); setHighlightInitialPlanId(undefined); }}
-          initialPlanId={highlightInitialPlanId}
-          onSuccess={() => {
-            // Optional: refresh ads or show toast
-            setHighlightAd(null);
-            setHighlightInitialPlanId(undefined);
-            console.log("Destaque contratado com sucesso!");
-          }}
-        />
       )}
 
     </div>

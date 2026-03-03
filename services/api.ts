@@ -20,6 +20,9 @@ export const supabase: SupabaseClient = createClient(finalUrl, SUPABASE_ANON_KEY
     }
 });
 
+/**
+ * API Service Objects Interfaces
+ */
 export interface CreateAdPayload {
     title: string;
     description: string;
@@ -163,6 +166,7 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
 };
 
 export const api = {
+
     /**
      * Create Ad via Edge Function (Secured Limit Check)
      * Falls back to direct insert if Edge Function is not deployed
@@ -861,63 +865,49 @@ export const api = {
     /**
      * Get All Active Ads (Feed)
      */
-    getAds: async () => {
+    getAds: async (limit = 50, offset = 0, category?: string) => {
         try {
-            // Fetch only ACTIVE ads for public feed
-            // JOIN with profiles to get seller info AND active highlights
-            const { data, error } = await supabase
-                .from('anuncios')
-                .select(`
-                    *, 
-                    profiles:user_id(name, avatar_url),
-                    destaques_anuncios(
-                        plano_id,
-                        result_ends_at:fim_em,
-                        status
-                    )
-                `)
-                .eq('status', STATUS_DB_MAP[AdStatus.ACTIVE])
-                .order('created_at', { ascending: false })
-                .limit(50);
+            // USANDO RPC 'get_feed': Centraliza a lógica de Ranking (Turbo + Time Decay).
+            // Agora aceita 'category_filter' para que veículos/imóveis também fiquem rankeados.
+            const { data, error } = await supabase.rpc('get_feed', {
+                limit_count: limit,
+                offset_count: offset,
+                category_filter: category || null
+            });
 
             if (error) {
-                console.warn('⚠️ JOIN failed, retrying simple select...', error);
-                const { data: simpleData, error: simpleError } = await supabase
+                console.error('❌ Erro ao chamar get_feed RPC:', error);
+                // Fallback simples caso a function RPC falhe (ex: cache desatualizado)
+                const { data: fallbackData, error: fallbackError } = await supabase
                     .from('anuncios')
-                    .select('*')
+                    .select('*, profiles:user_id(name, avatar_url)')
                     .eq('status', STATUS_DB_MAP[AdStatus.ACTIVE])
                     .order('created_at', { ascending: false })
-                    .limit(50);
+                    .limit(limit);
 
-                if (simpleError) throw simpleError;
-                return simpleData.map((ad: any) => mapAdData(ad));
+                if (fallbackError) throw fallbackError;
+                return fallbackData.map((ad: any) => mapAdData(ad));
             }
 
             return (data || []).map((ad: any) => {
-                // Check for active highlight
-                const activeHighlight = ad.destaques_anuncios?.find((h: any) =>
-                    h.status === 'active' && new Date(h.result_ends_at) > new Date()
-                );
-
-                if (activeHighlight) {
+                // O RPC get_feed já retorna os dados via view ads_ranked que inclui is_turbo_active.
+                // Mantemos a lógica de injeção de boostConfig para compatibilidade com a Ribbon do frontend.
+                if (ad.is_turbo_active) {
                     ad.detalhes = {
                         ...ad.detalhes,
                         boostConfig: {
-                            expiresAt: activeHighlight.result_ends_at,
-                            startDate: new Date().toISOString(),
+                            expiresAt: ad.turbo_expires_at,
+                            startDate: ad.created_at, // Opcional
                             totalBumps: 0,
                             bumpsRemaining: 0
                         }
                     };
-                    if (activeHighlight && (!ad.boost_plan || ad.boost_plan === 'gratis')) {
-                        // Removido active_highlight
-                    }
                 }
                 return mapAdData(ad);
             });
 
         } catch (err) {
-            console.error('❌ Error in getAds:', err);
+            console.error('❌ Erro crítico em getAds:', err);
             return [];
         }
     },

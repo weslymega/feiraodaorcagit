@@ -14,4 +14,8 @@ verify_jwt = false
 
 [functions.create-highlight-payment]
 verify_jwt = false
+[functions.create-turbo-session]
+verify_jwt = false
 
+[functions.activate-turbo]
+verify_jwt = false

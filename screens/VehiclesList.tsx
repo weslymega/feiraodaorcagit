@@ -297,10 +297,12 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     // Prioridade: Premium (4) > Advanced (3) > Basic (2) > Featured (1) > Normal (0)
     return filtered.sort((a, b) => {
       const getPriority = (item: AdItem) => {
+        // Agora usamos os pesos sincronizados com o banco
+        // Ouro (7000) > Prata (3000) > Bronze (1000)
         const plan = (item.boostPlan || '').toLowerCase();
-        if (plan === 'topo') return 3;
-        if (plan === 'premium') return 2;
-        if (plan === 'simples') return 1;
+        if (plan === 'topo' || plan === 'ouro') return 7000;
+        if (plan === 'premium' || plan === 'prata') return 3000;
+        if (plan === 'simples' || plan === 'bronze') return 1000;
         return 0;
       };
 

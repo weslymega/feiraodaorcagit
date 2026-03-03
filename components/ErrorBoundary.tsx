@@ -11,7 +11,7 @@ interface State {
     error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends React.Component<Props, State> {
     public state: State = {
         hasError: false,
         error: null,
@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
                         <span>Voltar e Tentar Novamente</span>
                     </button>
 
-                    {process.env.NODE_ENV === 'development' && (
+                    {import.meta.env.DEV && (
                         <div className="mt-8 p-4 bg-gray-100 rounded-xl w-full text-left overflow-auto max-h-40">
                             <p className="text-xs font-mono text-red-700 break-all">
                                 {this.state.error?.toString()}

@@ -15,6 +15,7 @@ export enum Screen {
   EDIT_PROFILE = 'EDIT_PROFILE',
   CHANGE_PASSWORD = 'CHANGE_PASSWORD',
   CREATE_AD = 'CREATE_AD',
+  BOOST_TURBO = 'BOOST_TURBO',
 
   // Detalhes
   VEHICLE_DETAILS = 'VEHICLE_DETAILS',
@@ -89,13 +90,19 @@ export enum AdStatus {
   REJECTED = 'Rejeitado'  // Novo status
 }
 
-// Configuração detalhada do Plano
-export interface AdBoostConfig {
-  startDate: string;      // Data de início (ISO)
-  expiresAt: string;      // Data de expiração do plano (ISO)
-  totalBumps: number;     // Total de subidas contratadas
-  bumpsRemaining: number; // Quantas restam
-  nextBumpDate?: string;  // Data prevista para a próxima subida (ISO)
+export enum TurboPlan {
+  PREMIUM = 'premium',
+  PRO = 'pro',
+  MAX = 'max'
+}
+
+export interface TurboSession {
+  id: string;
+  ad_id: string;
+  turbo_type: TurboPlan;
+  turbo_score: number;
+  turbo_expires_at: string | null;
+  status: 'active' | 'completed';
 }
 
 
@@ -119,9 +126,11 @@ export interface AdItem {
   category?: 'veiculos' | 'imoveis' | 'servicos' | 'autos' | 'pecas' | 'produtos'; // Mantendo antigos por compatibilidade temporária se necessário, mas priorizando novos
 
   isFeatured?: boolean; // Indicates if the ad is a "Destaque"
-  boostPlan?: string; // ID do plano ou 'gratis'
-  boostConfig?: AdBoostConfig; // Regras de data e bumps
 
+  /** @deprecated Usar turboPlan e turboSession no novo modelo */
+  boostPlan?: any;
+  /** @deprecated Usar turboPlan e turboSession no novo modelo */
+  boostConfig?: any;
   fairPresence?: FairPresence; // Novo campo: Presença física na feira
 
   // New Field for Rent vs Sale
