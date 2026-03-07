@@ -19,3 +19,6 @@ verify_jwt = false
 
 [functions.activate-turbo]
 verify_jwt = false
+
+[functions.increment-turbo-step]
+verify_jwt = false
