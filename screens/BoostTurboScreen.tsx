@@ -18,16 +18,28 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
     // Estado da Sessão do Turbo e AdMob
     const [activeSession, setActiveSession] = useState<{ id: string, adId: string, requiredSteps: number, currentStep: number } | null>(null);
+    const [localProgress, setLocalProgress] = useState(0); // Progresso otimista (AdManager local)
     const [adReady, setAdReady] = useState(false);
     const [watchingAd, setWatchingAd] = useState(false);
-    const [isFinalizing, setIsFinalizing] = useState(false); // Flag para evitar flicker no fim
+    const [isFinalizing, setIsFinalizing] = useState(false);
+    const [syncError, setSyncError] = useState<string | null>(null);
 
     // Refs para manter listeners estáveis e acessar estado atualizado sem re-registrar
     const sessionRef = useRef(activeSession);
     const onBackRef = useRef(onBack);
+    // Ref para evitar closures presas nos listeners de eventos globais
+    const handlersRef = useRef({
+        handleRewarded: async () => { },
+        handleDismissed: () => { },
+        handleCompleted: () => { }
+    });
 
     useEffect(() => {
         sessionRef.current = activeSession;
+        // Sempre que o banco atualizar, sincronizamos o progresso otimista
+        if (activeSession) {
+            setLocalProgress(prev => Math.max(prev, activeSession.currentStep));
+        }
     }, [activeSession]);
 
     useEffect(() => {
@@ -77,107 +89,130 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         return () => { isMounted = false; };
     }, [adId]);
 
+    const handleAdRewardedInternal = async (): Promise<void> => {
+        const currentSession = sessionRef.current;
+        if (!currentSession) {
+            console.error("[BoostTurboScreen] Reward sync skipped: No active session ref");
+            return;
+        }
+
+        console.log(`[BoostTurboScreen] START REWARD SYNC for ${currentSession.id} (Counter: ${localProgress + 1})`);
+        setSyncError(null);
+
+        try {
+            // 1. Otimismo Imediato (Visual)
+            setLocalProgress(prev => prev + 1);
+
+            // 2. Chamada ao Servidor
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (!sessionData?.session) throw new Error("Sessão expirada. Refaça o login.");
+
+            const { data, error: invokeError } = await supabase.functions.invoke('increment-turbo-step', {
+                body: { sessionId: currentSession.id },
+                headers: { Authorization: `Bearer ${sessionData.session.access_token}` }
+            });
+
+            if (invokeError) throw invokeError;
+            if (!data?.success) throw new Error(data?.error || "Servidor não confirmou.");
+
+            const newStep = data?.current_step ?? data?.currentStep;
+
+            if (newStep !== undefined) {
+                console.log(`[BoostTurboScreen] SYNC SUCCESS! DB Step: ${newStep}/${currentSession.requiredSteps}`);
+
+                // Atualizamos a sessão real com o dado que veio do banco
+                setActiveSession(prev => prev ? { ...prev, currentStep: newStep } : null);
+
+                // Se completou, marcamos finalização
+                if (newStep >= currentSession.requiredSteps) {
+                    setIsFinalizing(true);
+                }
+            }
+        } catch (err: any) {
+            console.error("[BoostTurboScreen] SYNC ERROR:", err);
+            const msg = err.message || "Erro de rede";
+            setSyncError(msg);
+
+            // Em caso de erro, mostramos um alerta sonoro/visual forçado no celular
+            if (Capacitor.isNativePlatform()) {
+                window.alert(`⚠️ ERRO DE SINCRONIZAÇÃO:\n${msg}\n\nO progresso pode não ter sido salvo no banco.`);
+            }
+            throw err; // Repassa para o AdManager gerenciar
+        }
+    };
+
+    // Ref com handlers atualizados para evitar closures presas em listeners de 1x
+    handlersRef.current = {
+        handleRewarded: handleAdRewardedInternal,
+        handleDismissed: () => {
+            console.log("[AdMob-v8] UI: Dismiss received");
+            setWatchingAd(false);
+            setAdReady(AdManager.isAdReady());
+        },
+        handleCompleted: () => {
+            console.log("[AdMob-v8] UI: Queue Completed");
+            setIsFinalizing(true);
+            setWatchingAd(true);
+
+            // Pequeno delay para garantir que o último setLocalProgress e setActiveSession rodaram
+            setTimeout(() => {
+                const current = sessionRef.current;
+                const prog = localProgressRef.current; // Usar ref para valor mais atual se necessário
+
+                if (current && (current.currentStep >= current.requiredSteps || prog >= current.requiredSteps)) {
+                    alert("🎉 Tudo pronto! Seu anúncio agora já está turbinado e em destaque.");
+                    onBackRef.current();
+                } else {
+                    console.warn("[BoostTurboScreen] Queue finished but progress check failed", { db: current?.currentStep, local: prog });
+                }
+            }, 1500);
+        }
+    };
+
+    const localProgressRef = useRef(localProgress);
+    useEffect(() => { localProgressRef.current = localProgress; }, [localProgress]);
+
+    // Registro dos Listeners no Ciclo de Vida do AdId
+    useEffect(() => {
+        if (!activeSession?.id) return;
+
+        console.log("[BoostTurboScreen] Initializing AdManager for session:", activeSession.id);
+        AdManager.initialize();
+
+        AdManager.onReady(() => setAdReady(AdManager.isAdReady()));
+
+        // Listener de Recompensa (Aguardado pelo AdManager)
+        AdManager.onRewarded(async () => {
+            console.log("[BoostTurboScreen] Raw onRewarded triggered");
+            await handlersRef.current.handleRewarded();
+        });
+
+        AdManager.onDismissed(() => handlersRef.current.handleDismissed());
+        AdManager.onCompleted(() => handlersRef.current.handleCompleted());
+
+        AdManager.onError((err) => {
+            console.error("[BoostTurboScreen] Ad Error:", err);
+            setWatchingAd(false);
+            setIsFinalizing(false);
+        });
+
+        return () => {
+            console.log("[BoostTurboScreen] Destroying ad listeners");
+            AdManager.removeAllListeners();
+        };
+    }, [activeSession?.id]);
+
     const handleWatchAd = async () => {
         const currentSession = sessionRef.current;
         if (!currentSession || watchingAd) return;
 
-        console.log("[BoostTurboScreen] Starting Ad Queue with initial progress:", currentSession.currentStep);
         setWatchingAd(true);
+        setSyncError(null);
+        setLocalProgress(currentSession.currentStep);
 
-        // Iniciamos a fila formal no AdManager passando o progresso atual do banco
+        console.log("[BoostTurboScreen] START AD QUEUE from step:", currentSession.currentStep);
         AdManager.startAdQueue(currentSession.requiredSteps, currentSession.currentStep);
     };
-
-    // Handler seguro quando usuário ganha recompensa 
-    // AGORA RETORNA PROMISE para o AdManager aguardar a sincronização
-    const handleAdRewarded = async (): Promise<void> => {
-        const currentSession = sessionRef.current;
-        if (!currentSession) return;
-
-        try {
-            // Sincronizamos o progresso com o servidor
-            const { data: sessionData } = await supabase.auth.getSession();
-            const { data, error: invokeError } = await supabase.functions.invoke('increment-turbo-step', {
-                body: { sessionId: currentSession.id },
-                headers: { Authorization: `Bearer ${sessionData?.session?.access_token}` }
-            });
-
-            if (invokeError) throw new Error("Falha ao registrar recompensa");
-
-            const newStep = data?.current_step !== undefined ? data.current_step : data?.currentStep;
-
-            if (data?.success && newStep !== undefined) {
-                console.log(`[BoostTurboScreen] Step incremented on server: ${newStep}/${currentSession.requiredSteps}`);
-
-                setActiveSession(prev => prev ? { ...prev, currentStep: newStep } : null);
-
-                // Se completou todos, mostramos o sucesso
-                if (newStep >= currentSession.requiredSteps) {
-                    console.log("[BoostTurboScreen] Session complete.");
-                    alert("🎉 Turbo ativado com sucesso! Seu anúncio agora está em destaque.");
-                    onBackRef.current();
-                }
-            }
-        } catch (err) {
-            console.error("Erro ao incrementar passo do turbo", err);
-            // Em caso de erro de rede, o AdManager continuará a fila, 
-            // mas o progresso visual/servidor pode divergir. 
-            // O usuário pode tentar novamente depois.
-        }
-    };
-
-    // Inicialização do AdManager com Listeners Estáveis
-    useEffect(() => {
-        if (!activeSession?.id) return;
-
-        AdManager.initialize();
-
-        const updateAdReady = () => {
-            setAdReady(AdManager.isAdReady());
-        };
-
-        // Listeners fixos
-        AdManager.onReady(() => {
-            console.log("[AdMob-v8] Screen Callback: onRewardedAdLoaded");
-            updateAdReady();
-        });
-
-        AdManager.onRewarded(() => {
-            console.log("[AdMob-v8] Screen Callback: onRewardedAdRewarded");
-            handleAdRewarded();
-        });
-
-        AdManager.onDismissed(() => {
-            console.log("[AdMob-v8] Screen Callback: onRewardedAdDismissed");
-            // Se NÃO estiver finalizando, liberamos o estado de "assistindo"
-            // Se estiver finalizando, mantemos o overlay de carregamento até o alert de sucesso
-            if (!isFinalizing) {
-                setWatchingAd(false);
-            }
-            updateAdReady();
-        });
-
-        AdManager.onCompleted(() => {
-            console.log("[AdMob-v8] Screen Callback: onAdQueueCompleted");
-            setIsFinalizing(true);
-            setWatchingAd(true); // Mantém o estado bloqueado enquanto o servidor termina
-        });
-
-        AdManager.onError((err) => {
-            console.error("[AdMob-v8] Screen Callback: Error:", err);
-            setWatchingAd(false);
-            setIsFinalizing(false);
-            updateAdReady();
-        });
-
-        updateAdReady();
-
-        return () => {
-            console.log("[BoostTurboScreen] Cleaning up ad listeners");
-            AdManager.removeAllListeners();
-        };
-    }, [activeSession?.id, isFinalizing]);
-    // Depende apenas do ID para evitar re-registro em cada passo
 
 
     if (loadingAd) {
@@ -342,16 +377,28 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                 <h2 className="text-2xl font-black text-gray-900 mb-2">Quase lá!</h2>
                                 <p className="text-gray-600 mb-8 max-w-[280px]">Assista aos vídeos para completar o impulsionamento do seu anúncio 100% grátis.</p>
 
-                                {/* Progress Bar */}
+                                {/* Progress Bar - Usa localProgress para feedback instantâneo */}
                                 <div className="w-full max-w-[300px] bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
                                     <div
                                         className="bg-blue-600 h-4 rounded-full transition-all duration-500 ease-out"
-                                        style={{ width: `${(activeSession.currentStep / activeSession.requiredSteps) * 100}%` }}
+                                        style={{ width: `${(localProgress / activeSession.requiredSteps) * 100}%` }}
                                     ></div>
                                 </div>
-                                <p className="text-sm font-bold text-gray-800 mb-10">
-                                    Progresso: <span className="text-blue-600">{activeSession.currentStep}</span> / {activeSession.requiredSteps} anúncios
+                                <p className="text-sm font-bold text-gray-800 mb-4">
+                                    Progresso: <span className="text-blue-600">{localProgress}</span> / {activeSession.requiredSteps} anúncios
                                 </p>
+
+                                {syncError && (
+                                    <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600 font-bold animate-in fade-in slide-in-from-top-1">
+                                        ⚠️ {syncError}
+                                        <button
+                                            onClick={handleAdRewardedInternal}
+                                            className="ml-2 underline uppercase tracking-tighter"
+                                        >
+                                            Tentar Sincronizar Agora
+                                        </button>
+                                    </div>
+                                )}
 
                                 <button
                                     onClick={handleWatchAd}
