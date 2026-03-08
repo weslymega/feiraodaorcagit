@@ -13,7 +13,7 @@ export enum AdState {
     ERROR = 'ERROR'
 }
 
-type AdEventHandler = () => void;
+type AdEventHandler = () => Promise<void> | void;
 type AdErrorHandler = (error: string) => void;
 
 class AdManager {
@@ -28,6 +28,7 @@ class AdManager {
     // Queue State
     private requiredAds: number = 0;
     private watchedAds: number = 0;
+    private isProcessingReward: boolean = false; // Guard for sync
     private queueActive: boolean = false;
 
     // Callbacks
@@ -56,25 +57,42 @@ class AdManager {
         console.log('[AdMob-v8] Registering listeners once...');
 
         // Rewarded Event
-        AdMob.addListener(RewardAdPluginEvents.Rewarded, (reward: any) => {
+        AdMob.addListener(RewardAdPluginEvents.Rewarded, async (reward: any) => {
             console.log('[AdMob-v8] Event: onRewardedAdRewarded', reward);
             this.clearTimeout();
             this.watchedAds++;
-            this.onRewardedCallbacks.forEach(cb => cb());
+
+            this.isProcessingReward = true;
+            try {
+                // Await all reward handlers (server sync)
+                await Promise.all(this.onRewardedCallbacks.map(cb => cb()));
+            } catch (err) {
+                console.error('[AdMob-v8] Error processing reward callbacks:', err);
+            } finally {
+                this.isProcessingReward = false;
+            }
         });
 
         // Dismissed Event
-        AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
+        AdMob.addListener(RewardAdPluginEvents.Dismissed, async () => {
             console.log('[AdMob-v8] Event: onRewardedAdDismissed');
             this.state = AdState.IDLE;
             this.clearTimeout();
 
-            // Notificamos a tela imediatamente
+            // Notificamos a tela imediatamente (onDismissed costuma ser síncrono para UI)
             this.onDismissedCallbacks.forEach(cb => cb());
 
-            // Lógica de Fila: Aguardamos 700ms antes de processar o próximo passo
+            // Lógica de Fila: Aguardamos o processamento da recompensa E o delay de estabilidade
             if (this.queueActive) {
-                console.log('[AdMob-v8] Ad Queue active. Waiting 700ms for next step...');
+                console.log('[AdMob-v8] Ad Queue active. Waiting for sync and stability...');
+
+                // Esperamos até 2 segundos se o processamento ainda estiver ocorrendo
+                let waitCheck = 0;
+                while (this.isProcessingReward && waitCheck < 20) {
+                    await new Promise(r => setTimeout(r, 100));
+                    waitCheck++;
+                }
+
                 setTimeout(() => {
                     this.showNextAd();
                 }, 700);
@@ -150,10 +168,10 @@ class AdManager {
 
     // --- LÓGICA DE FILA (AD QUEUE) ---
 
-    public startAdQueue(totalAds: number) {
-        console.log(`[AdMob-v8] Starting Ad Queue: ${totalAds} ads required.`);
+    public startAdQueue(totalAds: number, initialWatched: number = 0) {
+        console.log(`[AdMob-v8] Starting Ad Queue: ${totalAds} ads required. Current: ${initialWatched}`);
         this.requiredAds = totalAds;
-        this.watchedAds = 0;
+        this.watchedAds = initialWatched;
         this.queueActive = true;
         this.showNextAd();
     }

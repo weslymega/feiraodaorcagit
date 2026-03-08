@@ -81,16 +81,16 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         const currentSession = sessionRef.current;
         if (!currentSession || watchingAd) return;
 
-        console.log("[BoostTurboScreen] Starting Ad Queue...");
+        console.log("[BoostTurboScreen] Starting Ad Queue with initial progress:", currentSession.currentStep);
         setWatchingAd(true);
 
-        // Iniciamos a fila formal no AdManager
-        // O AdManager cuidará do ciclo: Prepare -> Loaded -> Show -> Reward -> Dismiss -> Wait 700ms -> Next
-        AdManager.startAdQueue(currentSession.requiredSteps);
+        // Iniciamos a fila formal no AdManager passando o progresso atual do banco
+        AdManager.startAdQueue(currentSession.requiredSteps, currentSession.currentStep);
     };
 
     // Handler seguro quando usuário ganha recompensa 
-    const handleAdRewarded = async () => {
+    // AGORA RETORNA PROMISE para o AdManager aguardar a sincronização
+    const handleAdRewarded = async (): Promise<void> => {
         const currentSession = sessionRef.current;
         if (!currentSession) return;
 
