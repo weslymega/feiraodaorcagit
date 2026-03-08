@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { AdItem, TurboPlan } from '../types';
+import { AdItem } from '../types';
 import { api, supabase } from '../services/api';
 import { Header } from '../components/Shared';
-import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, CheckCircle2 } from 'lucide-react';
-import { AdMob, RewardAdPluginEvents } from '@capacitor-community/admob';
-import { Capacitor } from '@capacitor/core';
+import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay } from 'lucide-react';
+import AdManager from '../services/AdManager';
 
 interface BoostTurboScreenProps {
     adId: string | null;
@@ -46,7 +45,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         setActiveSession({
                             id: turboSession.id,
                             adId: turboSession.ad_id,
-                            requiredSteps: turboSession.required_steps || 5, // Fallback se não existir na view
+                            requiredSteps: turboSession.required_steps || 5,
                             currentStep: turboSession.current_step || 0
                         });
                     }
@@ -63,52 +62,41 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         return () => { isMounted = false; };
     }, [adId]);
 
-    // Inicialização do AdMob
+    // Inicialização do AdManager
     useEffect(() => {
         if (!activeSession) return;
-        if (!Capacitor.isNativePlatform()) {
-            console.log("AdMob requires Native Platform. Mocking behavior for development.");
-        }
 
-        let isMounted = true;
+        AdManager.initialize();
 
-        const initAdMob = async () => {
-            try {
-                if (Capacitor.isNativePlatform()) {
-                    await AdMob.initialize();
-
-                    // TODO: Em produção usar seu ID real. 
-                    // Android Test ID: ca-app-pub-3940256099942544/5224354917
-                    // iOS Test ID: ca-app-pub-3940256099942544/1712485313
-                    await AdMob.prepareRewardVideoAd({
-                        adId: 'ca-app-pub-3940256099942544/5224354917'
-                    });
-                }
-                if (isMounted) setAdReady(true);
-            } catch (err) {
-                console.error('Failed to prepare AdMob:', err);
-                // Mesmo se falhar, preparamos o botão parar testar fallback web se necessário
-                if (isMounted) setAdReady(true);
-            }
+        const updateAdReady = () => {
+            setAdReady(AdManager.isAdReady());
         };
 
-        initAdMob();
+        AdManager.onReady(updateAdReady);
+        AdManager.onRewarded(() => {
+            console.log("[BoostTurboScreen] Ad Rewarded callback");
+            handleAdRewarded();
+        });
+        AdManager.onDismissed(() => {
+            console.log("[BoostTurboScreen] Ad Dismissed callback");
+            setWatchingAd(false);
+            updateAdReady();
+        });
+        AdManager.onError((err) => {
+            console.error("[BoostTurboScreen] Ad Error callback:", err);
+            setWatchingAd(false);
+            updateAdReady();
+        });
 
-        let rewardListener: any;
-        if (Capacitor.isNativePlatform()) {
-            AdMob.addListener(RewardAdPluginEvents.Rewarded, async (reward) => {
-                console.log("RewardAdPluginEvents.Rewarded disparado!", reward);
-                handleAdRewarded();
-            }).then(l => rewardListener = l);
-        }
+        // Initial check
+        updateAdReady();
 
         return () => {
-            isMounted = false;
-            if (rewardListener) rewardListener.remove();
+            AdManager.removeAllListeners();
         };
     }, [activeSession]);
 
-    // Handler seguro quando usuário ganha recompensa (assiste o AD até o final)
+    // Handler seguro quando usuário ganha recompensa
     const handleAdRewarded = async () => {
         if (!activeSession) return;
         try {
@@ -127,13 +115,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 if (data.currentStep >= activeSession.requiredSteps) {
                     alert("🎉 Turbo ativado com sucesso! Seu anúncio agora está em destaque.");
                     onBack();
-                } else {
-                    // Prepara o próximo anúncio
-                    if (Capacitor.isNativePlatform()) {
-                        setAdReady(false);
-                        await AdMob.prepareRewardVideoAd({ adId: 'ca-app-pub-3940256099942544/5224354917' });
-                        setAdReady(true);
-                    }
                 }
             } else {
                 throw new Error("Resposta inválida do servidor");
@@ -146,22 +127,15 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         }
     };
 
-    // Handler para disparar o vídeo nativamente ou fallback na web.
     const handleWatchAd = async () => {
+        if (!adReady || watchingAd) return;
+
         setWatchingAd(true);
-        try {
-            if (Capacitor.isNativePlatform()) {
-                await AdMob.showRewardVideoAd();
-            } else {
-                // Simulador Web
-                alert("Em ambiente WEB o vídeo foi pulado e contabilizado auto-mágicamente para testes.");
-                await handleAdRewarded();
-            }
-        } catch (err) {
-            console.error('Erro ao mostrar anuncio', err);
-            alert("Erro ao carregar o vídeo. Verifique sua conexão e tente novamente.");
-        } finally {
+        const success = await AdManager.show();
+
+        if (!success) {
             setWatchingAd(false);
+            alert("Erro ao carregar o vídeo. Verifique sua conexão e tente novamente.");
         }
     };
 
