@@ -23,7 +23,8 @@ class AdManager {
     private isInitialized: boolean = false;
     private listenersInitialized: boolean = false; // Singleton listener guard
     private timeoutId: any = null;
-    private TIMEOUT_DURATION = 15000; // 15 seconds
+    private TIMEOUT_DURATION = 60000; // 60 seconds (video ads can be long)
+    private STABILIZATION_DELAY = 500; // Delay before heavy JS work
 
     // Queue State
     private requiredAds: number = 0;
@@ -75,9 +76,12 @@ class AdManager {
             // But we set the flag so handleDismiss knows we are still busy.
             this.isProcessingReward = true;
 
-            // Execute sync tasks in the background
+            // Execute sync tasks in the background with a slight delay
             (async () => {
                 try {
+                    // Small delay to let the native SDK finish rendering the end card/close button
+                    await new Promise(r => setTimeout(r, this.STABILIZATION_DELAY));
+
                     await Promise.all(this.onRewardedCallbacks.map(cb => {
                         try { return cb(); } catch (e) { console.error('[AdMob-v8] Callback error:', e); }
                     }));
