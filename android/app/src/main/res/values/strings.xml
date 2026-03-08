@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name"> Feiraodaorca.app</string>
+    <string name="title_activity_main"> Feiraodaorca.app</string>
+    <string name="package_name">com.feiraodaorca.app</string>
+    <string name="custom_url_scheme">com.feiraodaorca.app</string>
+</resources>
