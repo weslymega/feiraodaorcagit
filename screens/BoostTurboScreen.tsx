@@ -20,6 +20,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [activeSession, setActiveSession] = useState<{ id: string, adId: string, requiredSteps: number, currentStep: number } | null>(null);
     const [adReady, setAdReady] = useState(false);
     const [watchingAd, setWatchingAd] = useState(false);
+    const [isFinalizing, setIsFinalizing] = useState(false); // Flag para evitar flicker no fim
 
     // Refs para manter listeners estáveis e acessar estado atualizado sem re-registrar
     const sessionRef = useRef(activeSession);
@@ -148,15 +149,24 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
         AdManager.onDismissed(() => {
             console.log("[AdMob-v8] Screen Callback: onRewardedAdDismissed");
-            // Apenas atualizamos o estado de "assistindo" para liberar a UI se necessário
-            // O AdManager decide se mostra o próximo ou não
-            setWatchingAd(false);
+            // Se NÃO estiver finalizando, liberamos o estado de "assistindo"
+            // Se estiver finalizando, mantemos o overlay de carregamento até o alert de sucesso
+            if (!isFinalizing) {
+                setWatchingAd(false);
+            }
             updateAdReady();
+        });
+
+        AdManager.onCompleted(() => {
+            console.log("[AdMob-v8] Screen Callback: onAdQueueCompleted");
+            setIsFinalizing(true);
+            setWatchingAd(true); // Mantém o estado bloqueado enquanto o servidor termina
         });
 
         AdManager.onError((err) => {
             console.error("[AdMob-v8] Screen Callback: Error:", err);
             setWatchingAd(false);
+            setIsFinalizing(false);
             updateAdReady();
         });
 
@@ -166,7 +176,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             console.log("[BoostTurboScreen] Cleaning up ad listeners");
             AdManager.removeAllListeners();
         };
-    }, [activeSession?.id]);
+    }, [activeSession?.id, isFinalizing]);
     // Depende apenas do ID para evitar re-registro em cada passo
 
 
@@ -320,35 +330,45 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 {/* ESTADO 2: Monitor de Progresso de Anúncios */}
                 {activeSession && (
                     <div className="flex flex-col items-center justify-center text-center animate-in fade-in pt-8">
-                        <MonitorPlay className="w-20 h-20 text-blue-500 mb-6" />
-                        <h2 className="text-2xl font-black text-gray-900 mb-2">Quase lá!</h2>
-                        <p className="text-gray-600 mb-8 max-w-[280px]">Assista aos vídeos para completar o impulsionamento do seu anúncio 100% grátis.</p>
+                        {isFinalizing ? (
+                            <>
+                                <Loader2 className="w-20 h-20 text-blue-500 animate-spin mb-6" />
+                                <h2 className="text-2xl font-black text-gray-900 mb-2">Finalizando Turbo...</h2>
+                                <p className="text-gray-600 mb-8 max-w-[280px]">Sincronizando sua recompensa final com o servidor. Quase pronto!</p>
+                            </>
+                        ) : (
+                            <>
+                                <MonitorPlay className="w-20 h-20 text-blue-500 mb-6" />
+                                <h2 className="text-2xl font-black text-gray-900 mb-2">Quase lá!</h2>
+                                <p className="text-gray-600 mb-8 max-w-[280px]">Assista aos vídeos para completar o impulsionamento do seu anúncio 100% grátis.</p>
 
-                        {/* Progress Bar */}
-                        <div className="w-full max-w-[300px] bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
-                            <div
-                                className="bg-blue-600 h-4 rounded-full transition-all duration-500 ease-out"
-                                style={{ width: `${(activeSession.currentStep / activeSession.requiredSteps) * 100}%` }}
-                            ></div>
-                        </div>
-                        <p className="text-sm font-bold text-gray-800 mb-10">
-                            Progresso: <span className="text-blue-600">{activeSession.currentStep}</span> / {activeSession.requiredSteps} anúncios
-                        </p>
+                                {/* Progress Bar */}
+                                <div className="w-full max-w-[300px] bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
+                                    <div
+                                        className="bg-blue-600 h-4 rounded-full transition-all duration-500 ease-out"
+                                        style={{ width: `${(activeSession.currentStep / activeSession.requiredSteps) * 100}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-sm font-bold text-gray-800 mb-10">
+                                    Progresso: <span className="text-blue-600">{activeSession.currentStep}</span> / {activeSession.requiredSteps} anúncios
+                                </p>
 
-                        <button
-                            onClick={handleWatchAd}
-                            disabled={!adReady || watchingAd || loading}
-                            className={`w-full max-w-[300px] py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98]
-                                ${adReady && !watchingAd && !loading
-                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/30 hover:shadow-blue-500/50'
-                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                        >
-                            {(watchingAd || loading || !adReady) ? (
-                                <><Loader2 className="w-5 h-5 animate-spin" /> {(watchingAd || loading) ? "Processando..." : "Carregando Vídeo"}</>
-                            ) : (
-                                <><Play className="w-5 h-5 fill-current" /> Assistir Anúncio</>
-                            )}
-                        </button>
+                                <button
+                                    onClick={handleWatchAd}
+                                    disabled={!adReady || watchingAd || loading}
+                                    className={`w-full max-w-[300px] py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98]
+                                        ${adReady && !watchingAd && !loading
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/30 hover:shadow-blue-500/50'
+                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                                >
+                                    {(watchingAd || loading || !adReady) ? (
+                                        <><Loader2 className="w-5 h-5 animate-spin" /> {(watchingAd || loading) ? "Processando..." : "Carregando Vídeo"}</>
+                                    ) : (
+                                        <><Play className="w-5 h-5 fill-current" /> Assistir Anúncio</>
+                                    )}
+                                </button>
+                            </>
+                        )}
                     </div>
                 )}
             </div>

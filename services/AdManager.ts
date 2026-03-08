@@ -34,6 +34,7 @@ class AdManager {
     private onReadyCallbacks: AdEventHandler[] = [];
     private onRewardedCallbacks: AdEventHandler[] = [];
     private onDismissedCallbacks: AdEventHandler[] = [];
+    private onCompletedCallbacks: AdEventHandler[] = []; // New
     private onErrorCallbacks: AdErrorHandler[] = [];
 
     private constructor() {
@@ -165,6 +166,7 @@ class AdManager {
         if (this.watchedAds >= this.requiredAds) {
             console.log('[AdMob-v8] Ad Queue completed successfully!');
             this.queueActive = false;
+            this.onCompletedCallbacks.forEach(cb => cb()); // Trigger completion
             return;
         }
 
@@ -282,12 +284,14 @@ class AdManager {
     public onReady(cb: AdEventHandler) { this.onReadyCallbacks.push(cb); }
     public onRewarded(cb: AdEventHandler) { this.onRewardedCallbacks.push(cb); }
     public onDismissed(cb: AdEventHandler) { this.onDismissedCallbacks.push(cb); }
+    public onCompleted(cb: AdEventHandler) { this.onCompletedCallbacks.push(cb); }
     public onError(cb: AdErrorHandler) { this.onErrorCallbacks.push(cb); }
 
     public removeAllListeners() {
         this.onReadyCallbacks = [];
         this.onRewardedCallbacks = [];
         this.onDismissedCallbacks = [];
+        this.onCompletedCallbacks = [];
         this.onErrorCallbacks = [];
     }
 }
