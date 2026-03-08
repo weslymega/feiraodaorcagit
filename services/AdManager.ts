@@ -46,14 +46,14 @@ class AdManager {
     private setupListeners() {
         // Rewarded Event
         AdMob.addListener(RewardAdPluginEvents.Rewarded, (reward: any) => {
-            console.log('[AdManager] Ad Rewarded:', reward);
+            console.log('[AdMob-v8] Event: onRewardedAdRewarded', reward);
             this.clearTimeout();
             this.onRewardedCallbacks.forEach(cb => cb());
         });
 
         // Dismissed Event
         AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
-            console.log('[AdManager] Ad Dismissed');
+            console.log('[AdMob-v8] Event: onRewardedAdDismissed');
             this.state = AdState.IDLE;
             this.clearTimeout();
             this.onDismissedCallbacks.forEach(cb => cb());
@@ -62,7 +62,7 @@ class AdManager {
 
         // Failed To Show Event
         AdMob.addListener(RewardAdPluginEvents.FailedToShow, (error: any) => {
-            console.error('[AdManager] Ad Failed to Show:', error);
+            console.error('[AdMob-v8] Event: onRewardedAdFailedToShow', error);
             this.state = AdState.ERROR;
             this.clearTimeout();
             this.onErrorCallbacks.forEach(cb => cb(error.message));
@@ -71,14 +71,14 @@ class AdManager {
 
         // Loaded Event
         AdMob.addListener(RewardAdPluginEvents.Loaded, () => {
-            console.log('[AdManager] Ad Loaded and Ready');
+            console.log('[AdMob-v8] Event: onRewardedAdLoaded');
             this.state = AdState.READY;
             this.onReadyCallbacks.forEach(cb => cb());
         });
 
         // Failed To Load Event
         AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (error: any) => {
-            console.error('[AdManager] Ad Failed to Load:', error);
+            console.error('[AdMob-v8] Event: onRewardedAdFailedToLoad', error);
             this.state = AdState.ERROR;
             this.onErrorCallbacks.forEach(cb => cb(error.message));
             // Auto-retry load after 5 seconds

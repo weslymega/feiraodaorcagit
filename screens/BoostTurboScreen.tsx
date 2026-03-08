@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AdItem } from '../types';
 import { api, supabase } from '../services/api';
 import { Header } from '../components/Shared';
@@ -21,6 +21,19 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [adReady, setAdReady] = useState(false);
     const [watchingAd, setWatchingAd] = useState(false);
 
+    // Refs para manter listeners estáveis e acessar estado atualizado sem re-registrar
+    const sessionRef = useRef(activeSession);
+    const onBackRef = useRef(onBack);
+    const autoShowRef = useRef(false);
+
+    useEffect(() => {
+        sessionRef.current = activeSession;
+    }, [activeSession]);
+
+    useEffect(() => {
+        onBackRef.current = onBack;
+    }, [onBack]);
+
     useEffect(() => {
         if (!adId) return;
         let isMounted = true;
@@ -42,12 +55,14 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         .maybeSingle();
 
                     if (turboSession && isMounted) {
-                        setActiveSession({
+                        const sess = {
                             id: turboSession.id,
                             adId: turboSession.ad_id,
                             requiredSteps: turboSession.required_steps || 5,
                             currentStep: turboSession.current_step || 0
-                        });
+                        };
+                        setActiveSession(sess);
+                        sessionRef.current = sess;
                     }
                 }
 
@@ -62,59 +77,55 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         return () => { isMounted = false; };
     }, [adId]);
 
-    // Inicialização do AdManager
-    useEffect(() => {
-        if (!activeSession) return;
+    const handleWatchAd = async () => {
+        // Se já estiver pronto e não estiver assistindo, mostra.
+        // Importante: usamos refs para garantir que estamos acessando o estado correto
+        if (!AdManager.isAdReady() || watchingAd) return;
 
-        AdManager.initialize();
+        console.log("[BoostTurboScreen] Showing ad...");
+        setWatchingAd(true);
+        const success = await AdManager.show();
 
-        const updateAdReady = () => {
-            setAdReady(AdManager.isAdReady());
-        };
-
-        AdManager.onReady(updateAdReady);
-        AdManager.onRewarded(() => {
-            console.log("[BoostTurboScreen] Ad Rewarded callback");
-            handleAdRewarded();
-        });
-        AdManager.onDismissed(() => {
-            console.log("[BoostTurboScreen] Ad Dismissed callback");
+        if (!success) {
             setWatchingAd(false);
-            updateAdReady();
-        });
-        AdManager.onError((err) => {
-            console.error("[BoostTurboScreen] Ad Error callback:", err);
-            setWatchingAd(false);
-            updateAdReady();
-        });
+            autoShowRef.current = false;
+            alert("Erro ao carregar o vídeo. Verifique sua conexão e tente novamente.");
+        }
+    };
 
-        // Initial check
-        updateAdReady();
-
-        return () => {
-            AdManager.removeAllListeners();
-        };
-    }, [activeSession]);
-
-    // Handler seguro quando usuário ganha recompensa
+    // Handler seguro quando usuário ganha recompensa 
+    // Definido fora do useEffect para ser referenciável
     const handleAdRewarded = async () => {
-        if (!activeSession) return;
+        const currentSession = sessionRef.current;
+        if (!currentSession) return;
+
         try {
             setLoading(true);
             const { data: sessionData } = await supabase.auth.getSession();
             const { data, error: invokeError } = await supabase.functions.invoke('increment-turbo-step', {
-                body: { sessionId: activeSession.id },
+                body: { sessionId: currentSession.id },
                 headers: { Authorization: `Bearer ${sessionData?.session?.access_token}` }
             });
 
             if (invokeError) throw new Error("Falha ao registrar recompensa");
 
-            if (data?.success) {
-                setActiveSession(prev => prev ? { ...prev, currentStep: data.currentStep } : null);
+            // IMPORTANTE: data.current_step (snake_case do banco/edge function)
+            const newStep = data?.current_step !== undefined ? data.current_step : data?.currentStep;
 
-                if (data.currentStep >= activeSession.requiredSteps) {
+            if (data?.success && newStep !== undefined) {
+                console.log(`[BoostTurboScreen] Step incremented: ${newStep}/${currentSession.requiredSteps}`);
+
+                setActiveSession(prev => prev ? { ...prev, currentStep: newStep } : null);
+
+                // Se ainda faltam anúncios, marcamos para mostrar o próximo automaticamente após o fechamento deste.
+                if (newStep < currentSession.requiredSteps) {
+                    console.log("[BoostTurboScreen] More ads required. Auto-show enabled.");
+                    autoShowRef.current = true;
+                } else {
+                    console.log("[BoostTurboScreen] Session complete.");
+                    autoShowRef.current = false; // Garante que não vai mostrar outro se chegou no fim
                     alert("🎉 Turbo ativado com sucesso! Seu anúncio agora está em destaque.");
-                    onBack();
+                    onBackRef.current();
                 }
             } else {
                 throw new Error("Resposta inválida do servidor");
@@ -122,22 +133,61 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         } catch (err) {
             console.error("Erro ao incrementar passo do turbo", err);
             alert("Não foi possível contabilizar o anúncio. Tente novamente.");
+            autoShowRef.current = false;
         } finally {
             setLoading(false);
         }
     };
 
-    const handleWatchAd = async () => {
-        if (!adReady || watchingAd) return;
+    // Inicialização do AdManager com Listeners Estáveis
+    useEffect(() => {
+        if (!activeSession?.id) return;
 
-        setWatchingAd(true);
-        const success = await AdManager.show();
+        AdManager.initialize();
 
-        if (!success) {
+        const updateAdReady = () => {
+            const isReady = AdManager.isAdReady();
+            setAdReady(isReady);
+
+            // Lógica de Exibição Automática
+            if (isReady && autoShowRef.current) {
+                console.log("[BoostTurboScreen] Auto-show triggered by onReady");
+                autoShowRef.current = false; // Consumir o trigger
+                handleWatchAd();
+            }
+        };
+
+        // Listeners fixos que usam refs ou funções estáveis
+        AdManager.onReady(() => {
+            console.log("[AdMob-v8] Screen Callback: onRewardedAdLoaded");
+            updateAdReady();
+        });
+
+        AdManager.onRewarded(() => {
+            console.log("[AdMob-v8] Screen Callback: onRewardedAdRewarded");
+            handleAdRewarded();
+        });
+
+        AdManager.onDismissed(() => {
+            console.log("[AdMob-v8] Screen Callback: onRewardedAdDismissed");
             setWatchingAd(false);
-            alert("Erro ao carregar o vídeo. Verifique sua conexão e tente novamente.");
-        }
-    };
+            updateAdReady();
+        });
+
+        AdManager.onError((err) => {
+            console.error("[AdMob-v8] Screen Callback: onRewardedAdFailedToShow/Load:", err);
+            setWatchingAd(false);
+            autoShowRef.current = false; // Cancela auto-show em caso de erro
+            updateAdReady();
+        });
+
+        updateAdReady();
+
+        return () => {
+            console.log("[BoostTurboScreen] Cleaning up ad listeners");
+            AdManager.removeAllListeners();
+        };
+    }, [activeSession?.id]); // Depende apenas do ID para evitar re-registro em cada passo
 
 
     if (loadingAd) {
