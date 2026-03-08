@@ -24,7 +24,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     // Refs para manter listeners estáveis e acessar estado atualizado sem re-registrar
     const sessionRef = useRef(activeSession);
     const onBackRef = useRef(onBack);
-    const autoShowRef = useRef(false);
 
     useEffect(() => {
         sessionRef.current = activeSession;
@@ -78,29 +77,24 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     }, [adId]);
 
     const handleWatchAd = async () => {
-        // Se já estiver pronto e não estiver assistindo, mostra.
-        // Importante: usamos refs para garantir que estamos acessando o estado correto
-        if (!AdManager.isAdReady() || watchingAd) return;
+        const currentSession = sessionRef.current;
+        if (!currentSession || watchingAd) return;
 
-        console.log("[BoostTurboScreen] Showing ad...");
+        console.log("[BoostTurboScreen] Starting Ad Queue...");
         setWatchingAd(true);
-        const success = await AdManager.show();
 
-        if (!success) {
-            setWatchingAd(false);
-            autoShowRef.current = false;
-            alert("Erro ao carregar o vídeo. Verifique sua conexão e tente novamente.");
-        }
+        // Iniciamos a fila formal no AdManager
+        // O AdManager cuidará do ciclo: Prepare -> Loaded -> Show -> Reward -> Dismiss -> Wait 700ms -> Next
+        AdManager.startAdQueue(currentSession.requiredSteps);
     };
 
     // Handler seguro quando usuário ganha recompensa 
-    // Definido fora do useEffect para ser referenciável
     const handleAdRewarded = async () => {
         const currentSession = sessionRef.current;
         if (!currentSession) return;
 
         try {
-            setLoading(true);
+            // Sincronizamos o progresso com o servidor
             const { data: sessionData } = await supabase.auth.getSession();
             const { data, error: invokeError } = await supabase.functions.invoke('increment-turbo-step', {
                 body: { sessionId: currentSession.id },
@@ -109,33 +103,25 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
             if (invokeError) throw new Error("Falha ao registrar recompensa");
 
-            // IMPORTANTE: data.current_step (snake_case do banco/edge function)
             const newStep = data?.current_step !== undefined ? data.current_step : data?.currentStep;
 
             if (data?.success && newStep !== undefined) {
-                console.log(`[BoostTurboScreen] Step incremented: ${newStep}/${currentSession.requiredSteps}`);
+                console.log(`[BoostTurboScreen] Step incremented on server: ${newStep}/${currentSession.requiredSteps}`);
 
                 setActiveSession(prev => prev ? { ...prev, currentStep: newStep } : null);
 
-                // Se ainda faltam anúncios, marcamos para mostrar o próximo automaticamente após o fechamento deste.
-                if (newStep < currentSession.requiredSteps) {
-                    console.log("[BoostTurboScreen] More ads required. Auto-show enabled.");
-                    autoShowRef.current = true;
-                } else {
+                // Se completou todos, mostramos o sucesso
+                if (newStep >= currentSession.requiredSteps) {
                     console.log("[BoostTurboScreen] Session complete.");
-                    autoShowRef.current = false; // Garante que não vai mostrar outro se chegou no fim
                     alert("🎉 Turbo ativado com sucesso! Seu anúncio agora está em destaque.");
                     onBackRef.current();
                 }
-            } else {
-                throw new Error("Resposta inválida do servidor");
             }
         } catch (err) {
             console.error("Erro ao incrementar passo do turbo", err);
-            alert("Não foi possível contabilizar o anúncio. Tente novamente.");
-            autoShowRef.current = false;
-        } finally {
-            setLoading(false);
+            // Em caso de erro de rede, o AdManager continuará a fila, 
+            // mas o progresso visual/servidor pode divergir. 
+            // O usuário pode tentar novamente depois.
         }
     };
 
@@ -146,18 +132,10 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         AdManager.initialize();
 
         const updateAdReady = () => {
-            const isReady = AdManager.isAdReady();
-            setAdReady(isReady);
-
-            // Lógica de Exibição Automática
-            if (isReady && autoShowRef.current) {
-                console.log("[BoostTurboScreen] Auto-show triggered by onReady");
-                autoShowRef.current = false; // Consumir o trigger
-                handleWatchAd();
-            }
+            setAdReady(AdManager.isAdReady());
         };
 
-        // Listeners fixos que usam refs ou funções estáveis
+        // Listeners fixos
         AdManager.onReady(() => {
             console.log("[AdMob-v8] Screen Callback: onRewardedAdLoaded");
             updateAdReady();
@@ -170,14 +148,15 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
         AdManager.onDismissed(() => {
             console.log("[AdMob-v8] Screen Callback: onRewardedAdDismissed");
+            // Apenas atualizamos o estado de "assistindo" para liberar a UI se necessário
+            // O AdManager decide se mostra o próximo ou não
             setWatchingAd(false);
             updateAdReady();
         });
 
         AdManager.onError((err) => {
-            console.error("[AdMob-v8] Screen Callback: onRewardedAdFailedToShow/Load:", err);
+            console.error("[AdMob-v8] Screen Callback: Error:", err);
             setWatchingAd(false);
-            autoShowRef.current = false; // Cancela auto-show em caso de erro
             updateAdReady();
         });
 
@@ -187,7 +166,8 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             console.log("[BoostTurboScreen] Cleaning up ad listeners");
             AdManager.removeAllListeners();
         };
-    }, [activeSession?.id]); // Depende apenas do ID para evitar re-registro em cada passo
+    }, [activeSession?.id]);
+    // Depende apenas do ID para evitar re-registro em cada passo
 
 
     if (loadingAd) {
