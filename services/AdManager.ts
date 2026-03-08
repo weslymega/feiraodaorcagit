@@ -51,30 +51,53 @@ class AdManager {
         return AdManager.instance;
     }
 
+    private lastRewardTime: number = 0;
+    private lastDismissedTime: number = 0;
+
     private setupListeners() {
         if (this.listenersInitialized) return;
 
         console.log('[AdMob-v8] Registering robust listeners for all Reward variations...');
 
         const handleReward = async (reward: any) => {
+            const now = Date.now();
+            if (now - this.lastRewardTime < 2000) {
+                console.log('[AdMob-v8] DUPLICATE REWARD IGNORED');
+                return;
+            }
+            this.lastRewardTime = now;
+
             console.log('[AdMob-v8] REWARD RECEIVED:', reward);
             this.clearTimeout();
             this.watchedAds++;
 
+            // We do NOT await here to let the Native SDK show the Close button immediately.
+            // But we set the flag so handleDismiss knows we are still busy.
             this.isProcessingReward = true;
-            try {
-                // Execute all reward callbacks and wait for them (important for server sync)
-                await Promise.all(this.onRewardedCallbacks.map(cb => {
-                    try { return cb(); } catch (e) { console.error('[AdMob-v8] Callback error:', e); }
-                }));
-            } catch (err) {
-                console.error('[AdMob-v8] Error processing reward callbacks:', err);
-            } finally {
-                this.isProcessingReward = false;
-            }
+
+            // Execute sync tasks in the background
+            (async () => {
+                try {
+                    await Promise.all(this.onRewardedCallbacks.map(cb => {
+                        try { return cb(); } catch (e) { console.error('[AdMob-v8] Callback error:', e); }
+                    }));
+                } catch (err) {
+                    console.error('[AdMob-v8] Error processing reward callbacks:', err);
+                } finally {
+                    this.isProcessingReward = false;
+                    console.log('[AdMob-v8] Reward processing (sync) finished.');
+                }
+            })();
         };
 
         const handleDismiss = async () => {
+            const now = Date.now();
+            if (now - this.lastDismissedTime < 2000) {
+                console.log('[AdMob-v8] DUPLICATE DISMISS IGNORED');
+                return;
+            }
+            this.lastDismissedTime = now;
+
             console.log('[AdMob-v8] DISMISSED RECEIVED');
             this.state = AdState.IDLE;
             this.clearTimeout();
@@ -93,7 +116,11 @@ class AdManager {
                     waitCheck++;
                 }
 
-                setTimeout(() => this.showNextAd(), 700);
+                setTimeout(() => {
+                    if (this.queueActive) {
+                        this.showNextAd();
+                    }
+                }, 700);
             } else {
                 this.preload();
             }

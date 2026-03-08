@@ -3,6 +3,7 @@ import { AdItem } from '../types';
 import { api, supabase } from '../services/api';
 import { Header } from '../components/Shared';
 import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import AdManager from '../services/AdManager';
 
 interface BoostTurboScreenProps {
