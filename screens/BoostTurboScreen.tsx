@@ -99,6 +99,11 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         }
 
         console.log(`[BoostTurboScreen] [STEP 11] START SYNC: Session ${currentSession.id} (Current Local Step: ${localProgress + 1})`);
+
+        // [ENV DEBUG] Verificação de Variáveis de Ambiente no APK
+        console.log("[ENV DEBUG] VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL || "VAZIO/NULL");
+        console.log("[ENV DEBUG] VITE_SUPABASE_ANON_KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY ? "PRESENTE (Inicia com: " + import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 10) + "...)" : "AUSENTE");
+
         setSyncError(null);
 
         try {
@@ -108,33 +113,35 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
             // 2. Chamada ao Servidor
             const { data: sessionData } = await supabase.auth.getSession();
-            if (!sessionData?.session) {
-                console.error("[BoostTurboScreen] [STEP 13] AUTH ERROR: No session available");
+            const user = sessionData?.session?.user;
+            const token = sessionData?.session?.access_token;
+
+            if (!user || !token) {
+                console.error("[SYNC DEBUG] AUTH ERROR: User not authenticated or token missing");
                 throw new Error("Sessão expirada. Refaça o login.");
             }
 
-            const debugPayload = {
-                sessionId: currentSession.id,
-                userId: sessionData.session.user.id,
-                localStepToSync: localProgress + 1,
-                targetFunction: 'increment-turbo-step',
-                targetTable: 'ad_turbo_sessions'
-            };
-            console.log(`[BoostTurboScreen] [STEP 14] Invoking Edge Function. PAYLOAD:`, JSON.stringify(debugPayload));
+            const funcName = 'increment-turbo-step';
+            const payload = { sessionId: currentSession.id };
+
+            console.log("[SYNC DEBUG] invoking edge function");
+            console.log("[SYNC DEBUG] function name:", funcName);
+            console.log("[SYNC DEBUG] payload:", JSON.stringify(payload));
+            console.log("[SYNC DEBUG] token present:", !!token);
 
             const startTime = Date.now();
-            const { data, error: invokeError } = await supabase.functions.invoke('increment-turbo-step', {
-                body: { sessionId: currentSession.id },
-                headers: { Authorization: `Bearer ${sessionData.session.access_token}` }
+            const { data, error: invokeError } = await supabase.functions.invoke(funcName, {
+                body: payload,
+                headers: { Authorization: `Bearer ${token}` }
             });
             const duration = Date.now() - startTime;
 
             if (invokeError) {
-                console.error(`[BoostTurboScreen] [STEP 15] EDGE FUNCTION ERROR (${duration}ms):`, JSON.stringify(invokeError));
+                console.error(`[SYNC DEBUG] error (${duration}ms):`, JSON.stringify(invokeError));
                 throw invokeError;
             }
 
-            console.log(`[BoostTurboScreen] [STEP 16] FULL SERVER RESPONSE (${duration}ms):`, JSON.stringify(data));
+            console.log(`[SYNC DEBUG] response (${duration}ms):`, JSON.stringify(data));
 
             if (!data?.success) {
                 console.warn("[BoostTurboScreen] [STEP 17] SERVER REJECTION:", data?.error || "Unknown Error");
