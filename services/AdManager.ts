@@ -54,42 +54,48 @@ class AdManager {
 
     private lastRewardTime: number = 0;
     private lastDismissedTime: number = 0;
+    private lastShowTime: number = 0;
 
     private setupListeners() {
         if (this.listenersInitialized) return;
 
-        console.log('[AdMob-v8] Registering robust listeners for all Reward variations...');
+        console.log('[AdMob-v8] Registering core listeners...');
 
         const handleReward = async (reward: any) => {
             const now = Date.now();
-            if (now - this.lastRewardTime < 2000) {
-                console.log('[AdMob-v8] DUPLICATE REWARD IGNORED');
+            if (now - this.lastRewardTime < 3000) {
+                console.log('[AdMob-v8] [STEP 1a] REWARD IGNORED (Debounce 3s)');
                 return;
             }
             this.lastRewardTime = now;
 
-            console.log('[AdMob-v8] REWARD RECEIVED:', reward);
+            console.log('[AdMob-v8] [STEP 1] NATIVE REWARD RECEIVED:', reward);
             this.clearTimeout();
             this.watchedAds++;
+            console.log(`[AdMob-v8] [STEP 2] Local counter incremented: ${this.watchedAds}/${this.requiredAds}`);
 
-            // We do NOT await here to let the Native SDK show the Close button immediately.
-            // But we set the flag so handleDismiss knows we are still busy.
             this.isProcessingReward = true;
+            console.log('[AdMob-v8] [STEP 3] Sync flag isProcessingReward = TRUE');
 
-            // Execute sync tasks in the background with a slight delay
+            // Execute sync in background, non-blocking for Native UI
             (async () => {
                 try {
-                    // Small delay to let the native SDK finish rendering the end card/close button
+                    console.log(`[AdMob-v8] [STEP 4] Starting stabilization delay of ${this.STABILIZATION_DELAY}ms before callbacks`);
                     await new Promise(r => setTimeout(r, this.STABILIZATION_DELAY));
 
-                    await Promise.all(this.onRewardedCallbacks.map(cb => {
-                        try { return cb(); } catch (e) { console.error('[AdMob-v8] Callback error:', e); }
+                    console.log(`[AdMob-v8] [STEP 5] Triggering ${this.onRewardedCallbacks.length} registration callbacks...`);
+                    await Promise.all(this.onRewardedCallbacks.map((cb, idx) => {
+                        try {
+                            console.log(`[AdMob-v8] [STEP 5.${idx}] Executing safe callback...`);
+                            return cb();
+                        } catch (e) {
+                            console.error(`[AdMob-v8] [STEP 5.${idx}] Callback FAILED:`, e);
+                        }
                     }));
-                } catch (err) {
-                    console.error('[AdMob-v8] Error processing reward callbacks:', err);
+                    console.log('[AdMob-v8] [STEP 6] All reward callbacks finished.');
                 } finally {
                     this.isProcessingReward = false;
-                    console.log('[AdMob-v8] Reward processing (sync) finished.');
+                    console.log('[AdMob-v8] [STEP 7] Sync flag isProcessingReward = FALSE');
                 }
             })();
         };
@@ -97,68 +103,79 @@ class AdManager {
         const handleDismiss = async () => {
             const now = Date.now();
             if (now - this.lastDismissedTime < 2000) {
-                console.log('[AdMob-v8] DUPLICATE DISMISS IGNORED');
+                console.log('[AdMob-v8] [FLOW] DISMISS IGNORED (Debounce 2s)');
                 return;
             }
             this.lastDismissedTime = now;
 
-            console.log('[AdMob-v8] DISMISSED RECEIVED');
+            console.log('[AdMob-v8] [FLOW] NATIVE DISMISSED RECEIVED');
             this.state = AdState.IDLE;
             this.clearTimeout();
 
             this.onDismissedCallbacks.forEach(cb => {
-                try { cb(); } catch (e) { console.error('[AdMob-v8] Callback error (Dismiss):', e); }
+                try { cb(); } catch (e) { console.error('[AdMob-v8] [FLOW] Dismiss callback fail:', e); }
             });
 
             if (this.queueActive) {
-                console.log('[AdMob-v8] Queue active. Waiting for reward sync and stable delay...');
-
-                // Wait for sync to complete (max 3s)
-                let waitCheck = 0;
-                while (this.isProcessingReward && waitCheck < 30) {
+                console.log('[AdMob-v8] [FLOW] Queue active. Waiting for sync to complete...');
+                // Wait for sync or timeout
+                let wait = 0;
+                while (this.isProcessingReward && wait < 40) {
                     await new Promise(r => setTimeout(r, 100));
-                    waitCheck++;
+                    wait++;
+                }
+
+                if (this.isProcessingReward) {
+                    console.warn('[AdMob-v8] [FLOW] Sync timed out or taking too long. Proceeding anyway.');
+                } else {
+                    console.log('[AdMob-v8] [FLOW] Sync completed confirmed. Proceeding to next ad.');
                 }
 
                 setTimeout(() => {
-                    if (this.queueActive) {
+                    if (this.queueActive && this.state !== AdState.SHOWING) {
                         this.showNextAd();
                     }
-                }, 700);
-            } else {
-                this.preload();
+                }, 800);
             }
         };
 
-        // Variation 1: Plugin Constants
+        // CORE LISTENERS
         AdMob.addListener(RewardAdPluginEvents.Rewarded, (r) => handleReward(r));
         AdMob.addListener(RewardAdPluginEvents.Dismissed, () => handleDismiss());
 
-        // Variation 2: Absolute Strings (v8 Common names)
-        // Many v8 builds use these specific strings or 'onRewarded'
+        // Use literal strings ONLY as fallback if plugin events fail, but here we prefer stability.
+        // We'll keep ONE string literal variation as it's common in some v8 minor builds.
         AdMob.addListener('onRewardedVideoAdReward' as any, (r) => handleReward(r));
         AdMob.addListener('onRewardedVideoAdDismissed' as any, () => handleDismiss());
-        AdMob.addListener('rewardAdRewarded' as any, (r) => handleReward(r));
-        AdMob.addListener('rewardAdDismissed' as any, () => handleDismiss());
 
-        // Variation 3: Loaded and Failed
         AdMob.addListener(RewardAdPluginEvents.Loaded, () => {
-            console.log('[AdMob-v8] Event: Loaded (READY)');
+            console.log('[AdMob-v8] Loaded event. Current state:', this.state);
+
+            // CRITICAL: If we are already showing, do NOT touch the state
+            if (this.state === AdState.SHOWING) {
+                console.log('[AdMob-v8] Load event ignored while SHOWING');
+                return;
+            }
+
             this.state = AdState.READY;
             this.onReadyCallbacks.forEach(cb => cb());
-            if (this.queueActive) this.executeShowDirectly();
+
+            // Solo auto-show si estamos en cola y NADA se está mostrando
+            if (this.queueActive && this.state === AdState.READY) {
+                this.executeShowDirectly();
+            }
         });
 
         AdMob.addListener(RewardAdPluginEvents.FailedToShow, (error: any) => {
-            console.error('[AdMob-v8] Event: FailedToShow', error);
+            console.error('[AdMob-v8] FailedToShow:', error);
             this.state = AdState.ERROR;
             this.clearTimeout();
             this.onErrorCallbacks.forEach(cb => cb(error.message));
-            if (this.queueActive) setTimeout(() => this.showNextAd(), 1000);
+            if (this.queueActive) setTimeout(() => this.showNextAd(), 1500);
         });
 
         AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (error: any) => {
-            console.error('[AdMob-v8] Event: FailedToLoad', error);
+            console.error('[AdMob-v8] FailedToLoad:', error);
             this.state = AdState.ERROR;
             this.onErrorCallbacks.forEach(cb => cb(error.message));
             if (this.queueActive) setTimeout(() => this.showNextAd(), 3000);
@@ -172,21 +189,19 @@ class AdManager {
 
         try {
             if (Capacitor.isNativePlatform()) {
-                console.log('[AdMob-v8] Initializing AdMob Native Step...');
+                console.log('[AdMob-v8] Native setup...');
                 if (!this.isInitialized) {
                     await AdMob.initialize();
                     this.isInitialized = true;
                 }
-                // Call setup listeners in initialize to ensure it runs when ready
                 this.setupListeners();
                 await this.preload();
             } else {
-                console.log('[AdMob-v8] Initializing AdMob Web Mock...');
                 this.isInitialized = true;
                 this.state = AdState.READY;
             }
         } catch (error) {
-            console.error('[AdMob-v8] Initialization failed:', error);
+            console.error('[AdMob-v8] Init error:', error);
         }
     }
 
@@ -224,6 +239,13 @@ class AdManager {
 
     private async executeShowDirectly() {
         if (this.state !== AdState.READY) return;
+
+        const now = Date.now();
+        if (now - this.lastShowTime < 3000) {
+            console.warn('[AdMob-v8] show() call debounced. Too frequent.');
+            return;
+        }
+        this.lastShowTime = now;
 
         try {
             console.log('[AdMob-v8] showRewardVideoAd executing...');

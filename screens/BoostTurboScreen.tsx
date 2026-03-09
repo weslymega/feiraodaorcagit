@@ -68,11 +68,12 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         .maybeSingle();
 
                     if (turboSession && isMounted) {
+                        console.log("[BoostTurboScreen] [SCHEMA CHECK] Session columns from DB:", JSON.stringify(turboSession));
                         const sess = {
                             id: turboSession.id,
                             adId: turboSession.ad_id,
-                            requiredSteps: turboSession.required_steps || 5,
-                            currentStep: turboSession.current_step || 0
+                            requiredSteps: turboSession.required_steps || turboSession.required_ads || 5,
+                            currentStep: turboSession.current_step || turboSession.watched_ads || 0
                         };
                         setActiveSession(sess);
                         sessionRef.current = sess;
@@ -93,44 +94,74 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const handleAdRewardedInternal = async (): Promise<void> => {
         const currentSession = sessionRef.current;
         if (!currentSession) {
-            console.error("[BoostTurboScreen] Reward sync skipped: No active session ref");
+            console.error("[BoostTurboScreen] [STEP 10] ERROR: Reward sync skipped - No active session ref");
             return;
         }
 
-        console.log(`[BoostTurboScreen] START REWARD SYNC for ${currentSession.id} (Counter: ${localProgress + 1})`);
+        console.log(`[BoostTurboScreen] [STEP 11] START SYNC: Session ${currentSession.id} (Current Local Step: ${localProgress + 1})`);
         setSyncError(null);
 
         try {
             // 1. Otimismo Imediato (Visual)
+            console.log(`[BoostTurboScreen] [STEP 12] Optimistic UI Update: ${localProgress} -> ${localProgress + 1}`);
             setLocalProgress(prev => prev + 1);
 
             // 2. Chamada ao Servidor
             const { data: sessionData } = await supabase.auth.getSession();
-            if (!sessionData?.session) throw new Error("Sessão expirada. Refaça o login.");
+            if (!sessionData?.session) {
+                console.error("[BoostTurboScreen] [STEP 13] AUTH ERROR: No session available");
+                throw new Error("Sessão expirada. Refaça o login.");
+            }
 
+            const debugPayload = {
+                sessionId: currentSession.id,
+                userId: sessionData.session.user.id,
+                localStepToSync: localProgress + 1,
+                targetFunction: 'increment-turbo-step',
+                targetTable: 'ad_turbo_sessions'
+            };
+            console.log(`[BoostTurboScreen] [STEP 14] Invoking Edge Function. PAYLOAD:`, JSON.stringify(debugPayload));
+
+            const startTime = Date.now();
             const { data, error: invokeError } = await supabase.functions.invoke('increment-turbo-step', {
                 body: { sessionId: currentSession.id },
                 headers: { Authorization: `Bearer ${sessionData.session.access_token}` }
             });
+            const duration = Date.now() - startTime;
 
-            if (invokeError) throw invokeError;
-            if (!data?.success) throw new Error(data?.error || "Servidor não confirmou.");
+            if (invokeError) {
+                console.error(`[BoostTurboScreen] [STEP 15] EDGE FUNCTION ERROR (${duration}ms):`, JSON.stringify(invokeError));
+                throw invokeError;
+            }
+
+            console.log(`[BoostTurboScreen] [STEP 16] FULL SERVER RESPONSE (${duration}ms):`, JSON.stringify(data));
+
+            if (!data?.success) {
+                console.warn("[BoostTurboScreen] [STEP 17] SERVER REJECTION:", data?.error || "Unknown Error");
+                throw new Error(data?.error || "Servidor não confirmou.");
+            }
 
             const newStep = data?.current_step ?? data?.currentStep;
 
             if (newStep !== undefined) {
-                console.log(`[BoostTurboScreen] SYNC SUCCESS! DB Step: ${newStep}/${currentSession.requiredSteps}`);
+                console.log(`[BoostTurboScreen] [STEP 18] SYNC CONFIRMED! New DB Step: ${newStep}/${currentSession.requiredSteps}`);
 
                 // Atualizamos a sessão real com o dado que veio do banco
-                setActiveSession(prev => prev ? { ...prev, currentStep: newStep } : null);
+                setActiveSession(prev => {
+                    console.log(`[BoostTurboScreen] [STEP 19] Updating React State 'activeSession' from ${prev?.currentStep} to ${newStep}`);
+                    return prev ? { ...prev, currentStep: newStep } : null;
+                });
 
                 // Se completou, marcamos finalização
                 if (newStep >= currentSession.requiredSteps) {
+                    console.log("[BoostTurboScreen] [STEP 20] SESSION COMPLETED! Triggering finalized state.");
                     setIsFinalizing(true);
                 }
+            } else {
+                console.warn("[BoostTurboScreen] [STEP 18b] WARNING: Response succeeded but 'currentStep' is missing.");
             }
         } catch (err: any) {
-            console.error("[BoostTurboScreen] SYNC ERROR:", err);
+            console.error("[BoostTurboScreen] [STEP ERROR] CRITICAL SYNC FAILURE:", err);
             const msg = err.message || "Erro de rede";
             setSyncError(msg);
 
@@ -142,36 +173,51 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         }
     };
 
+    const localProgressRef = useRef(localProgress);
+    useEffect(() => {
+        localProgressRef.current = localProgress;
+        console.log(`[BoostTurboScreen] [UI-STATE] localProgress changed: ${localProgress}`);
+    }, [localProgress]);
+
+    useEffect(() => {
+        if (activeSession) {
+            console.log(`[BoostTurboScreen] [UI-STATE] activeSession changed: ${activeSession.currentStep}/${activeSession.requiredSteps}`);
+        }
+    }, [activeSession]);
+
     // Ref com handlers atualizados para evitar closures presas em listeners de 1x
     handlersRef.current = {
         handleRewarded: handleAdRewardedInternal,
         handleDismissed: () => {
-            console.log("[AdMob-v8] UI: Dismiss received");
+            console.log("[BoostTurboScreen] [EVENT] Native Dismiss received -> setWatchingAd(false)");
             setWatchingAd(false);
             setAdReady(AdManager.isAdReady());
         },
         handleCompleted: () => {
-            console.log("[AdMob-v8] UI: Queue Completed");
+            console.log("[BoostTurboScreen] [EVENT] Queue Completed -> Starting Finalization Sequence");
             setIsFinalizing(true);
             setWatchingAd(true);
 
-            // Pequeno delay para garantir que o último setLocalProgress e setActiveSession rodaram
+            // Delay para garantir que todas as promessas de sync de handleRewarded tenham resolvido
             setTimeout(() => {
                 const current = sessionRef.current;
-                const prog = localProgressRef.current; // Usar ref para valor mais atual se necessário
+                const prog = localProgressRef.current;
+
+                console.log("[BoostTurboScreen] [FLOW] Final Completion Check:", { db: current?.currentStep, local: prog, req: current?.requiredSteps });
 
                 if (current && (current.currentStep >= current.requiredSteps || prog >= current.requiredSteps)) {
+                    console.log("[BoostTurboScreen] [FLOW] PROGRESS VERIFIED. Closing turbo flow.");
                     alert("🎉 Tudo pronto! Seu anúncio agora já está turbinado e em destaque.");
                     onBackRef.current();
                 } else {
-                    console.warn("[BoostTurboScreen] Queue finished but progress check failed", { db: current?.currentStep, local: prog });
+                    console.warn("[BoostTurboScreen] [FLOW] Completion check failed. Database or Local progress out of sync.");
+                    setIsFinalizing(false);
+                    setWatchingAd(false);
+                    setSyncError("Ocorreu um atraso na sincronização. Verifique se o progresso salvou corretamente.");
                 }
-            }, 1500);
+            }, 3500);
         }
     };
-
-    const localProgressRef = useRef(localProgress);
-    useEffect(() => { localProgressRef.current = localProgress; }, [localProgress]);
 
     // Registro dos Listeners no Ciclo de Vida do AdId
     useEffect(() => {
