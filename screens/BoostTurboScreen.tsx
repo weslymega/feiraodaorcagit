@@ -24,6 +24,12 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [watchingAd, setWatchingAd] = useState(false);
     const [isFinalizing, setIsFinalizing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
+    const [debugInfo, setDebugInfo] = useState<{
+        url: string,
+        func: string,
+        fullUrl: string,
+        token: boolean
+    } | null>(null);
 
     // Refs para manter listeners estáveis e acessar estado atualizado sem re-registrar
     const sessionRef = useRef(activeSession);
@@ -123,6 +129,14 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
             const funcName = 'increment-turbo-step';
             const payload = { sessionId: currentSession.id };
+
+            // DIAGNÓSTICO VISUAL PARA CELULAR
+            setDebugInfo({
+                url: import.meta.env.VITE_SUPABASE_URL || "VAZIO/NULL",
+                func: funcName,
+                fullUrl: `${(supabase as any).functions?.url}/${funcName}`,
+                token: !!token
+            });
 
             console.log("[SYNC DEBUG] invoking edge function");
             console.log("[SYNC DEBUG] function name:", funcName);
@@ -451,6 +465,17 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                         >
                                             Tentar Sincronizar Agora
                                         </button>
+                                    </div>
+                                )}
+
+                                {/* DIAGNÓSTICO VISUAL PARA APK (CELULAR) */}
+                                {debugInfo && (
+                                    <div className="mb-6 p-3 bg-gray-100 border border-gray-200 rounded-xl text-[10px] text-left font-mono text-gray-500 overflow-hidden">
+                                        <p className="font-bold text-gray-700 border-b border-gray-200 mb-1 pb-1 uppercase tracking-tighter">Diagnostic (Mobile Only)</p>
+                                        <p><span className="text-blue-600">SUPABASE URL:</span> {debugInfo.url}</p>
+                                        <p><span className="text-blue-600">FUNCTION:</span> {debugInfo.func}</p>
+                                        <p><span className="text-blue-600">FULL URL:</span> {debugInfo.fullUrl}</p>
+                                        <p><span className="text-blue-600">TOKEN:</span> {debugInfo.token ? "PRESENT ✅" : "MISSING ❌"}</p>
                                     </div>
                                 )}
 
