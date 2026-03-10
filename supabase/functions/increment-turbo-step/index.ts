@@ -43,6 +43,8 @@ serve(async (req) => {
 
         // 3. Extrair Inputs
         const { sessionId } = await req.json();
+        console.log("SESSION ID RECEIVED:", sessionId);
+
         if (!sessionId) {
             return jsonResponse({ success: false, error: 'sessionId é obrigatório' }, 400);
         }
@@ -54,7 +56,10 @@ serve(async (req) => {
             .eq('id', sessionId)
             .single();
 
+        console.log("SESSION FOUND:", session);
+
         if (sessionFetchError || !session) {
+            console.error(`[increment-turbo-step] Sessão ${sessionId} não encontrada no banco.`);
             return jsonResponse({ success: false, error: 'Sessão não encontrada' }, 404);
         }
 
@@ -75,7 +80,7 @@ serve(async (req) => {
 
         // 5. INCREMENTO SEGURO (CONCORRÊNCIA)
         // Usamos update atômico para evitar duplicação em cliques rápidos
-        const { data: updatedSession, error: updateError } = await supabaseAdmin
+        const { data: updatedSession, error: updateError, count } = await supabaseAdmin
             .from('ad_turbo_sessions')
             .update({
                 current_step: session.current_step + 1,
@@ -87,9 +92,15 @@ serve(async (req) => {
             .select('*')
             .single();
 
+        console.log("UPDATE RESULT - Count:", count, "Data:", updatedSession);
+
         if (updateError || !updatedSession) {
-            console.error('[increment-turbo-step] Erro ao incrementar passo:', updateError);
-            return jsonResponse({ success: false, error: 'Erro ao registrar progresso. Tente novamente.' }, 500);
+            console.error('[increment-turbo-step] Erro ou Nenhuma linha alterada:', updateError);
+            return jsonResponse({
+                success: false,
+                error: 'Erro ao registrar progresso ou conflito de concorrência. Tente novamente.',
+                details: updateError
+            }, 500);
         }
 
         let turboActivated = false;
