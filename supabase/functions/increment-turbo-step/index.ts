@@ -49,59 +49,69 @@ serve(async (req) => {
             return jsonResponse({ success: false, error: 'sessionId é obrigatório' }, 400);
         }
 
-        // 4. Buscar e Validar Sessão (Usando Service Role para ignorar RLS e garantir integridade)
+        // 4. Buscar e Validar Sessão
         const { data: session, error: sessionFetchError } = await supabaseAdmin
             .from('ad_turbo_sessions')
             .select('*')
             .eq('id', sessionId)
             .single();
 
-        console.log("SESSION FOUND:", session);
-
         if (sessionFetchError || !session) {
-            console.error(`[increment-turbo-step] Sessão ${sessionId} não encontrada no banco.`);
+            console.error(`[increment-turbo-step] Sessão ${sessionId} não encontrada.`);
             return jsonResponse({ success: false, error: 'Sessão não encontrada' }, 404);
         }
 
-        // Segurança: Garantir que a sessão pertence ao usuário
         if (session.user_id !== user.id) {
             console.error(`[increment-turbo-step] FRAUDE: User ${user.id} tentou acessar sessão de ${session.user_id}`);
-            return jsonResponse({ success: false, error: 'Sessão inválida ou não autorizada' }, 403);
+            return jsonResponse({ success: false, error: 'Acesso negado' }, 403);
         }
 
-        // Validar Estado da Sessão
+        // 🛡️ 4.1 Proteção de Expiração
+        const now = new Date();
+        const expiresAtDate = session.expires_at ? new Date(session.expires_at) : null;
+        if (expiresAtDate && expiresAtDate < now) {
+            console.error(`[increment-turbo-step] SESSION_EXPIRED: ${sessionId}`);
+            return jsonResponse({ success: false, error: 'SESSION_EXPIRED' }, 400);
+        }
+
+        // 🛡️ 4.2 Proteção de Conclusão / Atividade
         if (session.status !== 'active') {
-            return jsonResponse({ success: false, error: 'Esta sessão já foi concluída ou cancelada' }, 400);
+            return jsonResponse({ success: false, error: 'Esta sessão não está ativa' }, 400);
         }
-
         if (session.current_step >= session.required_steps) {
-            return jsonResponse({ success: false, error: 'Todos os passos já foram concluídos nesta sessão' }, 400);
+            console.warn(`[increment-turbo-step] SESSION_ALREADY_COMPLETED: ${sessionId}`);
+            return jsonResponse({ success: false, error: 'SESSION_ALREADY_COMPLETED' }, 400);
         }
 
-        // 5. INCREMENTO SEGURO (CONCORRÊNCIA)
-        // Usamos update atômico para evitar duplicação em cliques rápidos
+        console.log("STEP BEFORE:", session.current_step);
+
+        // 🛡️ 5. INCREMENTO SEGURO (CONCORRÊNCIA + OVERFLOW PROTECTION)
+        const nextStep = Math.min(session.current_step + 1, session.required_steps);
+
         const { data: updatedSession, error: updateError, count } = await supabaseAdmin
             .from('ad_turbo_sessions')
             .update({
-                current_step: session.current_step + 1,
-                updated_at: new Date().toISOString()
+                current_step: nextStep,
+                updated_at: now.toISOString()
             })
             .eq('id', sessionId)
-            .eq('status', 'active') // Garantia extra de idempotência
-            .eq('current_step', session.current_step) // Previne double-click
+            .eq('status', 'active')
+            .eq('current_step', session.current_step) // Previne update duplicado
             .select('*')
             .single();
 
-        console.log("UPDATE RESULT - Count:", count, "Data:", updatedSession);
+        console.log("ROWS UPDATED:", count);
 
-        if (updateError || !updatedSession) {
-            console.error('[increment-turbo-step] Erro ou Nenhuma linha alterada:', updateError);
+        if (updateError || !updatedSession || count === 0) {
+            console.error('[increment-turbo-step] UPDATE_FAILED ou Nenhuma linha alterada:', updateError);
             return jsonResponse({
                 success: false,
-                error: 'Erro ao registrar progresso ou conflito de concorrência. Tente novamente.',
+                error: 'UPDATE_FAILED_NO_ROWS_AFFECTED',
                 details: updateError
             }, 500);
         }
+
+        console.log("STEP AFTER:", updatedSession.current_step);
 
         let turboActivated = false;
         let expiresAt: string | null = null;
@@ -110,25 +120,22 @@ serve(async (req) => {
         if (updatedSession.current_step >= updatedSession.required_steps) {
             console.log(`[increment-turbo-step] Sessão ${sessionId} CONCLUÍDA. Ativando Turbo...`);
 
-            // Mapeamento de Planos e Duração
             const turboType = updatedSession.turbo_type;
             let durationDays = 1;
             let planoId = 'f174fc27-88a8-4ac4-a26f-2cd0b8b81cd9'; // Simples (Premium)
 
             if (turboType === 'pro') {
                 durationDays = 3;
-                planoId = '90c61495-d664-464c-92f6-8c489a695283'; // Médio (Pro)
+                planoId = '90c61495-d664-464c-92f6-8c489a695283';
             } else if (turboType === 'max') {
                 durationDays = 7;
-                planoId = '072d6be5-4e77-4c75-9ad5-2df2f3cf562b'; // Máximo (Max)
+                planoId = '072d6be5-4e77-4c75-9ad5-2df2f3cf562b';
             }
 
             const startDate = new Date();
             const endDate = new Date();
             endDate.setDate(startDate.getDate() + durationDays);
             expiresAt = endDate.toISOString();
-
-            // Transação implícita (várias operações com Service Role)
 
             // A. Finalizar Sessão
             await supabaseAdmin
@@ -151,22 +158,16 @@ serve(async (req) => {
                     fim_em: expiresAt
                 });
 
-            if (highlightError) {
-                console.error('[increment-turbo-step] Erro ao criar destaque:', highlightError);
-            }
+            if (highlightError) console.error('[increment-turbo-step] Erro destaque:', highlightError);
 
-            // C. Atualizar Anúncio (para fins de exibição imediata e filtragem)
-            const { error: adUpdateError } = await supabaseAdmin
+            // C. Atualizar Anúncio
+            await supabaseAdmin
                 .from('anuncios')
                 .update({
                     boost_plan: planoId,
                     updated_at: startDate.toISOString()
                 })
                 .eq('id', updatedSession.ad_id);
-
-            if (adUpdateError) {
-                console.error('[increment-turbo-step] Erro ao atualizar boost_plan no anúncio:', adUpdateError);
-            }
 
             turboActivated = true;
         }
@@ -176,7 +177,6 @@ serve(async (req) => {
             success: true,
             current_step: updatedSession.current_step,
             required_steps: updatedSession.required_steps,
-            remaining_steps: Math.max(0, updatedSession.required_steps - updatedSession.current_step),
             turbo_activated: turboActivated,
             expires_at: expiresAt
         });

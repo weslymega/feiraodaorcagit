@@ -173,7 +173,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     return prev ? { ...prev, currentStep: newStep } : null;
                 });
 
-                // Se completou, marcamos finalização APENAS se o servidor confirmar ativação
+                // Se completou, marcamos finalização APENAS se o servidor confirmar ativação real
                 if (data?.turbo_activated) {
                     console.log("[BoostTurboScreen] [STEP 20] SERVER CONFIRMED TURBO ACTIVATED! Triggering finalized state.");
                     setIsFinalizing(true);
@@ -183,14 +183,25 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             }
         } catch (err: any) {
             console.error("[BoostTurboScreen] [STEP ERROR] CRITICAL SYNC FAILURE:", err);
-            const msg = err.message || "Erro de rede";
+
+            // Tratamento de Erros Estruturais (Plano V3)
+            let msg = err.message || "Erro de rede";
+
+            if (msg.includes("SESSION_EXPIRED")) {
+                msg = "🚨 Sessão Expirada! Esta sessão de anúncios não é mais válida. Por favor, feche e abra novamente para criar uma nova.";
+            } else if (msg.includes("SESSION_ALREADY_COMPLETED")) {
+                msg = "✅ Esta sessão já foi concluída com sucesso!";
+            } else if (msg.includes("UPDATE_FAILED_NO_ROWS_AFFECTED")) {
+                msg = "⚠️ Conflito de sincronização. Tente clicar em 'Tentar Sincronizar Agora'.";
+            }
+
             setSyncError(msg);
 
             // Em caso de erro, mostramos um alerta sonoro/visual forçado no celular
             if (Capacitor.isNativePlatform()) {
-                window.alert(`⚠️ ERRO DE SINCRONIZAÇÃO:\n${msg}\n\nO progresso pode não ter sido salvo no banco.`);
+                window.alert(`⚠️ ERRO DE SINCRONIZAÇÃO:\n${msg}`);
             }
-            throw err; // Repassa para o AdManager gerenciar
+            throw err;
         }
     };
 
@@ -224,18 +235,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 const current = sessionRef.current;
                 const prog = localProgressRef.current;
 
-                console.log("[BoostTurboScreen] [FLOW] Final Completion Check:", { db: current?.currentStep, local: prog, req: current?.requiredSteps });
+                console.log("[BoostTurboScreen] [FLOW] Final Completion Check (DB-ONLY):", { db: current?.currentStep, req: current?.requiredSteps });
 
-                // Verificação final baseada no estado REAL (banco de dados)
-                if (current && (current.currentStep >= current.requiredSteps || prog >= current.requiredSteps)) {
-                    console.log("[BoostTurboScreen] [FLOW] PROGRESS VERIFIED. Closing turbo flow.");
+                // Verificação final baseada estritamente no estado do banco de dados
+                if (current && current.currentStep >= current.requiredSteps) {
+                    console.log("[BoostTurboScreen] [FLOW] PROGRESS VERIFIED BY SERVER. Closing turbo flow.");
                     alert("🎉 Tudo pronto! Seu anúncio agora já está turbinado e em destaque.");
                     onBackRef.current();
                 } else {
-                    console.warn("[BoostTurboScreen] [FLOW] Completion check failed. Database or Local progress out of sync.");
+                    console.warn("[BoostTurboScreen] [FLOW] Completion check failed. Database sync state did not reach the target.");
                     setIsFinalizing(false);
                     setWatchingAd(false);
-                    setSyncError("A sincronização falhou no servidor. Verifique sua conexão e tente novamente.");
+                    setSyncError("A conclusão não pôde ser confirmada pelo servidor. Por favor, verifique sua conexão e tente clicar em 'Tentar Sincronizar Agora'.");
                 }
             }, 3500);
         }
