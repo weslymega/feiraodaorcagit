@@ -151,38 +151,53 @@ serve(async (req) => {
             expiresAt = endDate.toISOString();
 
             // A. Finalizar Sessão
-            await supabaseAdmin
+            const { error: sessionUpdateError } = await supabaseAdmin
                 .from('ad_turbo_sessions')
-                .update({
-                    status: 'completed',
-                    completed_at: startDate.toISOString()
-                })
+                .update({ status: 'completed' })
                 .eq('id', sessionId);
 
-            // B. Criar Destaque
+            if (sessionUpdateError) {
+                console.error('[increment-turbo-step] Erro ao finalizar sessão:', sessionUpdateError);
+                return jsonResponse({ success: false, error: 'SESSION_FINALIZE_FAILED', details: sessionUpdateError.message }, 500);
+            }
+
+            // B. Criar Destaque (ad_highlights)
             const { error: highlightError } = await supabaseAdmin
-                .from('destaques_anuncios')
+                .from('ad_highlights')
                 .insert({
-                    anuncio_id: updatedSession.ad_id,
+                    ad_id: updatedSession.ad_id,
                     user_id: user.id,
-                    plano_id: planoId,
+                    plan_id: planoId,
                     status: 'active',
-                    inicio_em: startDate.toISOString(),
-                    fim_em: expiresAt
+                    starts_at: startDate.toISOString(),
+                    ends_at: expiresAt
                 });
 
-            if (highlightError) console.error('[increment-turbo-step] Erro destaque:', highlightError);
+            if (highlightError) {
+                console.error('[increment-turbo-step] Erro ao inserir destaque:', highlightError);
+                return jsonResponse({ success: false, error: 'HIGHLIGHT_INSERT_FAILED', details: highlightError.message }, 500);
+            }
 
-            // C. Atualizar Anúncio
-            await supabaseAdmin
+            // C. Atualizar Anúncio (anuncios)
+            const { error: adUpdateError } = await supabaseAdmin
                 .from('anuncios')
                 .update({
+                    is_turbo: true,
+                    turbo_type: updatedSession.turbo_type,
+                    turbo_expires_at: expiresAt,
+                    last_turbo_at: startDate.toISOString(),
                     boost_plan: planoId,
                     updated_at: startDate.toISOString()
                 })
                 .eq('id', updatedSession.ad_id);
 
+            if (adUpdateError) {
+                console.error('[increment-turbo-step] Erro ao atualizar anúncio:', adUpdateError);
+                return jsonResponse({ success: false, error: 'AD_UPDATE_FAILED', details: adUpdateError.message }, 500);
+            }
+
             turboActivated = true;
+            console.log(`[increment-turbo-step] Sessão ${sessionId} ativada com sucesso para o anúncio ${updatedSession.ad_id}`);
         }
 
         // 7. Retorno Padronizado
