@@ -193,7 +193,12 @@ serve(async (req) => {
 
             if (adUpdateError) {
                 console.error('[increment-turbo-step] Erro ao atualizar anúncio:', adUpdateError);
-                return jsonResponse({ success: false, error: 'AD_UPDATE_FAILED', details: adUpdateError.message }, 500);
+                // Expor o erro real para o APK para depuração final
+                return jsonResponse({ 
+                    success: false, 
+                    error: `AD_UPDATE_FAILED: ${adUpdateError.message}`, 
+                    details: adUpdateError.details || adUpdateError.hint 
+                }, 500);
             }
 
             turboActivated = true;
