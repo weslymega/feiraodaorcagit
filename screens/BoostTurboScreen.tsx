@@ -184,15 +184,36 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         } catch (err: any) {
             console.error("[BoostTurboScreen] [STEP ERROR] CRITICAL SYNC FAILURE:", err);
 
-            // Tratamento de Erros Estruturais (Plano V3)
-            let msg = err.message || "Erro de rede";
+            // Tenta extrair a mensagem de erro do corpo da resposta (JSON) do Supabase
+            let errorMsg = "";
+            try {
+                // Supabase FunctionsHttpError typically has context with the response
+                if (err.context && typeof err.context.json === 'function') {
+                    const errBody = await err.context.json();
+                    errorMsg = errBody.error || errBody.message || "";
+                    console.log("[BoostTurboScreen] Extracted error from context:", errorMsg);
+                } else if (err.message && (err.message.includes('{') || err.message.includes('success'))) {
+                    // Sometimes the error message itself contains the JSON string
+                    try {
+                        const parsed = JSON.parse(err.message);
+                        errorMsg = parsed.error || parsed.message || "";
+                    } catch (e) { /* ignore */ }
+                }
+            } catch (e) {
+                console.error("[BoostTurboScreen] Failed to parse error context:", e);
+            }
+
+            let msg = errorMsg || err.message || "Erro de rede";
 
             if (msg.includes("SESSION_EXPIRED")) {
                 msg = "🚨 Sessão Expirada! Esta sessão de anúncios não é mais válida. Por favor, feche e abra novamente para criar uma nova.";
             } else if (msg.includes("SESSION_ALREADY_COMPLETED")) {
                 msg = "✅ Esta sessão já foi concluída com sucesso!";
             } else if (msg.includes("UPDATE_FAILED_NO_ROWS_AFFECTED")) {
-                msg = "⚠️ Conflito de sincronização. Tente clicar em 'Tentar Sincronizar Agora'.";
+                msg = "⚠️ A sincronização não alterou o banco. Pode ser que a sessão expirou ou já foi processada. Tente clicar em 'Tentar Sincronizar Agora'.";
+            } else if (msg.includes("edge function returned a non-2xx status code")) {
+                // If we couldn't extract the specific error, but know it's a non-2xx
+                msg = `Erro do Servidor (${errorMsg || "Código não identificado"}). Verifique sua conexão.`;
             }
 
             setSyncError(msg);

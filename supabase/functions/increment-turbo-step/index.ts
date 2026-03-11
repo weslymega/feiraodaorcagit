@@ -83,31 +83,44 @@ serve(async (req) => {
             return jsonResponse({ success: false, error: 'SESSION_ALREADY_COMPLETED' }, 400);
         }
 
-        console.log("STEP BEFORE:", session.current_step);
+        console.log("USER ID:", user.id);
+        console.log("SESSION FOUND:", session);
+        console.log("CURRENT STEP BEFORE:", session.current_step);
 
-        // 🛡️ 5. INCREMENTO SEGURO (CONCORRÊNCIA + OVERFLOW PROTECTION)
-        const nextStep = Math.min(session.current_step + 1, session.required_steps);
+        // 4. Update session step (Atomic)
+        const newStep = Math.min(session.current_step + 1, session.required_steps);
 
-        const { data: updatedSession, error: updateError, count } = await supabaseAdmin
+        const { data: updatedRows, error: updateError, count } = await supabaseAdmin
             .from('ad_turbo_sessions')
             .update({
-                current_step: nextStep,
+                current_step: newStep,
                 updated_at: now.toISOString()
-            })
+            }, { count: 'exact' })
             .eq('id', sessionId)
+            .eq('user_id', user.id)
             .eq('status', 'active')
-            .eq('current_step', session.current_step) // Previne update duplicado
-            .select('*')
-            .single();
+            .eq('current_step', session.current_step); // Previne update duplicado
+
+        if (updateError) {
+            console.error("❌ Update error:", updateError);
+            return jsonResponse({ success: false, error: "DB_UPDATE_FAILED", details: updateError.message }, 500);
+        }
 
         console.log("ROWS UPDATED:", count);
 
-        if (updateError || !updatedSession || count === 0) {
-            console.error('[increment-turbo-step] UPDATE_FAILED ou Nenhuma linha alterada:', updateError);
+        if (count === 0) {
+            console.warn("⚠️ No rows updated (Session might be non-active, unauthorized, or already incremented)");
+            return jsonResponse({ success: false, error: "UPDATE_FAILED_NO_ROWS_AFFECTED" }, 400);
+        }
+
+        const updatedSession = updatedRows?.[0];
+
+        if (!updatedSession) { // Should not happen if count > 0, but for type safety
+            console.error('[increment-turbo-step] UPDATE_FAILED: No updated session data returned despite count > 0');
             return jsonResponse({
                 success: false,
-                error: 'UPDATE_FAILED_NO_ROWS_AFFECTED',
-                details: updateError
+                error: 'UPDATE_FAILED_NO_SESSION_DATA',
+                details: 'Concurrency conflict or unexpected DB behavior'
             }, 500);
         }
 
