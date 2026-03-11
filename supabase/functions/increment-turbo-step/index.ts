@@ -93,13 +93,13 @@ serve(async (req) => {
         const { data: updatedRows, error: updateError, count } = await supabaseAdmin
             .from('ad_turbo_sessions')
             .update({
-                current_step: newStep,
-                updated_at: now.toISOString()
+                current_step: newStep
             }, { count: 'exact' })
             .eq('id', sessionId)
             .eq('user_id', user.id)
             .eq('status', 'active')
-            .eq('current_step', session.current_step); // Previne update duplicado
+            .eq('current_step', session.current_step) // Previne update duplicado
+            .select('*');
 
         if (updateError) {
             console.error("❌ Update error:", updateError);
