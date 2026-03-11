@@ -11,6 +11,12 @@ SET search_path = public
 AS $$
 BEGIN
     -- 1. Se role for 'service_role' (Edge Functions / Admin via service key), permitir tudo.
+    -- Usamos o claim do JWT para garantir que o service_role seja detectado corretamente no contexto do Supabase.
+    IF (current_setting('request.jwt.claim.role', true) IN ('service_role', 'supabase_admin')) THEN
+        RETURN NEW;
+    END IF;
+
+    -- Redundância: Fallback para auth.role() padrão
     IF (auth.role() = 'service_role') THEN
         RETURN NEW;
     END IF;
