@@ -7,6 +7,7 @@ import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
+import { getBoostPriority } from '../utils/boostRibbon';
 
 interface RealEstateListProps {
   ads: AdItem[];
@@ -166,8 +167,8 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
     if (isTrending) {
       return filtered.sort((a, b) => {
-        const scoreA = (a.views || 0) + (a.favoriteCount || 0) * 5 + (a.chatCount || 0) * 10 + (a.boostPlan === 'Premium' ? 1000 : (a.boostPlan === 'Topo' ? 500 : 0));
-        const scoreB = (b.views || 0) + (b.favoriteCount || 0) * 5 + (b.chatCount || 0) * 10 + (b.boostPlan === 'Premium' ? 1000 : (b.boostPlan === 'Topo' ? 500 : 0));
+        const scoreA = (a.views || 0) + (a.favoriteCount || 0) * 5 + (a.chatCount || 0) * 10 + (getBoostPriority(a.boostPlan) * 500);
+        const scoreB = (b.views || 0) + (b.favoriteCount || 0) * 5 + (b.chatCount || 0) * 10 + (getBoostPriority(b.boostPlan) * 500);
         return scoreB - scoreA;
       });
     }

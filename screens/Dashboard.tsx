@@ -7,6 +7,7 @@ import { Screen, User, AdItem, DashboardPromotion } from '../types';
 import { POPULAR_REAL_ESTATE, POPULAR_SERVICES, POPULAR_CARS, APP_LOGOS, PROMO_BANNERS, CATEGORY_ICONS } from '../constants';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
+import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
 
 interface DashboardProps {
   user: User;
@@ -120,38 +121,18 @@ import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, onClick }) => {
 
   // Determine Boost Styles
+  const ribbon = getBoostRibbon(ad.boostPlan);
   let boostBadge = null;
   let borderColor = "border-gray-100";
 
-  const plan = ad.boostPlan;
-  const isPremium = plan === 'Premium';
-  const isTopo = plan === 'Topo';
-  const isSimples = plan === 'Simples' || ad.isFeatured;
+  if (ribbon) {
+    borderColor = ad.boostPlan === 'max' ? "border-yellow-400 ring-1 ring-yellow-400" : 
+                  ad.boostPlan === 'pro' ? "border-cyan-400" : "border-gray-200";
 
-  if (isPremium) {
-    borderColor = "border-yellow-400 ring-1 ring-yellow-400";
     boostBadge = (
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
-        <div className="absolute top-3 -left-8 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-white text-[9px] font-black px-8 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider">
-          {plan}
-        </div>
-      </div>
-    );
-  } else if (isTopo) {
-    borderColor = "border-cyan-400";
-    boostBadge = (
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
-        <div className="absolute top-3 -left-8 bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-[9px] font-black px-8 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider">
-          {plan}
-        </div>
-      </div>
-    );
-  } else if (isSimples) {
-    borderColor = "border-gray-200";
-    boostBadge = (
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
-        <div className="absolute top-3 -left-8 bg-gradient-to-r from-gray-400 to-gray-500 text-white text-[9px] font-black px-8 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider">
-          {plan === 'gratis' ? 'DESTAQUE' : plan.toUpperCase()}
+        <div className={`absolute top-3 -left-8 bg-gradient-to-r ${ribbon.gradient} text-white text-[9px] font-black px-8 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider`}>
+          {ribbon.label}
         </div>
       </div>
     );
@@ -231,17 +212,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     ).slice(0, 6)
     : [];
   // ------------------------------
-
-  // --- SORTING LOGIC FOR FEATURED ---
-  const getBoostPriority = (plan?: string) => {
-    const p = (plan || '').toLowerCase();
-    switch (p) {
-      case 'topo': return 3;
-      case 'premium': return 2;
-      case 'simples': return 1;
-      default: return 0;
-    }
-  };
 
   const sortedFeaturedVehicles = [...(featuredAds || [])].sort((a, b) => {
     return getBoostPriority(b.boostPlan) - getBoostPriority(a.boostPlan);

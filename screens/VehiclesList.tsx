@@ -11,6 +11,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getVehiclesWithFallback } from '../utils/adSelector';
+import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
 
 interface VehiclesListProps {
   ads: AdItem[];
@@ -294,21 +295,9 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     });
 
     // 2. Ordenação (Destaques Primeiro)
-    // Prioridade: Premium (4) > Advanced (3) > Basic (2) > Featured (1) > Normal (0)
     return filtered.sort((a, b) => {
-      const getPriority = (item: AdItem) => {
-        // Agora usamos os pesos sincronizados com o banco
-        // Ouro (7000) > Prata (3000) > Bronze (1000)
-        const plan = (item.boostPlan || '').toLowerCase();
-        if (plan === 'topo' || plan === 'ouro') return 7000;
-        if (plan === 'premium' || plan === 'prata') return 3000;
-        if (plan === 'simples' || plan === 'bronze') return 1000;
-        return 0;
-      };
-
-      const weightA = getPriority(a);
-      const weightB = getPriority(b);
-
+      const weightA = getBoostPriority(a.boostPlan);
+      const weightB = getBoostPriority(b.boostPlan);
       return weightB - weightA;
     });
 
@@ -507,32 +496,20 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
             const isFav = favorites.some(f => f.id === ad.id);
 
             // Visual Styles for Boosted Ads
+            const ribbon = getBoostRibbon(ad.boostPlan);
             let borderClass = 'border-gray-100';
             let badge = null;
 
-            if (ad.boostPlan && ad.boostPlan !== 'gratis') {
-              const plan = ad.boostPlan;
-              const isTopo = plan === 'Topo';
-              const isPremium = plan === 'Premium';
-              const isSimples = plan === 'Simples';
-
-              if (isTopo) {
-                borderClass = 'border-primary ring-1 ring-primary/30';
-              } else if (isPremium) {
-                borderClass = 'border-yellow-400 ring-1 ring-yellow-400/30';
-              } else if (isSimples) {
-                borderClass = 'border-gray-200';
-              }
+            if (ribbon) {
+              borderClass = ad.boostPlan === 'max' ? 'border-yellow-400 ring-1 ring-yellow-400/30' :
+                             ad.boostPlan === 'pro' ? 'border-primary ring-1 ring-primary/30' : 'border-gray-200';
 
               badge = (
-                <div className={`absolute top-3 left-3 bg-gradient-to-r ${isTopo ? 'from-cyan-400 to-blue-500' :
-                  isPremium ? 'from-yellow-400 to-orange-500' :
-                    'from-gray-500 to-slate-600'
-                  } text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20 uppercase tracking-wider`}>
-                  {isTopo && <Zap className="w-3 h-3 fill-current" />}
-                  {isPremium && <Trophy className="w-3 h-3 fill-current" />}
-                  {isSimples && <Star className="w-3 h-3 fill-current" />}
-                  {plan}
+                <div className={`absolute top-3 left-3 bg-gradient-to-r ${ribbon.gradient} text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20 uppercase tracking-wider`}>
+                  {ad.boostPlan === 'pro' && <Zap className="w-3 h-3 fill-current" />}
+                  {ad.boostPlan === 'max' && <Trophy className="w-3 h-3 fill-current" />}
+                  {ad.boostPlan === 'premium' && <Star className="w-3 h-3 fill-current" />}
+                  {ribbon.label}
                 </div>
               );
             }

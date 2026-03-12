@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { ChevronLeft, Heart, Star, MapPin, Gauge, Calendar, Zap, Trophy } from 'lucide-react';
 import { PriceTag } from '../components/Shared';
 import { AdItem } from '../types';
+import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
 
 interface FeaturedVehiclesScreenProps {
   ads: AdItem[];
@@ -12,41 +12,6 @@ interface FeaturedVehiclesScreenProps {
   onToggleFavorite: (ad: AdItem) => void;
 }
 
-// Helper to determine ribbon visuals based on plan
-const getRibbonConfig = (planName?: string) => {
-  const plan = (planName || '').toLowerCase();
-
-  if (plan === 'premium') {
-    return {
-      text: 'PREMIUM',
-      bg: 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-500',
-      border: 'border-yellow-400',
-      icon: <Trophy className="w-3 h-3 text-white fill-current" />
-    };
-  } else if (plan === 'topo') {
-    return {
-      text: 'TOPO',
-      bg: 'bg-gradient-to-r from-cyan-400 to-blue-500',
-      border: 'border-cyan-400',
-      icon: <Zap className="w-3 h-3 text-white fill-current" />
-    };
-  } else if (plan === 'simples') {
-    return {
-      text: 'SIMPLES',
-      bg: 'bg-gradient-to-r from-slate-400 to-slate-500',
-      border: 'border-slate-300',
-      icon: <Star className="w-3 h-3 text-white fill-current" />
-    };
-  } else {
-    return {
-      text: planName?.toUpperCase() || 'DESTAQUE',
-      bg: 'bg-gradient-to-r from-slate-400 to-slate-500',
-      border: 'border-slate-300',
-      icon: <Star className="w-3 h-3 text-white fill-current" />
-    };
-  }
-};
-
 export const FeaturedVehiclesScreen: React.FC<FeaturedVehiclesScreenProps> = ({
   ads,
   onBack,
@@ -55,68 +20,36 @@ export const FeaturedVehiclesScreen: React.FC<FeaturedVehiclesScreenProps> = ({
   onToggleFavorite
 }) => {
 
-  // --- SORTING LOGIC ---
-  // Priority: Premium (3) > Advanced (2) > Basic/Other (1)
-  const getBoostPriority = (plan?: string) => {
-    switch (plan) {
-      case 'Topo': return 3;
-      case 'Premium': return 2;
-      case 'Simples': return 1;
-      default: return 0;
-    }
-  };
-
   const sortedAds = [...ads].sort((a, b) => {
     return getBoostPriority(b.boostPlan) - getBoostPriority(a.boostPlan);
   });
 
   return (
     <div className="min-h-screen bg-gray-50 pb-6 animate-in slide-in-from-right duration-300">
-
-      {/* Custom Premium Header */}
-      <div className="bg-gradient-to-b from-gray-900 to-gray-800 text-white px-4 pt-4 pb-8 rounded-b-[40px] shadow-xl relative overflow-hidden z-10">
-
-        {/* Background Sparkles Pattern */}
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#fbbf24 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-
-        <div className="relative z-20 flex items-center justify-between mb-6">
-          <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
-            <ChevronLeft className="w-6 h-6 text-white" />
-          </button>
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-            <span className="text-xs font-bold text-yellow-100">Seleção Exclusiva</span>
-          </div>
-        </div>
-
-        <div className="relative z-20 px-2">
-          <h1 className="text-3xl font-bold text-white mb-2">Veículos em Destaque</h1>
-          <p className="text-gray-300 text-sm max-w-xs">
-            As melhores ofertas selecionadas e impulsionadas para você encontrar seu próximo carro mais rápido.
-          </p>
-        </div>
-      </div>
-
+      {/* ... header ... */}
       <div className="px-4 -mt-6 relative z-20 flex flex-col gap-5">
         {sortedAds.length > 0 ? (
           sortedAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);
-            const ribbon = getRibbonConfig(ad.boostPlan);
+            const ribbon = getBoostRibbon(ad.boostPlan);
 
             return (
               <div
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className={`bg-white rounded-3xl shadow-lg border-2 overflow-hidden cursor-pointer active:scale-[0.98] transition-all group relative ${ad.boostPlan === 'Premium' ? 'border-yellow-400 ring-2 ring-yellow-400/20' :
-                  ad.boostPlan === 'Topo' ? 'border-cyan-400' : 'border-gray-100'
-                  }`}
+                className={`bg-white rounded-3xl shadow-lg border-2 overflow-hidden cursor-pointer active:scale-[0.98] transition-all group relative ${
+                  ad.boostPlan === 'max' ? 'border-yellow-400 ring-2 ring-yellow-400/20' :
+                  ad.boostPlan === 'pro' ? 'border-cyan-400' : 'border-gray-100'
+                }`}
               >
                 {/* Visual Ribbon Sash */}
-                <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-20">
-                  <div className={`absolute top-4 -left-12 ${ribbon.bg} text-white text-[10px] font-black px-12 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center gap-1 w-40 text-center`}>
-                    {ribbon.text}
+                {ribbon && (
+                  <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-20">
+                    <div className={`absolute top-4 -left-12 bg-gradient-to-r ${ribbon.gradient} text-white text-[10px] font-black px-12 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center gap-1 w-40 text-center uppercase`}>
+                      {ribbon.label}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="relative h-56 w-full">
                   <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
