@@ -251,9 +251,6 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                 {ad.status === AdStatus.PENDING && (
                   <p className="text-orange-500 text-xs mt-2 font-medium animate-pulse">Aguardando revisão da equipe.</p>
                 )}
-                {ad.status === AdStatus.ACTIVE && (
-                  <p className="text-gray-400 text-xs mt-1">Visitas: 124 • Likes: 12</p>
-                )}
               </div>
               <img src={ad.image} alt={ad.title} className="w-28 h-20 object-cover rounded-lg bg-gray-100" />
             </div>

@@ -54,9 +54,30 @@ export const generateA4PrintTemplate = (ad: AdItem, qrCodeUrl: string) => {
           overflow: hidden;
         }
 
+        @page {
+          size: A4;
+          margin: 0;
+        }
+
         @media print {
-          body { padding: 0; }
-          .a4-container { border: none; width: 100%; height: 100%; }
+          html, body { 
+            width: 210mm;
+            height: 297mm;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: white;
+            -webkit-print-color-adjust: exact;
+          }
+          .a4-container { 
+            border: none; 
+            width: 210mm; 
+            height: 297mm; 
+            margin: 0;
+            page-break-after: avoid;
+            page-break-inside: avoid;
+            box-shadow: none;
+          }
         }
 
         /* Top Branding */

@@ -23,13 +23,8 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [adReady, setAdReady] = useState(false);
     const [watchingAd, setWatchingAd] = useState(false);
     const [isFinalizing, setIsFinalizing] = useState(false);
+    const finalizingRef = useRef(false); // Ref para leitura imediata em callbacks assíncronos
     const [syncError, setSyncError] = useState<string | null>(null);
-    const [debugInfo, setDebugInfo] = useState<{
-        url: string,
-        func: string,
-        fullUrl: string,
-        token: boolean
-    } | null>(null);
 
     // Refs para manter listeners estáveis e acessar estado atualizado sem re-registrar
     const sessionRef = useRef(activeSession);
@@ -97,7 +92,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         return () => { isMounted = false; };
     }, [adId]);
 
+    // Atualiza o Ref de finalização sempre que o State mudar
+    useEffect(() => {
+        finalizingRef.current = isFinalizing;
+    }, [isFinalizing]);
+
     const handleAdRewardedInternal = async (): Promise<void> => {
+        // 🚨 TRAVA 1: Impedir completamente nova chamada se a finalização já iniciou
+        if (finalizingRef.current) {
+            console.log("[BoostTurboScreen] [TRAVA] Requisição ignorada: Turbo já foi ativado previamente.");
+            return;
+        }
+
         const currentSession = sessionRef.current;
         if (!currentSession) {
             console.error("[BoostTurboScreen] [STEP 10] ERROR: Reward sync skipped - No active session ref");
@@ -130,18 +136,16 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             const funcName = 'increment-turbo-step';
             const payload = { sessionId: currentSession.id };
 
-            // DIAGNÓSTICO VISUAL PARA CELULAR
-            setDebugInfo({
-                url: import.meta.env.VITE_SUPABASE_URL || "VAZIO/NULL",
-                func: funcName,
-                fullUrl: `${(supabase as any).functions?.url}/${funcName}`,
-                token: !!token
-            });
-
             console.log("[SYNC DEBUG] invoking edge function");
             console.log("[SYNC DEBUG] function name:", funcName);
             console.log("[SYNC DEBUG] payload:", JSON.stringify(payload));
             console.log("[SYNC DEBUG] token present:", !!token);
+
+            // 🚨 TRAVA 1.5: Verificação final pré-rede caso outra promessa concorrente tenha finalizado o processo
+            if (finalizingRef.current) {
+                console.log("[BoostTurboScreen] [TRAVA] Requisição abortada no último instante: Turbo já foi ativado previamente.");
+                return;
+            }
 
             const startTime = Date.now();
             const { data, error: invokeError } = await supabase.functions.invoke(funcName, {
@@ -177,11 +181,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 if (data?.turbo_activated) {
                     console.log("[BoostTurboScreen] [STEP 20] SERVER CONFIRMED TURBO ACTIVATED! Triggering finalized state.");
                     setIsFinalizing(true);
+                    finalizingRef.current = true; // Seta o Ref instantaneamente para bloquear eventos paralelos
                 }
             } else {
                 console.warn("[BoostTurboScreen] [STEP 18b] WARNING: Response succeeded but 'currentStep' is missing.");
             }
         } catch (err: any) {
+            // 🚨 TRAVA 2: Absorver erros atrasados se o sucesso já foi cravado
+            if (finalizingRef.current) {
+                console.log("[BoostTurboScreen] [TRAVA] Erro absorvido e ignorado. Turbo já foi finalizado. Erro barrado:", err);
+                return;
+            }
+
             console.error("[BoostTurboScreen] [STEP ERROR] CRITICAL SYNC FAILURE:", err);
 
             // Tenta extrair a mensagem de erro do corpo da resposta (JSON) do Supabase
@@ -309,10 +320,13 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
         setWatchingAd(true);
         setSyncError(null);
-        setLocalProgress(currentSession.currentStep);
+        
+        // Garante que a contagem passada para o AdManager use o nosso otimismo 
+        // caso o sync do servidor ainda esteja em andamento.
+        const effectiveStep = Math.max(localProgress, currentSession.currentStep);
 
-        console.log("[BoostTurboScreen] START AD QUEUE from step:", currentSession.currentStep);
-        AdManager.startAdQueue(currentSession.requiredSteps, currentSession.currentStep);
+        console.log("[BoostTurboScreen] START AD QUEUE from step:", effectiveStep);
+        AdManager.startAdQueue(currentSession.requiredSteps, effectiveStep);
     };
 
 
@@ -376,9 +390,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50 pb-24">
+        <div className="flex flex-col h-full bg-gray-50">
             <Header title="Ativar Turbo" onBack={onBack} />
-            <div className="p-6">
+            <div className="flex-1 overflow-y-auto p-6 pb-36">
 
                 {/* ESTADO 1: Escolha do Plano */}
                 {!activeSession && (
@@ -498,17 +512,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                         >
                                             Tentar Sincronizar Agora
                                         </button>
-                                    </div>
-                                )}
-
-                                {/* DIAGNÓSTICO VISUAL PARA APK (CELULAR) */}
-                                {debugInfo && (
-                                    <div className="mb-6 p-3 bg-gray-100 border border-gray-200 rounded-xl text-[10px] text-left font-mono text-gray-500 overflow-hidden">
-                                        <p className="font-bold text-gray-700 border-b border-gray-200 mb-1 pb-1 uppercase tracking-tighter">Diagnostic (Mobile Only)</p>
-                                        <p><span className="text-blue-600">SUPABASE URL:</span> {debugInfo.url}</p>
-                                        <p><span className="text-blue-600">FUNCTION:</span> {debugInfo.func}</p>
-                                        <p><span className="text-blue-600">FULL URL:</span> {debugInfo.fullUrl}</p>
-                                        <p><span className="text-blue-600">TOKEN:</span> {debugInfo.token ? "PRESENT ✅" : "MISSING ❌"}</p>
                                     </div>
                                 )}
 

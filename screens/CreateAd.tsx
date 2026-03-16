@@ -646,6 +646,17 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
           ))}
         </div>
       )}
+      
+      <div className="mt-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100 flex items-start gap-3 animate-in fade-in">
+        <div className="bg-white p-2 text-primary rounded-xl shadow-sm flex-shrink-0 mt-0.5">
+          <Camera className="w-5 h-5" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-gray-900 leading-tight">Anúncios com fotos têm mais chances de venda!</p>
+          <p className="text-xs text-gray-600 mt-1 font-medium">Você pode carregar até <span className="font-bold text-gray-900">20 fotos</span> e escolher qual será a capa do anúncio.</p>
+        </div>
+      </div>
+
       <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" multiple accept="image/jpeg, image/png, image/webp" />
     </StepContainer>
   );
@@ -692,18 +703,29 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     </StepContainer>
   );
 
-  const renderTitle = () => (
-    <StepContainer title="Título do Anúncio" progress={0.82} onNext={nextStep} nextDisabled={!formData.title || formData.title.length > 40} onBack={goBack}>
-      <div className="space-y-6">
-        <h2 className="text-xl font-bold text-gray-900 leading-tight">Dê um nome para o seu anúncio</h2>
-        <p className="text-sm text-gray-500 font-medium">Um bom título ajuda compradores a encontrarem seu anúncio mais rápido.</p>
-        <div className="relative">
-          <input type="text" value={formData.title} onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))} className={`w-full border-2 rounded-2xl px-5 py-4 text-xl font-bold focus:ring-4 outline-none transition-all ${formData.title.length > 40 ? 'border-red-500' : 'border-gray-200 focus:border-primary'}`} />
-          <div className="flex justify-between mt-2 px-1"><span className={`text-[10px] font-bold uppercase ${formData.title.length > 40 ? 'text-red-500' : 'text-gray-400'}`}>{formData.title.length}/40 caracteres</span></div>
+  const renderTitle = () => {
+    let titlePlaceholder = "Ex: Produto excelente...";
+    if (formData.category === 'veiculos') {
+      titlePlaceholder = "Ex: Honda Civic LXR 2.0 Flex 16V Aut. 2014";
+    } else if (formData.category === 'imoveis') {
+      titlePlaceholder = "Ex: Lindo Apartamento 2 Quartos em Águas Claras";
+    } else if (formData.category === 'servicos' || formData.category === 'pecas') {
+      titlePlaceholder = "Ex: Jogo de Pneus Novos Aro 17";
+    }
+
+    return (
+      <StepContainer title="Título do Anúncio" progress={0.82} onNext={nextStep} nextDisabled={!formData.title || formData.title.length > 40} onBack={goBack}>
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold text-gray-900 leading-tight">Dê um nome para o seu anúncio</h2>
+          <p className="text-sm text-gray-500 font-medium">Um bom título ajuda compradores a encontrarem seu anúncio mais rápido.</p>
+          <div className="relative">
+            <input type="text" placeholder={titlePlaceholder} value={formData.title} onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))} className={`w-full border-2 rounded-2xl px-5 py-4 text-xl font-bold focus:ring-4 outline-none transition-all ${formData.title.length > 40 ? 'border-red-500' : 'border-gray-200 focus:border-primary'}`} />
+            <div className="flex justify-between mt-2 px-1"><span className={`text-[10px] font-bold uppercase ${formData.title.length > 40 ? 'text-red-500' : 'text-gray-400'}`}>{formData.title.length}/40 caracteres</span></div>
+          </div>
         </div>
-      </div>
-    </StepContainer>
-  );
+      </StepContainer>
+    );
+  };
 
   const renderDescription = () => (
     <StepContainer title="Descrição" progress={0.88} onNext={nextStep} nextDisabled={!formData.description || formData.description.length > 500} onBack={goBack}>
@@ -717,9 +739,12 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   const renderPrice = () => {
     const fipePercentage = formData.fipePrice > 0 ? (formData.price / formData.fipePrice) * 100 : 0;
     const isAboveFipe = formData.price > formData.fipePrice;
+    
+    // Validate if the price is effectively 0 for critical categories
+    const isPriceInvalid = (formData.category === 'veiculos' || formData.category === 'imoveis') && (!formData.price || formData.price <= 0);
 
     return (
-      <StepContainer title="Preço" progress={0.92} onNext={nextStep} onBack={goBack}>
+      <StepContainer title="Preço" progress={0.92} onNext={nextStep} onBack={goBack} nextDisabled={isPriceInvalid}>
         <div className="bg-gray-50 p-8 rounded-3xl mb-6 text-center border border-gray-100 animate-in zoom-in"><h2 className="text-xl font-bold text-gray-900 mb-6 uppercase tracking-wider">Qual o valor pedido?</h2><div className="relative inline-flex items-center"><span className="text-2xl font-black text-primary mr-2">R$</span><input type="text" inputMode="numeric" value={formData.price > 0 ? formData.price.toLocaleString('pt-BR') : ''} onChange={(e) => { const raw = e.target.value.replace(/\D/g, ''); if (raw.length > 10) return; setFormData(p => ({ ...p, price: raw ? parseInt(raw) : 0 })); }} className="w-full max-w-[200px] text-center text-5xl font-black bg-transparent border-b-4 border-gray-200 focus:border-primary transition-all outline-none py-2 text-gray-900 placeholder-gray-200" placeholder="0" maxLength={13} /></div></div>
         {formData.fipePrice > 0 && (
           <div className="p-5 bg-blue-50 border border-blue-100 rounded-3xl flex flex-col gap-4 animate-in fade-in">

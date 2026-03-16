@@ -335,12 +335,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* 3. Promotional Carousel */}
       <div className="mb-2">
         <PromoCarousel
-          banners={
-            dashboardPromotions.length > 0
-              ? dashboardPromotions
-                .filter(isPromotionVisible)
-                .sort((a, b) => a.order - b.order)
-                .map(p => ({
+          banners={(() => {
+            const activePromos = dashboardPromotions
+              .filter(isPromotionVisible)
+              .sort((a, b) => a.order - b.order);
+            
+            return activePromos.length > 0
+              ? activePromos.map(p => ({
                   id: p.id,
                   title: p.title || '',
                   subtitle: p.subtitle,
@@ -348,8 +349,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   ctaText: 'VER MAIS',
                   link: p.link
                 }))
-              : PROMO_BANNERS.map(p => ({ ...p, ctaText: p.ctaText || 'VER MAIS' }))
-          }
+              : PROMO_BANNERS.map(p => ({ ...p, ctaText: p.ctaText || 'VER MAIS' }));
+          })()}
         />
       </div>
 

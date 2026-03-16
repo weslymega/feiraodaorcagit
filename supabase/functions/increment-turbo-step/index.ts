@@ -186,7 +186,7 @@ serve(async (req) => {
                     turbo_type: updatedSession.turbo_type,
                     turbo_expires_at: expiresAt,
                     last_turbo_at: startDate.toISOString(),
-                    boost_plan: planoId,
+                    boost_plan: updatedSession.turbo_type, // Corrigido: Salva 'pro', 'max', 'premium' e não o UUID
                     updated_at: startDate.toISOString()
                 })
                 .eq('id', updatedSession.ad_id);
