@@ -7,6 +7,8 @@ import { APP_URL } from '../constants';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
 import { SmartImage } from '../components/ui/SmartImage';
+import { api } from '../services/api';
+import { Loader2 } from 'lucide-react';
 
 interface VehicleDetailsProps {
   ad: AdItem;
@@ -26,6 +28,7 @@ const SpecItem: React.FC<{ label: string; value: string | number }> = ({ label, 
     <span className="text-gray-900 font-bold text-sm">{value}</span>
   </div>
 );
+
 
 export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onStartChat, isFavorite, onToggleFavorite, onToggleFairPresence, onViewProfile, onReport }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -357,11 +360,33 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
             <div className="flex flex-wrap gap-2">{features.map((feat, idx) => (<span key={idx} className="bg-white text-gray-600 px-3 py-2 rounded-xl text-sm font-medium border border-gray-200">{feat}</span>))}</div>
           </div>
 
-          <div className="mb-8 bg-blue-50 p-5 rounded-2xl border border-blue-100">
-            <h3 className="font-bold text-blue-900 mb-4">Análise de Preço</h3>
-            <div className="flex justify-between items-center mb-2"><span className="text-sm text-blue-700 font-medium">Tabela FIPE</span><span className="font-bold text-blue-900">{ad.fipePrice ? ad.fipePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não informado'}</span></div>
-            {ad.fipePrice && (<><div className="w-full bg-blue-200 h-2 rounded-full overflow-hidden"><div className="bg-primary h-full rounded-full" style={{ width: `${Math.min(100, (ad.price / ad.fipePrice) * 100)}%` }}></div></div>{comparison && (<div className={`mt-3 px-3 py-1.5 rounded-lg text-xs font-bold text-center inline-block w-full ${comparison.bg} ${comparison.color}`}>{comparison.text}</div>)}</>)}
-            {!ad.fipePrice && (<p className="text-xs text-blue-600 mt-2 text-center font-medium">Dados de referência não disponíveis para este veículo.</p>)}
+          <div className="mb-8 bg-blue-50 p-5 rounded-2xl border border-blue-100 flex flex-col gap-4 shadow-sm">
+            <h3 className="font-black text-blue-900 uppercase tracking-widest text-xs flex items-center gap-2">
+              <Calculator className="w-4 h-4" /> Análise de Preço
+            </h3>
+            
+            <div className="flex flex-col gap-3">
+              {/* Tabela FIPE */}
+              <div className="bg-white/50 p-4 rounded-xl border border-blue-100">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs text-blue-700 font-bold uppercase">Referência FIPE</span>
+                  <span className="font-black text-blue-900">{ad.fipePrice ? ad.fipePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '---'}</span>
+                </div>
+                {ad.fipePrice && (
+                  <div className="space-y-2">
+                    <div className="w-full bg-blue-200 h-2 rounded-full overflow-hidden">
+                      <div className="bg-primary h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (ad.price / ad.fipePrice) * 100)}%` }}></div>
+                    </div>
+                    {comparison && (
+                      <div className={`px-2 py-1 rounded-lg text-[10px] font-black text-center uppercase tracking-wider ${comparison.bg} ${comparison.color}`}>
+                        {comparison.text}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
           </div>
 
           <div className="mb-4">

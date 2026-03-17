@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Filter, Search, Heart, Car, ChevronRight, X, Check, Gauge, Calendar, DollarSign, Fuel, Palette, Zap, Tag, Loader2, Edit3, ListFilter, Trophy, Star } from 'lucide-react';
 import { Header, PriceTag } from '../components/Shared';
 import { AdItem, FilterContext, AdStatus, VehiclesPromotion, Screen } from '../types';
-import { fipeApi, FipeItem } from '../services/fipeApi';
+import { fipeApi, FipeItem, FipeVehicleType } from '../services/fipeApi';
 import { VEHICLES_PROMO_BANNERS } from '../constants';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
@@ -84,16 +84,28 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
   });
 
 
-  // Load Brands on Mount
+  const getFipeType = (): FipeVehicleType => {
+    const group = selectedGroup.toLowerCase();
+    if (group === 'moto') return 'motos';
+    if (group === 'caminhão' || group === 'caminhao') return 'caminhoes';
+    return 'carros';
+  };
+
+  // Load Brands when vehicle type (selectedGroup) changes
   useEffect(() => {
     const loadBrands = async () => {
       setIsLoadingBrands(true);
-      const brands = await fipeApi.getBrands();
+      const brands = await fipeApi.getBrands(getFipeType());
       setFipeBrands(brands);
       setIsLoadingBrands(false);
     };
+
+    // Reseta filtros dependentes ao mudar de categoria
+    setFilters(prev => ({ ...prev, brand: '', baseModel: '', version: '' }));
+    setFipeModels([]);
+
     loadBrands();
-  }, []);
+  }, [selectedGroup]);
 
   // Handle Filter Context
   useEffect(() => {
@@ -117,7 +129,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       const selectedBrandObj = fipeBrands.find(b => b.nome === brandName);
       if (selectedBrandObj) {
         setIsLoadingModels(true);
-        const models = await fipeApi.getModels(selectedBrandObj.codigo);
+        const models = await fipeApi.getModels(getFipeType(), selectedBrandObj.codigo);
         setFipeModels(models);
         setIsLoadingModels(false);
       }

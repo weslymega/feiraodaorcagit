@@ -1,6 +1,6 @@
 import React from 'react';
-import { ChevronLeft, Heart, Star, MapPin, Gauge, Calendar, Zap, Trophy } from 'lucide-react';
-import { PriceTag } from '../components/Shared';
+import { Star, Heart, Calendar, Gauge, MapPin, Trophy } from 'lucide-react';
+import { Header, PriceTag } from '../components/Shared';
 import { AdItem } from '../types';
 import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
 
@@ -26,8 +26,17 @@ export const FeaturedVehiclesScreen: React.FC<FeaturedVehiclesScreenProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-50 pb-6 animate-in slide-in-from-right duration-300">
-      {/* ... header ... */}
-      <div className="px-4 -mt-6 relative z-20 flex flex-col gap-5">
+      <Header 
+        title="Destaques" 
+        onBack={onBack}
+        rightElement={
+          <div className="bg-yellow-100 p-2 rounded-full border border-yellow-200">
+            <Star className="w-4 h-4 text-yellow-600 fill-current" />
+          </div>
+        }
+      />
+
+      <div className="px-4 py-6 relative z-20 flex flex-col gap-5">
         {sortedAds.length > 0 ? (
           sortedAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);

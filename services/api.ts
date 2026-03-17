@@ -43,26 +43,29 @@ const cleanString = (val: any) => {
  * Database (values in Portuguese as per current schema) <-> Frontend Enums
  */
 export const STATUS_DB_MAP = {
-    [AdStatus.ACTIVE]: 'ativo',
-    [AdStatus.PENDING]: 'pendente',
-    [AdStatus.REJECTED]: 'rejeitado',
-    [AdStatus.SOLD]: 'vendido',
-    [AdStatus.INACTIVE]: 'inativo',
-    [AdStatus.BOUGHT]: 'comprado'
+    [AdStatus.ACTIVE]: 'active',
+    [AdStatus.PENDING]: 'pending',
+    [AdStatus.REJECTED]: 'rejected',
+    [AdStatus.SOLD]: 'sold',
+    [AdStatus.INACTIVE]: 'paused',
+    [AdStatus.BOUGHT]: 'bought'
 };
 
 const DB_STATUS_TO_ADSTATUS: Record<string, AdStatus> = {
-    'ativo': AdStatus.ACTIVE,
     'active': AdStatus.ACTIVE,
-    'pendente': AdStatus.PENDING,
+    'ativo': AdStatus.ACTIVE,
     'pending': AdStatus.PENDING,
-    'rejeitado': AdStatus.REJECTED,
+    'pendente': AdStatus.PENDING,
     'rejected': AdStatus.REJECTED,
-    'vendido': AdStatus.SOLD,
+    'rejeitado': AdStatus.REJECTED,
     'sold': AdStatus.SOLD,
-    'inativo': AdStatus.INACTIVE,
-    'inactive': AdStatus.INACTIVE,
+    'vendido': AdStatus.SOLD,
     'paused': AdStatus.INACTIVE,
+    'pausado': AdStatus.INACTIVE,
+    'inativo': AdStatus.INACTIVE,
+    'archived': AdStatus.INACTIVE, // UI mapping for archived
+    'arquivado': AdStatus.INACTIVE,
+    'bought': AdStatus.BOUGHT,
     'comprado': AdStatus.BOUGHT
 };
 
@@ -206,7 +209,9 @@ export const api = {
                 gearbox: adData.gearbox,
                 color: adData.color,
                 plate: adData.plate,
-                fipePrice: adData.fipePrice
+                fipePrice: adData.fipePrice,
+                brandName: adData.brandName,
+                modelName: adData.modelName
             };
         } else if (category === 'servicos' || category === 'pecas') {
             details = {
@@ -670,7 +675,9 @@ export const api = {
                 gearbox: adData.gearbox,
                 color: adData.color,
                 plate: adData.plate,
-                fipePrice: adData.fipePrice
+                fipePrice: adData.fipePrice,
+                brandName: adData.brandName,
+                modelName: adData.modelName
             };
         } else if (category === 'servicos' || category === 'pecas') {
             details = {
@@ -692,8 +699,8 @@ export const api = {
             updated_at: new Date().toISOString()
         };
 
-        // CRITICAL SECURITY: Ignore status from payload and force 'pendente'
-        updatePayload.status = 'pendente';
+        // CRITICAL SECURITY: Ignore status from payload and force 'pending'
+        updatePayload.status = 'pending';
 
         const { error } = await supabase
             .from('anuncios')
@@ -773,6 +780,25 @@ export const api = {
         });
         if (error) throw error;
         return true;
+    },
+
+    /**
+     * Get app average price for comparison
+     */
+    getAveragePrice: async (category: string, brand: string, model: string, year: number) => {
+        const { data, error } = await supabase.rpc('get_app_average_price', {
+            p_category: category,
+            p_brand: brand,
+            p_model: model,
+            p_year: year
+        });
+
+        if (error) {
+            console.error('Error fetching average price:', error);
+            return null;
+        }
+
+        return data[0] as { average_price: number | null, ad_count: number };
     },
 
     /**

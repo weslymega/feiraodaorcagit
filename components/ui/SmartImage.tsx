@@ -36,6 +36,7 @@ export const SmartImage: React.FC<SmartImageProps> = ({
                 <img
                     src={src}
                     alt={alt}
+                    loading="lazy"
                     className={`${className || ''} transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
                     {...props}
                 />

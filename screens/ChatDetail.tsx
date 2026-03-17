@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Paperclip, Check, CheckCheck, ArrowLeft, Loader2, ChevronRight } from 'lucide-react';
 import { MessageItem, ChatMessage } from '../types';
+import { imageService } from '../services/imageService';
 
 interface ChatDetailProps {
   chat: MessageItem;
@@ -46,38 +47,8 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
     fileInputRef.current?.click();
   };
 
-  // --- IMAGE COMPRESSION LOGIC ---
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800; // Chat images max width 800
-          const scaleSize = MAX_WIDTH / img.width;
+  // --- REMOVED LOCAL COMPRESSION IN FAVOR OF imageService ---
 
-          if (scaleSize < 1) {
-            canvas.width = MAX_WIDTH;
-            canvas.height = img.height * scaleSize;
-          } else {
-            canvas.width = img.width;
-            canvas.height = img.height;
-          }
-
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          // Compress to JPEG quality 0.6
-          resolve(canvas.toDataURL('image/jpeg', 0.6));
-        };
-        img.onerror = (error) => reject(error);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -114,24 +85,25 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
       }
 
       let processedCount = 0;
-      // Processa todas as imagens em paralelo com compressão
-      const imagePromises = validFiles.map(async (file) => {
-        // Simula delay para visualização do progresso
-        await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
-
-        const data = await compressImage(file);
+      // Processa todas as imagens em paralelo: Compressão + Upload para Storage
+      const uploadPromises = validFiles.map(async (file) => {
+        // 1. Comprimir (max 800px)
+        const compressed = await imageService.compress(file, 'chat');
+        
+        // 2. Upload para Storage (Pasta chat-images/adId/)
+        const publicUrl = await imageService.upload(compressed, 'chat-images', chat.adId);
 
         processedCount++;
         setUploadProgress(Math.round((processedCount / validFiles.length) * 100));
 
-        return data;
+        return publicUrl;
       });
 
-      const imagesBase64 = await Promise.all(imagePromises);
+      const imageUrls = await Promise.all(uploadPromises);
 
-      // Envia as mensagens uma por uma
-      imagesBase64.forEach(imgData => {
-        onSendMessage('', imgData);
+      // Envia as mensagens uma por uma com a URL final
+      imageUrls.forEach(url => {
+        onSendMessage('', url);
       });
 
     } catch (error) {

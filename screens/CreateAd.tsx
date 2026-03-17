@@ -9,10 +9,10 @@ import {
   ArrowDown, ArrowUp, Zap, ClipboardCheck, Info
 } from 'lucide-react';
 import { AdItem, AdStatus, User } from '../types';
-import { fipeApi, FipeItem, FipeDetail } from '../services/fipeApi';
+import { imageService } from '../services/imageService';
+import { fipeApi, FipeItem, FipeDetail, FipeVehicleType } from '../services/fipeApi';
 import { api } from '../services/api';
 import { APP_URL } from '../constants';
-import { useAppState } from '../hooks/useAppState';
 
 
 interface CreateAdProps {
@@ -44,6 +44,9 @@ enum CreateStep {
 }
 
 const ACTION_BTN_CLASS = "bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98]";
+
+const CAR_FEATURES = ["Airbag", "Ar condicionado", "Alarme", "Bancos de couro", "Câmera de ré", "Sensor de ré", "Som", "Teto solar", "Vidro elétrico", "Trava elétrica"];
+const MOTO_FEATURES = ["ABS", "Computador de bordo", "Escapamento esportivo", "Bolsa / Baú / Bauleto", "Contra peso no guidon", "Alarme", "Amortecedor de direção", "Faróis de neblina", "GPS", "Som"];
 
 interface StepContainerProps {
   title: string;
@@ -177,7 +180,8 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     cep: editingAd?.cep || (user.cep || ''),
     location: editingAd?.location || user.location || '',
     phone: editingAd?.contactPhone || user.phone || '',
-    boostPlan: 'gratis'
+    boostPlan: 'gratis',
+    fipeCategory: '' as FipeVehicleType | ''
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -188,9 +192,18 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     }
   }, [formData.category, step]);
 
+  const getFipeType = (): FipeVehicleType => {
+    if (formData.fipeCategory) return formData.fipeCategory;
+    const type = formData.vehicleType.toLowerCase();
+    if (type === 'passeio') return 'carros';
+    if (type === 'moto') return 'motos';
+    if (type === 'caminhão' || type === 'caminhao') return 'caminhoes';
+    return 'carros';
+  };
+
   const loadBrands = async () => {
     setIsLoadingBrands(true);
-    const brands = await fipeApi.getBrands();
+    const brands = await fipeApi.getBrands(getFipeType());
     setFipeBrands(brands);
     setIsLoadingBrands(false);
   };
@@ -207,7 +220,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     setFipeYears([]);
     if (brandId) {
       setIsLoadingModels(true);
-      const models = await fipeApi.getModels(brandId);
+      const models = await fipeApi.getModels(getFipeType(), brandId);
       setFipeModels(models);
       setIsLoadingModels(false);
     }
@@ -231,7 +244,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     setFipeYears([]);
     if (modelId) {
       setIsLoadingYears(true);
-      const years = await fipeApi.getYears(selectedBrandId, modelId);
+      const years = await fipeApi.getYears(getFipeType(), selectedBrandId, modelId);
       setFipeYears(years);
       setIsLoadingYears(false);
     }
@@ -253,7 +266,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     setSelectedYearId(yearId);
     if (yearId) {
       setIsLoadingDetail(true);
-      const detail = await fipeApi.getDetail(selectedBrandId, selectedModelId, yearId);
+      const detail = await fipeApi.getDetail(getFipeType(), selectedBrandId, selectedModelId, yearId);
       setIsLoadingDetail(false);
       if (detail) {
         const priceNum = parseFloat(detail.Valor.replace('R$ ', '').replace('.', '').replace(',', '.'));
@@ -298,8 +311,8 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   };
 
   const handleCreateAd = async () => {
-    let title = formData.title || editingAd?.title || 'Anúncio';
-    if (!title || title.trim() === '') {
+    let title = (formData.title || editingAd?.title || '').trim();
+    if (!title) {
       if (formData.category === 'veiculos') { title = `${formData.brandName} ${formData.modelName} ${formData.year || ''}`.trim() || formData.vehicleType; }
       else if (formData.category === 'imoveis') { title = `${formData.realEstateType || 'Imóvel'} - ${formData.area}m²`; }
       else if (formData.category === 'servicos') { title = `${formData.partType || 'Peça/Serviço'} ${formData.condition ? `(${formData.condition})` : ''}`; }
@@ -395,7 +408,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       case CreateStep.PHOTOS:
         if (formData.category === 'veiculos') next = CreateStep.PLATE;
         else if (formData.category === 'imoveis') next = CreateStep.REAL_ESTATE_SPECS;
-        else next = CreateStep.DESCRIPTION;
+        else next = CreateStep.TITLE;
         break;
       case CreateStep.PLATE: next = CreateStep.SPECS; break;
       case CreateStep.SPECS: next = CreateStep.INFO; break;
@@ -416,28 +429,8 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     goToStep(next);
   };
 
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          const scaleSize = MAX_WIDTH / img.width;
-          if (scaleSize < 1) { canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; }
-          else { canvas.width = img.width; canvas.height = img.height; }
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL('image/jpeg', 0.6));
-        };
-        img.onerror = (error) => reject(error);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
+  // --- REMOVED LOCAL COMPRESSION IN FAVOR OF imageService ---
+
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -445,14 +438,33 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       const currentCount = formData.images.length;
       const remainingSlots = 20 - currentCount;
       if (remainingSlots <= 0) { alert("Limite máximo de fotos atingido."); return; }
+      
       setIsUploading(true);
-      const filesToProcess = [...files].filter(file => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)).slice(0, remainingSlots);
+      const filesToProcess = [...files]
+        .filter(file => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
+        .slice(0, remainingSlots);
+
       try {
-        const imagePromises = filesToProcess.map(file => compressImage(file));
-        const newImages = await Promise.all(imagePromises);
-        setFormData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
-      } catch (error) { console.error("Error processing images", error); alert("Erro ao carregar imagens."); }
-      finally { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
+        const uploadPromises = filesToProcess.map(async (file) => {
+          // 1. Comprimir
+          const compressed = await imageService.compress(file, 'ad');
+          // 2. Upload para Storage (organizado por userId)
+          return await imageService.upload(compressed, 'ads-images', user.id);
+        });
+
+        const uploadedUrls = await Promise.all(uploadPromises);
+        setFormData(prev => ({ 
+          ...prev, 
+          images: [...prev.images, ...uploadedUrls] 
+        }));
+      } catch (error) { 
+        console.error("Error uploading images", error); 
+        alert("Erro ao enviar imagens para o servidor."); 
+      }
+      finally { 
+        setIsUploading(false); 
+        if (fileInputRef.current) fileInputRef.current.value = ''; 
+      }
     }
   };
 
@@ -525,7 +537,11 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
         { id: 'Moto', label: 'Motocicleta', icon: <Bike className="w-6 h-6" /> },
         { id: 'Caminhão', label: 'Caminhão / Ônibus', icon: <Truck className="w-6 h-6" /> }]
           .map((type) => (
-            <button key={type.id} onClick={() => { setFormData(p => ({ ...p, vehicleType: type.id })); nextStep(); }} className="flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.99]">
+            <button key={type.id} onClick={() => { 
+                const fipeCat: FipeVehicleType = type.id === 'Moto' ? 'motos' : (type.id === 'Caminhão' ? 'caminhoes' : 'carros');
+                setFormData(p => ({ ...p, vehicleType: type.id, fipeCategory: fipeCat })); 
+                nextStep(); 
+            }} className="flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-primary hover:shadow-md transition-all active:scale-[0.99]">
               <div className="p-3 bg-blue-50 text-primary rounded-xl">{type.icon}</div>
               <span className="font-bold text-gray-800 text-lg flex-1 text-left">{type.label}</span>
               <ChevronLeft className="w-5 h-5 text-gray-300 rotate-180" />
@@ -555,9 +571,25 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       <StepContainer title="Detalhes do Imóvel" progress={0.5} onNext={nextStep} nextDisabled={!canProceed} onBack={goBack}>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Área Total (m²)</label>
+            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide flex justify-between">
+              Área Total (m²)
+              <span className={`text-[10px] ${formData.area.length >= 7 ? 'text-red-500' : 'text-gray-400'}`}>
+                {formData.area.length}/7
+              </span>
+            </label>
             <div className="relative">
-              <input type="text" inputMode="numeric" value={formatMileageInput(formData.area)} onChange={(e) => { const raw = e.target.value.replace(/\D/g, ''); setFormData(p => ({ ...p, area: raw })); }} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary outline-none" placeholder="0" />
+              <input 
+                type="text" 
+                inputMode="numeric" 
+                value={formatMileageInput(formData.area)} 
+                onChange={(e) => { 
+                  const raw = e.target.value.replace(/\D/g, ''); 
+                  if (raw.length > 7) return; 
+                  setFormData(p => ({ ...p, area: raw })); 
+                }} 
+                className={`w-full border-2 rounded-2xl p-4 focus:ring-4 outline-none transition-all ${formData.area.length >= 7 ? 'border-orange-500 bg-orange-50/10' : 'border-gray-100 bg-gray-50 focus:border-primary'}`}
+                placeholder="0" 
+              />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-gray-400">m²</span>
             </div>
           </div>
@@ -695,7 +727,27 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     </StepContainer>
   );
 
-  const renderFeatures = () => (<StepContainer title="Opcionais" progress={0.7} onNext={nextStep} onBack={goBack}><p className="text-gray-500 mb-6">Selecione o que seu veículo tem de bom.</p><div className="flex flex-wrap gap-2">{["Airbag", "Ar condicionado", "Alarme", "Bancos de couro", "Câmera de ré", "Sensor de ré", "Som", "Teto solar", "Vidro elétrico", "Trava elétrica"].map(feature => (<button key={feature} onClick={() => toggleFeature(feature)} className={`px-4 py-2.5 rounded-2xl border text-sm font-medium transition-all duration-200 ${formData.features.includes(feature) ? 'bg-primary text-white border-primary shadow-lg shadow-blue-100 transform scale-105' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{feature}</button>))}</div></StepContainer>);
+  const renderFeatures = () => {
+    const isMoto = formData.fipeCategory === 'motos' || formData.vehicleType === 'Moto';
+    const featuresList = isMoto ? MOTO_FEATURES : CAR_FEATURES;
+
+    return (
+      <StepContainer title="Opcionais" progress={0.7} onNext={nextStep} onBack={goBack}>
+        <p className="text-gray-500 mb-6">Selecione o que seu veículo tem de bom.</p>
+        <div className="flex flex-wrap gap-2">
+          {featuresList.map(feature => (
+            <button
+              key={feature}
+              onClick={() => toggleFeature(feature)}
+              className={`px-4 py-2.5 rounded-2xl border text-sm font-medium transition-all duration-200 ${formData.features.includes(feature) ? 'bg-primary text-white border-primary shadow-lg shadow-blue-100 transform scale-105' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+            >
+              {feature}
+            </button>
+          ))}
+        </div>
+      </StepContainer>
+    );
+  };
 
   const renderAdditionalInfo = () => (
     <StepContainer title="Infos Adicionais" progress={0.8} onNext={nextStep} onBack={goBack}>
@@ -739,45 +791,61 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   const renderPrice = () => {
     const fipePercentage = formData.fipePrice > 0 ? (formData.price / formData.fipePrice) * 100 : 0;
     const isAboveFipe = formData.price > formData.fipePrice;
+
+    const diffFipe = formData.fipePrice > 0 ? ((formData.price - formData.fipePrice) / formData.fipePrice) * 100 : 0;
     
     // Validate if the price is effectively 0 for critical categories
     const isPriceInvalid = (formData.category === 'veiculos' || formData.category === 'imoveis') && (!formData.price || formData.price <= 0);
 
     return (
       <StepContainer title="Preço" progress={0.92} onNext={nextStep} onBack={goBack} nextDisabled={isPriceInvalid}>
-        <div className="bg-gray-50 p-8 rounded-3xl mb-6 text-center border border-gray-100 animate-in zoom-in"><h2 className="text-xl font-bold text-gray-900 mb-6 uppercase tracking-wider">Qual o valor pedido?</h2><div className="relative inline-flex items-center"><span className="text-2xl font-black text-primary mr-2">R$</span><input type="text" inputMode="numeric" value={formData.price > 0 ? formData.price.toLocaleString('pt-BR') : ''} onChange={(e) => { const raw = e.target.value.replace(/\D/g, ''); if (raw.length > 10) return; setFormData(p => ({ ...p, price: raw ? parseInt(raw) : 0 })); }} className="w-full max-w-[200px] text-center text-5xl font-black bg-transparent border-b-4 border-gray-200 focus:border-primary transition-all outline-none py-2 text-gray-900 placeholder-gray-200" placeholder="0" maxLength={13} /></div></div>
-        {formData.fipePrice > 0 && (
-          <div className="p-5 bg-blue-50 border border-blue-100 rounded-3xl flex flex-col gap-4 animate-in fade-in">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-blue-800 font-bold uppercase mb-1 tracking-wider flex items-center gap-1"><Info className="w-4 h-4" /> Referência Tabela FIPE</p>
-                <p className="font-black text-2xl text-gray-900">R$ {formData.fipePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </div>
-            </div>
-
-            <div className="w-full">
-              <div className="flex justify-between mb-2 text-xs font-bold">
-                <span className="text-blue-800">R$ 0</span>
-                <span className="text-blue-800">FIPE</span>
-              </div>
-              <div className="h-3 bg-blue-200 rounded-full overflow-hidden relative">
-                <div
-                  className={`h-full absolute left-0 top-0 transition-all duration-500 ease-out rounded-full ${isAboveFipe ? 'bg-orange-500' : 'bg-primary'}`}
-                  style={{ width: `${Math.min(100, fipePercentage)}%` }}
-                />
-              </div>
-              <div className="flex justify-between mt-2 text-xs font-bold">
-                <span className={formData.price > 0 && formData.price <= formData.fipePrice ? 'text-green-600' : 'text-transparent'}>
-                  Abaixo da FIPE
-                </span>
-                <span className={isAboveFipe ? 'text-orange-600' : 'text-transparent'}>
-                  Acima da FIPE
-                </span>
-              </div>
-              <p className="text-xs text-blue-600 font-medium mt-2 text-center">Este valor serve apenas como base para ajudar você a precificar seu veículo.</p>
-            </div>
+        <div className="bg-gray-50 p-8 rounded-3xl mb-6 text-center border border-gray-100 animate-in zoom-in">
+          <h2 className="text-xl font-bold text-gray-900 mb-6 uppercase tracking-wider">Qual o valor pedido?</h2>
+          <div className="relative inline-flex items-center">
+            <span className="text-2xl font-black text-primary mr-2">R$</span>
+            <input 
+              type="text" 
+              inputMode="numeric" 
+              value={formData.price > 0 ? formData.price.toLocaleString('pt-BR') : ''} 
+              onChange={(e) => { 
+                const raw = e.target.value.replace(/\D/g, ''); 
+                if (raw.length > 10) return; 
+                setFormData(p => ({ ...p, price: raw ? parseInt(raw) : 0 })); 
+              }} 
+              className="w-full max-w-[200px] text-center text-5xl font-black bg-transparent border-b-4 border-gray-200 focus:border-primary transition-all outline-none py-2 text-gray-900 placeholder-gray-200" 
+              placeholder="0" 
+              maxLength={13} 
+            />
           </div>
-        )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          {formData.fipePrice > 0 && (
+            <div className="p-5 bg-blue-50 border border-blue-100 rounded-3xl flex flex-col gap-4 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-blue-800 font-bold uppercase mb-1 tracking-wider flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Tabela FIPE</p>
+                  <p className="font-black text-xl text-gray-900">R$ {formData.fipePrice.toLocaleString('pt-BR')}</p>
+                </div>
+                {formData.price > 0 && (
+                  <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${diffFipe <= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {Math.abs(diffFipe).toFixed(1)}% {diffFipe <= 0 ? 'Abaixo' : 'Acima'}
+                  </div>
+                )}
+              </div>
+              <div className="w-full">
+                <div className="h-2 bg-blue-200 rounded-full overflow-hidden relative">
+                  <div
+                    className={`h-full absolute left-0 top-0 transition-all duration-500 ease-out rounded-full ${isAboveFipe ? 'bg-orange-500' : 'bg-primary'}`}
+                    style={{ width: `${Math.min(100, fipePercentage)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <p className="text-[10px] text-gray-400 font-medium mt-4 text-center">Valores servem apenas como referência de mercado.</p>
       </StepContainer>
     );
   };

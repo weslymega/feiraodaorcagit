@@ -7,7 +7,7 @@ import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
-import { getBoostPriority } from '../utils/boostRibbon';
+import { getBoostPriority, getBoostRibbon } from '../utils/boostRibbon';
 
 interface RealEstateListProps {
   ads: AdItem[];
@@ -347,19 +347,36 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         ) : filteredAds.length > 0 ? (
           filteredAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);
+            const ribbon = getBoostRibbon(ad.boostPlan || 'none');
+            
+            let borderColor = "border-gray-100";
+            if (ribbon) {
+              borderColor = ad.boostPlan === 'max' ? "border-yellow-400 ring-1 ring-yellow-400" :
+                            ad.boostPlan === 'pro' ? "border-cyan-400" : "border-gray-200";
+            }
+
             return (
               <div
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-all group animate-fadeIn"
+                className={`bg-white rounded-2xl shadow-sm border ${borderColor} overflow-hidden cursor-pointer active:scale-[0.99] transition-all group animate-fadeIn`}
               >
-                <div className="relative h-56 w-full">
+                <div className="relative h-56 w-full overflow-hidden">
                   <SmartImage
                     src={ad.image}
                     alt={ad.title}
                     className="w-full h-full object-cover"
                     skeletonClassName="h-56 w-full"
                   />
+                  
+                  {ribbon && (
+                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+                      <div className={`absolute top-4 -left-10 bg-gradient-to-r ${ribbon.gradient} text-white text-[10px] font-black px-10 py-1.5 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider`}>
+                        {ribbon.label}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="absolute top-3 right-3 flex gap-2">
                     <button
                       onClick={(e) => {

@@ -47,7 +47,8 @@ export const FairList: React.FC<FairListProps> = ({
   useEffect(() => {
     const loadBrands = async () => {
       setIsLoadingBrands(true);
-      const brands = await fipeApi.getBrands();
+      // Mantendo 'carros' como padrão na feira conforme solicitado
+      const brands = await fipeApi.getBrands('carros');
       setFipeBrands(brands);
       setIsLoadingBrands(false);
     };
@@ -64,7 +65,7 @@ export const FairList: React.FC<FairListProps> = ({
       const selectedBrandObj = fipeBrands.find(b => b.nome === brandName);
       if (selectedBrandObj) {
         setIsLoadingModels(true);
-        const models = await fipeApi.getModels(selectedBrandObj.codigo);
+        const models = await fipeApi.getModels('carros', selectedBrandObj.codigo);
         setFipeModels(models);
         setIsLoadingModels(false);
       }

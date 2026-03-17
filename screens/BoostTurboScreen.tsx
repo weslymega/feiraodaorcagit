@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AdItem } from '../types';
 import { api, supabase } from '../services/api';
 import { Header } from '../components/Shared';
-import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay } from 'lucide-react';
+import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, Rocket } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import { Haptics, NotificationType } from '@capacitor/haptics';
 import AdManager from '../services/AdManager';
 
 interface BoostTurboScreenProps {
@@ -25,6 +26,28 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [isFinalizing, setIsFinalizing] = useState(false);
     const finalizingRef = useRef(false); // Ref para leitura imediata em callbacks assíncronos
     const [syncError, setSyncError] = useState<string | null>(null);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [loadingTextIndex, setLoadingTextIndex] = useState(0);
+
+    const finalizationTexts = [
+        "Verificando recompensa...",
+        "Aplicando destaque...",
+        "Quase pronto..."
+    ];
+
+    // Efeito para ciclar os textos de finalização
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (isFinalizing && !showSuccess) {
+            setLoadingTextIndex(0);
+            interval = setInterval(() => {
+                setLoadingTextIndex(prev => (prev + 1) % finalizationTexts.length);
+            }, 1500);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isFinalizing, showSuccess]);
 
     // Refs para manter listeners estáveis e acessar estado atualizado sem re-registrar
     const sessionRef = useRef(activeSession);
@@ -263,7 +286,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             setWatchingAd(true);
 
             // Delay para garantir que todas as promessas de sync de handleRewarded tenham resolvido
-            setTimeout(() => {
+            setTimeout(async () => {
                 const current = sessionRef.current;
                 const prog = localProgressRef.current;
 
@@ -272,8 +295,15 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 // Verificação final baseada estritamente no estado do banco de dados
                 if (current && current.currentStep >= current.requiredSteps) {
                     console.log("[BoostTurboScreen] [FLOW] PROGRESS VERIFIED BY SERVER. Closing turbo flow.");
-                    alert("🎉 Tudo pronto! Seu anúncio agora já está turbinado e em destaque.");
-                    onBackRef.current();
+                    
+                    if (Capacitor.isNativePlatform()) {
+                        await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
+                    }
+                    setShowSuccess(true);
+                    
+                    setTimeout(() => {
+                        onBackRef.current();
+                    }, 2500);
                 } else {
                     console.warn("[BoostTurboScreen] [FLOW] Completion check failed. Database sync state did not reach the target.");
                     setIsFinalizing(false);
@@ -422,6 +452,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                 </div>
                                 <ul className="text-sm text-gray-600 mb-6 space-y-2 font-medium">
                                     <li className="flex items-center gap-2">↳ 2 Visualizações de vídeo</li>
+                                    <li className="flex items-center gap-2">↳ 1 Dia de destaque</li>
                                 </ul>
                                 <button
                                     onClick={() => handleSelectPlan('premium')}
@@ -443,6 +474,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                 </div>
                                 <ul className="text-sm text-blue-50 mb-6 space-y-2 font-medium">
                                     <li className="flex items-center gap-2">↳ 5 Visualizações de vídeo</li>
+                                    <li className="flex items-center gap-2">↳ 3 Dias de destaque</li>
                                 </ul>
                                 <button
                                     onClick={() => handleSelectPlan('pro')}
@@ -464,6 +496,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                 </div>
                                 <ul className="text-sm text-gray-600 mb-6 space-y-2 font-medium relative z-10">
                                     <li className="flex items-center gap-2">↳ 7 Visualizações de vídeo</li>
+                                    <li className="flex items-center gap-2">↳ 7 Dias de destaque</li>
                                 </ul>
                                 <button
                                     onClick={() => handleSelectPlan('max')}
@@ -480,12 +513,24 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 {/* ESTADO 2: Monitor de Progresso de Anúncios */}
                 {activeSession && (
                     <div className="flex flex-col items-center justify-center text-center animate-in fade-in pt-8">
-                        {isFinalizing ? (
-                            <>
+                        {showSuccess ? (
+                            <div className="flex flex-col items-center justify-center animate-in zoom-in duration-500">
+                                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm border border-green-200">
+                                    <Rocket className="w-12 h-12 text-green-500" />
+                                </div>
+                                <h2 className="text-3xl font-black text-gray-900 mb-3">Turbo ativado!</h2>
+                                <p className="text-gray-600 mb-8 max-w-[280px] font-medium">
+                                    Seu anúncio agora está em destaque e será visto por mais compradores.
+                                </p>
+                            </div>
+                        ) : isFinalizing ? (
+                            <div className="flex flex-col items-center justify-center min-h-[160px]">
                                 <Loader2 className="w-20 h-20 text-blue-500 animate-spin mb-6" />
                                 <h2 className="text-2xl font-black text-gray-900 mb-2">Finalizando Turbo...</h2>
-                                <p className="text-gray-600 mb-8 max-w-[280px]">Sincronizando sua recompensa final com o servidor. Quase pronto!</p>
-                            </>
+                                <p className="text-gray-600 max-w-[280px] min-h-[48px] transition-all duration-300">
+                                    {finalizationTexts[loadingTextIndex]}
+                                </p>
+                            </div>
                         ) : (
                             <>
                                 <MonitorPlay className="w-20 h-20 text-blue-500 mb-6" />

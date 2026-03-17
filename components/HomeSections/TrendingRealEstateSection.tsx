@@ -4,6 +4,7 @@ import { AdItem, Screen } from '../../types';
 
 import { SmartImage } from '../ui/SmartImage';
 import { AdCardSkeleton } from '../skeletons/AdCardSkeleton';
+import { getBoostPriority } from '../../utils/boostRibbon';
 
 interface TrendingRealEstateProps {
     ads?: AdItem[];
@@ -26,8 +27,7 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
             score += (ad.chatCount || 0) * 10;
 
             // Boost priority calculate
-            if (ad.boostPlan === 'premium') score += 1000;
-            else if (ad.boostPlan === 'advanced') score += 500;
+            score += (getBoostPriority(ad.boostPlan || 'none') * 500);
 
             return { ad, score };
         });

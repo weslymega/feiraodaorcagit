@@ -7,6 +7,7 @@ import { PARTS_SERVICES_PROMO_BANNERS } from '../constants';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
+import { getBoostRibbon } from '../utils/boostRibbon';
 
 interface PartsServicesListProps {
   ads: AdItem[];
@@ -289,15 +290,32 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
         ) : filteredAds.length > 0 ? (
           filteredAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);
+            const ribbon = getBoostRibbon(ad.boostPlan || 'none');
+            
+            let borderColor = "border-gray-100";
+            if (ribbon) {
+              borderColor = ad.boostPlan === 'max' ? "border-yellow-400 ring-1 ring-yellow-400" :
+                            ad.boostPlan === 'pro' ? "border-cyan-400" : "border-gray-200";
+            }
+
             return (
               <div
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.99] transition-all flex h-32 animate-fadeIn"
+                className={`bg-white rounded-2xl shadow-sm border ${borderColor} overflow-hidden cursor-pointer active:scale-[0.99] transition-all flex h-32 animate-fadeIn relative`}
               >
-                <div className="w-32 h-full relative flex-shrink-0">
+                <div className="w-32 h-full relative flex-shrink-0 overflow-hidden">
                   <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
-                  <div className="absolute top-0 left-0 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg">
+                  
+                  {ribbon && (
+                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+                      <div className={`absolute top-2 -left-10 bg-gradient-to-r ${ribbon.gradient} text-white text-[8px] font-black px-10 py-1 transform -rotate-45 shadow-sm border-y border-white/20 flex items-center justify-center uppercase tracking-wider`}>
+                        {ribbon.label}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`absolute bottom-0 right-0 ${ribbon ? 'opacity-90' : ''} bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-tl-lg`}>
                     {ad.partType?.split(' ')[0] || 'Item'}
                   </div>
                 </div>
