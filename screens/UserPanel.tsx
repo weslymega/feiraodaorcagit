@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Heart, Tag, History, Settings, MapPin, ShieldCheck, User, Wrench } from 'lucide-react';
+import { Heart, Tag, Settings, MapPin, ShieldCheck, User, Wrench } from 'lucide-react';
 import { Screen, User as UserType } from '../types';
 import { CardButton } from '../components/Shared';
 import { APP_LOGOS } from '../constants';
@@ -90,12 +90,6 @@ export const UserPanel: React.FC<UserPanelProps> = ({ user, onNavigate, onLogout
               label="Favoritos"
               bgIcon="bg-blue-50"
               onClick={() => onNavigate(Screen.FAVORITES)}
-            />
-            <CardButton
-              icon={<History className="w-5 h-5 text-primary" />}
-              label="Histórico de Transações"
-              bgIcon="bg-blue-50"
-              onClick={() => onNavigate(Screen.HISTORY)}
             />
             <CardButton
               icon={<Settings className="w-5 h-5 text-primary" />}

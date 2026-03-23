@@ -8,7 +8,6 @@ export enum Screen {
   USER_PANEL = 'USER_PANEL', // Novo Painel do Usuário (Antigo Dashboard)
   MY_ADS = 'MY_ADS',
   FAVORITES = 'FAVORITES',
-  HISTORY = 'HISTORY',
   SETTINGS = 'SETTINGS',
   MESSAGES = 'MESSAGES',
   CHAT_DETAIL = 'CHAT_DETAIL',
@@ -79,6 +78,8 @@ export interface User {
   isBlocked?: boolean; // Status de bloqueio
   showOnlineStatus?: boolean;
   readReceipts?: boolean;
+  createdAt?: string;
+  emailConfirmedAt?: string;
 }
 
 export enum AdStatus {
@@ -196,16 +197,15 @@ export interface MessageItem {
 export interface ChatMessage {
   id: string;
   text: string;
-  imageUrl?: string; // Optional image URL
+  imageUrl?: string; // Mantido por compatibilidade
+  images?: string[]; // Nova lista de imagens (JSONB no DB)
   isMine: boolean;
   time: string;
   isRead?: boolean;
+  sending?: boolean; // New: Optimistic UI sending state
+  error?: boolean;   // New: Optimistic UI error state
 }
 
-export interface TransactionData {
-  name: string;
-  value: number;
-}
 
 export interface NotificationItem {
   id: number | string;

@@ -233,7 +233,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
         {/* Dropdown de Sugestões */}
         {searchTerm.length >= 2 && searchSuggestions.length > 0 && (
-          <div className="absolute top-full left-4 right-4 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+          <div className="absolute top-full left-4 right-4 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[500]">
             {searchSuggestions.map((ad, index) => (
               <button
                 key={ad.id}
@@ -364,7 +364,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
       {/* --- FILTER MODAL --- */}
       {isFilterOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center">
+        <div className="fixed inset-0 z-[900] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 
           <div className="bg-white w-full max-w-md h-[85vh] rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col overflow-hidden">

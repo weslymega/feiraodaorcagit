@@ -3,9 +3,7 @@ import { Screen, AdItem } from '../../types';
 import { AppState } from '../../types/AppState';
 import { AppActions } from '../../types/AppActions';
 import {
-    MOCK_SELLER,
-    HISTORY_DATA,
-    HISTORY_CHART_DATA
+    MOCK_SELLER
 } from '../../constants';
 
 // Screens
@@ -16,7 +14,6 @@ import { Dashboard } from '../../screens/Dashboard';
 import { UserPanel } from '../../screens/UserPanel';
 import { MyAds } from '../../screens/MyAds';
 import { Favorites } from '../../screens/Favorites';
-import { History } from '../../screens/History';
 import { Settings } from '../../screens/Settings';
 import { Messages } from '../../screens/Messages';
 import { EditProfile } from '../../screens/EditProfile';
@@ -105,7 +102,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
         toggleFairActive, toggleMaintenanceMode: toggleMaintenanceModeAction, prepareCreateAd,
         openNewArrivals, openAutomotiveServices, openTrendingRealEstate,
         handleSendMessage, handleUpdatePrivacySettings, handleChangePassword,
-        handleForgotPassword
+        handleForgotPassword, handleClearNotifications
     } = actions;
 
     const {
@@ -269,8 +266,6 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
 
         case Screen.FAVORITES:
             return <Favorites favorites={favorites} onBack={goBackToDashboard} onRemove={handleRemoveFavorite} onAdClick={handleAdClick} />;
-        case Screen.HISTORY:
-            return <History history={HISTORY_DATA} chartData={HISTORY_CHART_DATA} onBack={goBackToPanel} onAdClick={handleAdClick} />;
         case Screen.SETTINGS:
             if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />;
             return <Settings user={user} onBack={goBackToPanel} onLogout={handleLogout} onNavigate={navigateTo} />;
@@ -284,10 +279,10 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                     onBack={handleBackFromDetails}
                     onAdClick={navigateToAdDetails}
                     onViewProfile={handleViewProfileFromChat}
-                    onSendMessage={(text, imageUrl) => {
+                    onSendMessage={(text, images) => {
                         const adId = selectedChat.adId || (selectedAd?.id);
                         if (adId) {
-                            handleSendMessage(adId, selectedChat.otherUserId, text, imageUrl);
+                            handleSendMessage(adId, selectedChat.otherUserId, text, images);
                         }
                     }}
                 />
@@ -298,7 +293,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />;
             return <AccountData user={user} onBack={() => navigateTo(Screen.SETTINGS)} onEdit={() => navigateTo(Screen.EDIT_PROFILE)} />;
         case Screen.NOTIFICATIONS:
-            return <Notifications onBack={goBackToDashboard} onGoToChat={() => navigateTo(Screen.MESSAGES)} items={allNotifications} />;
+            return <Notifications onBack={handleBackFromDetails} onGoToChat={() => navigateTo(Screen.MESSAGES)} onClearAll={handleClearNotifications} items={allNotifications} />;
         case Screen.PRIVACY:
             if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />;
             return <Privacy user={user} onBack={() => navigateTo(Screen.SETTINGS)} onUpdateSettings={handleUpdatePrivacySettings} />;

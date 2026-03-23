@@ -78,7 +78,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
       </div>
 
       {/* Header Back Button */}
-      <div className="absolute top-0 left-0 right-0 z-50 p-6">
+      <div className="absolute top-0 left-0 right-0 z-[100] p-6">
         <button
           onClick={onBack}
           className="p-2 -ml-2 rounded-full bg-black/20 text-white backdrop-blur-md hover:bg-black/30 transition-colors w-fit border border-white/10"

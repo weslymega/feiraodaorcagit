@@ -45,6 +45,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
   // Filter Modal State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
 
   // Complex Filter State
   const [filters, setFilters] = useState({
@@ -67,6 +68,13 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       if (onClearFilter) onClearFilter();
     }
   }, [filterContext]);
+
+  // Fechar sugestões ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = () => setShowSearchSuggestions(false);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // --- HELPERS ---
   const toggleFilterArray = (field: 'propertyType' | 'amenities', value: string) => {
@@ -175,6 +183,16 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
     return filtered;
   }, [ads, transactionType, searchTerm, filters, selectedPropertyType, isTrending]);
+
+  const searchSuggestions = useMemo(() => {
+    if (searchTerm.length < 2) return [];
+    return ads.filter(ad =>
+      ad.status === AdStatus.ACTIVE &&
+      ad.category === 'imoveis' &&
+      (ad.transactionType || 'sale') === transactionType &&
+      ad.title.toLowerCase().includes(searchTerm.toLowerCase())
+    ).slice(0, 6);
+  }, [ads, searchTerm, transactionType]);
 
   const isPromotionVisible = (promo: RealEstatePromotion) => {
     const today = new Date();
@@ -302,17 +320,47 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       </div>
 
       {/* Search & Results Header */}
-      <div className="px-4 py-4">
+      <div className="px-4 py-4 relative z-40" onClick={(e) => e.stopPropagation()}>
         <div className="relative mb-2">
           <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
           <input
             type="text"
             placeholder={`Buscar em ${transactionType === 'sale' ? 'Comprar' : 'Alugar'}...`}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setShowSearchSuggestions(true);
+            }}
+            onFocus={() => setShowSearchSuggestions(true)}
             className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
           />
         </div>
+
+        {/* Sugestões de Busca */}
+        {showSearchSuggestions && searchTerm.length >= 2 && searchSuggestions.length > 0 && (
+          <div className="absolute top-full left-4 right-4 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[500]">
+            {searchSuggestions.map((ad, index) => (
+              <button
+                key={`suggestion-${ad.id}`}
+                onClick={() => {
+                  onAdClick(ad);
+                  setShowSearchSuggestions(false);
+                }}
+                className={`w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left ${index !== searchSuggestions.length - 1 ? 'border-b border-gray-50' : ''
+                  }`}
+              >
+                <img src={ad.image} alt={ad.title} className="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
+                <div className="flex-1 min-w-0 text-xs">
+                  <p className="font-bold text-gray-900 truncate">{ad.title}</p>
+                  <p className="text-primary font-medium">
+                    {ad.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Promotional Carousel */}
@@ -437,7 +485,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       {/* --- FILTER MODAL (FIXED PROPORTIONS) --- */}
       {
         isFilterOpen && (
-          <div className="fixed inset-0 z-[60] flex items-end justify-center">
+          <div className="fixed inset-0 z-[900] flex items-end justify-center">
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 

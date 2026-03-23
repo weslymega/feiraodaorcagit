@@ -222,9 +222,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
             >
               <span className="font-bold text-white">G</span>
             </button>
-            <button className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors border border-white/20 opacity-50 cursor-not-allowed" title="Em breve">
-              <span className="font-bold text-white">f</span>
-            </button>
           </div>
         </div>
 

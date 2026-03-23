@@ -64,7 +64,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, onSub
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[900] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={handleClose} />
 
       <div className="bg-white w-full max-w-sm sm:rounded-2xl rounded-t-[30px] shadow-2xl relative animate-in slide-in-from-bottom duration-300 overflow-hidden flex flex-col max-h-[85vh]">

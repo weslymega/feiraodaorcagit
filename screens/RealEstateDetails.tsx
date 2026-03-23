@@ -7,6 +7,7 @@ import { APP_URL } from '../constants';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
 import { SmartImage } from '../components/ui/SmartImage';
+import { LocationSection } from '../components/LocationSection';
 
 interface RealEstateDetailsProps {
   ad: AdItem;
@@ -171,21 +172,26 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
           <SpecItem icon={<Car className="w-6 h-6" />} label="Vagas" value={ad.parking || '--'} />
         </div>
 
-        {/* Seller Info (Clickable) */}
+        {/* Seller Info Card (Clickable) */}
         <div
           onClick={onViewProfile}
-          className="flex items-center gap-3 bg-gray-50 p-4 rounded-xl mb-6 cursor-pointer hover:bg-gray-100 transition-colors group active:scale-[0.98]"
+          className="flex items-center gap-4 bg-white border border-gray-100 shadow-sm p-4 rounded-2xl mb-8 cursor-pointer hover:bg-gray-50 transition-colors group active:scale-[0.98]"
         >
-          <div className="w-12 h-12 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden">
+          <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm group-hover:border-primary transition-colors">
             {ad.ownerAvatar ? (
-              <SmartImage src={ad.ownerAvatar} alt={ad.ownerName} className="w-full h-full object-cover" />
+              <SmartImage src={ad.ownerAvatar} alt={ad.ownerName || "Vendedor"} className="w-full h-full object-cover" />
             ) : (
-              <UserIcon className="w-6 h-6 text-gray-400" />
+              <UserIcon className="w-7 h-7 text-gray-400" />
             )}
           </div>
           <div className="flex-1">
-            <p className="font-bold text-gray-900 group-hover:text-primary">{ad.ownerName || 'Vendedor'}</p>
-            <p className="text-xs text-gray-500">Ver perfil completo</p>
+            <p className="font-bold text-gray-900 text-lg group-hover:text-primary transition-colors">
+              {ad.isOwner ? "Eu (Vendedor)" : (ad.ownerName || "Vendedor")}
+            </p>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <p className="text-xs text-gray-500">Online agora • Ver perfil</p>
+            </div>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary" />
         </div>
@@ -220,15 +226,11 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
           <div className="mb-8"><h3 className="font-bold text-gray-900 mb-3">Detalhes Adicionais</h3><div className="flex flex-wrap gap-2">{ad.additionalInfo.map((info, idx) => (<span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">{info}</span>))}</div></div>
         )}
 
-        <div className="mb-4">
-          <h3 className="font-bold text-gray-900 mb-2">Localização Aproximada</h3>
-          <div className="bg-gray-100 rounded-xl overflow-hidden h-48 relative flex items-center justify-center mb-2 border border-gray-200"><MapPin className="text-gray-400 w-10 h-10 mb-2" /><div className="absolute bottom-4 bg-white/90 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm text-gray-800 flex items-center gap-1"><MapPin className="w-3 h-3 text-primary" />{ad.location || "Localização não informada"}</div></div>
-          <p className="text-gray-400 text-xs text-center">A localização exata é fornecida após o contato.</p>
-        </div>
+        <LocationSection ad={ad} />
       </div>
 
       {!ad.isOwner && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-50 max-w-md mx-auto shadow-[0_-5px_20px_rgba(0,0,0,0.05)] rounded-t-[30px]">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-[150] max-w-md mx-auto shadow-[0_-5px_20px_rgba(0,0,0,0.05)] rounded-t-[30px]">
           <button onClick={onStartChat} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-100 flex items-center justify-center gap-2 transition-all active:scale-95"><MessageSquare className="w-5 h-5" /> <span>Chat</span></button>
         </div>
       )}

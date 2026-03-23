@@ -240,7 +240,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="min-h-screen bg-gray-50 pb-24 animate-in fade-in duration-300">
 
       {/* 1. Top Header */}
-      <div className="bg-white px-4 pt-4 pb-2 sticky top-0 z-40 shadow-sm">
+      <div className="bg-white px-4 pt-4 pb-2 sticky top-0 z-[100] shadow-sm">
         <div className="flex justify-between items-center mb-4">
 
           {/* Logo Replacement */}
@@ -277,7 +277,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           {/* Autocomplete Dropdown */}
           {searchSuggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[500]">
               {searchSuggestions.map((ad, index) => (
                 <button
                   key={`search-${ad.id}`}
@@ -307,16 +307,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* 2. Categories Grid */}
       <div className="bg-white pb-6 pt-4 px-4 shadow-[0_4px_10px_-5px_rgba(0,0,0,0.05)] rounded-b-3xl mb-4">
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <CategoryItem
             imageUrl={CATEGORY_ICONS.VEHICLES}
             label="Veículos"
             onClick={() => onNavigate(Screen.VEHICLES_LIST)}
-          />
-          <CategoryItem
-            imageUrl={CATEGORY_ICONS.REAL_ESTATE}
-            label="Imóveis"
-            onClick={() => onNavigate(Screen.REAL_ESTATE_LIST)}
           />
           <CategoryItem
             imageUrl={CATEGORY_ICONS.PARTS}
@@ -324,10 +319,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onClick={() => onNavigate(Screen.PARTS_SERVICES_LIST)}
           />
           <CategoryItem
-            imageUrl={CATEGORY_ICONS.PHONES}
-            label="Celulares"
-            badge="Em breve"
-            onClick={() => { }}
+            imageUrl={CATEGORY_ICONS.REAL_ESTATE}
+            label="Imóveis"
+            onClick={() => onNavigate(Screen.REAL_ESTATE_LIST)}
           />
         </div>
       </div>
@@ -433,7 +427,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div
                     key={`fair-${car.id}`}
                     onClick={() => onAdClick && onAdClick(car)}
-                    className="min-w-[200px] bg-white rounded-2xl shadow-sm border-2 border-green-400 overflow-hidden snap-start cursor-pointer active:scale-[0.98] relative hover:shadow-md transition-shadow ring-2 ring-green-100"
+                    className="min-w-[160px] w-[160px] bg-white rounded-2xl shadow-sm border-2 border-green-400 overflow-hidden snap-start cursor-pointer active:scale-[0.98] relative hover:shadow-md transition-shadow ring-2 ring-green-100"
                   >
                     <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm animate-pulse">
                       <div className="w-1.5 h-1.5 bg-white rounded-full"></div>

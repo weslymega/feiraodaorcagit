@@ -137,7 +137,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
     <div className="min-h-screen bg-gray-50 pb-6 animate-in slide-in-from-right duration-300">
 
       {/* Custom Header similar to design */}
-      <div className="bg-gray-50 sticky top-0 z-50 px-6 py-6 flex items-center justify-between">
+      <div className="bg-gray-50 sticky top-0 z-[100] px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-gray-200 transition-colors">
             <div className="w-6 h-0.5 bg-gray-800 mb-1.5"></div>

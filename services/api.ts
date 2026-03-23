@@ -1017,6 +1017,7 @@ export const api = {
             id: m.id,
             text: m.content || '',
             imageUrl: m.image_url,
+            images: m.images || [], // Novo campo JSONB
             isMine: m.sender_id === user.id,
             time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             isRead: m.is_read
@@ -1026,27 +1027,38 @@ export const api = {
     /**
      * CHAT: Enviar Mensagem
      */
-    sendMessage: async (adId: string, receiverId: string, content: string, imageUrl?: string) => {
+    sendMessage: async (adId: string, receiverId: string, content: string, images?: string[]) => {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Não autenticado");
+        if (!user) throw new Error("Usuário não autenticado");
 
-        const { data, error } = await supabase
-            .from('messages')
-            .insert({
-                ad_id: adId,
-                sender_id: user.id,
-                receiver_id: receiverId,
-                content,
-                image_url: imageUrl
-            })
-            .select()
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from('messages')
+                .insert({
+                    ad_id: adId,
+                    sender_id: user.id,
+                    receiver_id: receiverId,
+                    content: content || "",
+                    images: (images && images.length > 0) ? images : null,
+                    image_url: (images && images.length > 0) ? images[0] : null
+                })
+                .select()
+                .single();
 
-        if (error) {
-            console.error("❌ Erro ao enviar mensagem:", error);
-            throw error;
+            if (error) {
+                console.error("❌ Supabase error FULL:", JSON.stringify(error, null, 2));
+                console.error("❌ message:", error.message);
+                console.error("❌ details:", error.details);
+                console.error("❌ hint:", error.hint);
+                console.error("❌ code:", error.code);
+                throw error;
+            }
+
+            return data;
+        } catch (err: any) {
+            console.error("❌ Erro detalhado no sendMessage:", JSON.stringify(err, null, 2));
+            throw err;
         }
-        return data;
     },
 
     /**

@@ -1,7 +1,7 @@
 -- =========================================================================
 -- Trigger: prevent_self_chat_on_messages
 -- Funcionalidade: Bloqueia a inserção de mensagens onde o remetente
---                 (NEW.sender_id) é o próprio dono do anúncio.
+--                 (NEW.sender_id) tenta conversar consigo mesmo.
 -- =========================================================================
 
 -- 1. Criar a função que fará a validação
@@ -10,20 +10,13 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $function$
-DECLARE
-    ad_owner_id uuid;
 BEGIN
-    -- Busca o ID do dono do anúncio
-    SELECT user_id INTO ad_owner_id
-    FROM public.anuncios
-    WHERE id = NEW.ad_id;
-
-    -- Se o remetente for igual ao dono do anúncio, bloqueia a operação
-    IF NEW.sender_id = ad_owner_id THEN
+    -- Bloqueia apenas se o remetente for igual ao destinatário (auto-conversa)
+    IF NEW.sender_id = NEW.receiver_id THEN
         RAISE EXCEPTION 'SELF_CHAT_NOT_ALLOWED';
     END IF;
 
-    -- Caso contrário, permite a inserção normalmente
+    -- Caso contrário, permite a inserção normalmente (incluindo donos de anúncios)
     RETURN NEW;
 END;
 $function$;

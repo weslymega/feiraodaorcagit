@@ -78,7 +78,7 @@ const StepContainer: React.FC<StepContainerProps> = ({ title, progress, children
       {children}
     </div>
     {!hideFooter && (
-      <div className="sticky bottom-0 bg-white p-4 border-t z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] -mx-2 flex gap-4">
+      <div className="sticky bottom-0 bg-white p-4 border-t z-[150] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] -mx-2 flex gap-4">
         <button onClick={onBack} className="flex-1 py-4 border-2 border-gray-200 rounded-2xl font-bold text-gray-600 hover:bg-gray-50 transition-colors">
           Voltar
         </button>
@@ -905,7 +905,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   return (
     <div className="flex flex-col h-full bg-white relative">
       {isCreating && (
-        <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
+        <div className="absolute inset-0 z-[1000] bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
           <Loader2 className="w-12 h-12 text-primary animate-spin" />
           <p className="text-gray-900 font-bold text-lg">Criando seu anúncio...</p>
         </div>

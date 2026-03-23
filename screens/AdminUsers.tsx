@@ -159,7 +159,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gray-50 pb-6 animate-in slide-in-from-right duration-300">
 
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-3 shadow-sm">
+      <div className="sticky top-0 z-[100] bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-3 shadow-sm">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
           <ChevronLeft className="w-6 h-6 text-gray-700" />
         </button>
@@ -254,7 +254,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onBack }) => {
 
       {/* --- USER DETAILS MODAL --- */}
       {selectedUser && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[900] flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedUser(null)} />
 
           <div className="bg-white w-full max-w-md h-[90vh] sm:h-auto sm:rounded-2xl rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col overflow-hidden">

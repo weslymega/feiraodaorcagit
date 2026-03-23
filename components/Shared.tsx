@@ -1,5 +1,6 @@
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Home,
   MessageSquare,
@@ -20,7 +21,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ title, onBack, rightElement }) => {
   return (
-    <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
+    <div className="sticky top-0 z-[100] bg-white/95 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
       <div className="flex items-center gap-3">
         {onBack && (
           <button onClick={onBack} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-primary">
@@ -50,7 +51,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate,
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-50 max-w-md mx-auto shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-[150] max-w-md mx-auto shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
       <button
         onClick={() => onNavigate(Screen.DASHBOARD)}
         className={`flex flex-col items-center gap-1 transition-colors`}
@@ -104,7 +105,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate,
     </div>
   );
 };
-
+// ... other components kept same until Toast ...
 export const CardButton: React.FC<{
   icon: React.ReactNode;
   label: string;
@@ -159,12 +160,14 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
     error: <Info className="w-5 h-5" />
   };
 
-  return (
-    <div className={`fixed top-4 left-4 right-4 z-70 flex items-center justify-center pointer-events-none animate-in slide-in-from-top duration-300`}>
+  const toastContent = (
+    <div className={`fixed top-4 left-4 right-4 z-[9999] flex items-center justify-center pointer-events-none animate-in slide-in-from-top duration-300`}>
       <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl ${styles[type]} max-w-sm w-full`}>
         {icon[type]}
         <span className="font-bold text-sm">{message}</span>
       </div>
     </div>
   );
+
+  return createPortal(toastContent, document.body);
 };

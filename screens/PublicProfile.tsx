@@ -75,7 +75,7 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
         <div className="px-4 py-4 flex items-center justify-between">
           <button
             onClick={onBack}
-            className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors relative z-50 cursor-pointer"
+            className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors relative z-[100] cursor-pointer"
           >
             <ChevronLeft className="w-6 h-6 text-gray-800" />
           </button>

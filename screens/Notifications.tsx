@@ -7,10 +7,11 @@ import { NotificationItem } from '../types';
 interface NotificationsProps {
   onBack: () => void;
   onGoToChat: () => void;
+  onClearAll: () => void;
   items: NotificationItem[];
 }
 
-export const Notifications: React.FC<NotificationsProps> = ({ onBack, onGoToChat, items }) => {
+export const Notifications: React.FC<NotificationsProps> = ({ onBack, onGoToChat, onClearAll, items }) => {
   return (
     <div className="min-h-screen bg-gray-50 pb-6 animate-in slide-in-from-right duration-300">
       <Header 
@@ -18,7 +19,7 @@ export const Notifications: React.FC<NotificationsProps> = ({ onBack, onGoToChat
         onBack={onBack}
         rightElement={
           items.length > 0 ? (
-            <button className="text-xs font-bold text-primary" onClick={() => alert("Todas marcadas como lidas")}>
+            <button className="text-xs font-bold text-primary" onClick={onClearAll}>
               Limpar
             </button>
           ) : null

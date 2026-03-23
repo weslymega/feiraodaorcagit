@@ -11,9 +11,8 @@ export const AppLoadingOverlay: React.FC<AppLoadingOverlayProps> = ({ isActive, 
 
     return (
         <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-70 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500"
-            style={{ pointerEvents: 'all' }}
-        >
+            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[1000] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500"
+            style={{ pointerEvents: 'all' }}>
             <div className="relative flex items-center justify-center animate-pulse-group">
                 {/* 1. Halo de fundo (Camada de Suporte Premium - Sutil) */}
                 <div

@@ -10,23 +10,21 @@ interface AboutAppProps {
 
 export const AboutApp: React.FC<AboutAppProps> = ({ onBack }) => {
   return (
-    <div className="min-h-screen bg-gray-50 pb-6 animate-in slide-in-from-right duration-300">
+    <div className="min-h-screen bg-gray-50 pb-32 animate-in slide-in-from-right duration-300">
       <Header title="Sobre o Aplicativo" onBack={onBack} />
 
       <div className="p-6 flex flex-col items-center">
         
-        {/* Logo / Icon Area */}
-        <div className="w-32 h-32 bg-white rounded-[30px] shadow-lg border border-gray-100 flex items-center justify-center mb-6 mt-8 overflow-hidden relative">
-          {/* Logo Quadrada */}
+        {/* Logo / Illustration Area */}
+        <div className="w-64 h-64 mb-4 mt-4 overflow-hidden relative group">
           <img 
-            src={APP_LOGOS.ICON} 
-            alt="Logo" 
-            className="w-full h-full object-cover"
+            src={APP_LOGOS.ABOUT} 
+            alt="Feirão da Orca Illustration" 
+            className="w-full h-full object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105"
           />
         </div>
 
-        <h2 className="text-2xl font-bold text-primary mb-1">Feirão da Orca</h2>
-        <p className="text-sm text-gray-400 font-medium mb-8 bg-gray-200 px-3 py-1 rounded-full">v1.0.0 (Beta)</p>
+        <p className="text-sm text-gray-400 font-medium mb-8 bg-gray-200 px-3 py-1 rounded-full">v1.0.0</p>
 
         {/* Main Content Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-full mb-6">
@@ -46,7 +44,7 @@ export const AboutApp: React.FC<AboutAppProps> = ({ onBack }) => {
               <Heart className="w-4 h-4 text-primary fill-current" />
               <Heart className="w-4 h-4 text-accent fill-current" />
             </div>
-            <p className="text-[10px] mt-4">© 2024 Feirão da Orca. Todos os direitos reservados.</p>
+            <p className="text-[10px] mt-4">© 2026 Feirão da Orca. Todos os direitos reservados.</p>
         </div>
       </div>
     </div>

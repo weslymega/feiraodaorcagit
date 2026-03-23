@@ -71,7 +71,7 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
                     <div
                         key={estate.id}
                         onClick={() => onAdClick(estate)}
-                        className="min-w-[220px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow group relative animate-fadeIn"
+                        className="min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow group relative animate-fadeIn"
                     >
                         {/* Badge TOP */}
                         {index < 3 && (
@@ -88,7 +88,7 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
                                 skeletonClassName="h-32 w-full"
                             />
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                                <p className="text-white font-bold text-lg">
+                                <p className="text-white font-bold text-base">
                                     {estate.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}
                                 </p>
                             </div>

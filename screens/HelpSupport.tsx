@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Mail, MessageCircle, HelpCircle, Send, ChevronRight } from 'lucide-react';
+import { MessageCircle, HelpCircle } from 'lucide-react';
 import { Header } from '../components/Shared';
 
 interface HelpSupportProps {
@@ -8,20 +8,6 @@ interface HelpSupportProps {
 }
 
 export const HelpSupport: React.FC<HelpSupportProps> = ({ onBack }) => {
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-
-  const handleSendEmail = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const emailTo = "Feirãodaorcadf@gmail.com";
-    const emailSubject = encodeURIComponent(subject || "Suporte - Feirão da Orca");
-    const emailBody = encodeURIComponent(message);
-    
-    // Open default mail client
-    window.location.href = `mailto:${emailTo}?subject=${emailSubject}&body=${emailBody}`;
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 pb-6 animate-in slide-in-from-right duration-300">
       <Header title="Ajuda e Suporte" onBack={onBack} />
@@ -39,71 +25,41 @@ export const HelpSupport: React.FC<HelpSupportProps> = ({ onBack }) => {
            </p>
         </div>
 
-        {/* Contact Form */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Mail className="w-5 h-5 text-primary" />
-            Enviar E-mail
+        {/* Contact Section */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 mb-6 text-center">
+          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center justify-center gap-2">
+            <MessageCircle className="w-6 h-6 text-primary" />
+            Fale conosco
           </h3>
 
-          <form onSubmit={handleSendEmail} className="flex flex-col gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assunto</label>
-              <input 
-                type="text" 
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Ex: Problema com anúncio"
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-800"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem</label>
-              <textarea 
-                rows={5}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Descreva detalhadamente como podemos te ajudar..."
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-800 resize-none"
-              ></textarea>
-            </div>
+          <div className="flex flex-col gap-4">
+            <button 
+              onClick={() => window.location.href = "tel:+5561983227344"}
+              className="w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-purple-100 flex items-center justify-center gap-3 active:scale-[0.98] transition-all hover:bg-primary/90"
+            >
+              <div className="bg-white/20 p-1.5 rounded-lg">
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.82 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+              </div>
+              Ligar agora
+            </button>
 
             <button 
-              type="submit"
-              className="mt-2 bg-primary text-white py-3.5 rounded-xl font-bold shadow-lg shadow-purple-200 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+              onClick={() => window.open("https://wa.me/5561983227344?text=Olá,%20preciso%20de%20ajuda", "_blank")}
+              className="w-full bg-[#25D366] text-white py-4 rounded-2xl font-bold shadow-lg shadow-green-100 flex items-center justify-center gap-3 active:scale-[0.98] transition-all hover:bg-[#20ba5a]"
             >
-              <Send className="w-4 h-4" />
-              Enviar Mensagem
+              <div className="bg-white/20 p-1.5 rounded-lg">
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.539 2.016 2.152-.525c.957.61 1.745.925 2.845.925 3.317 0 5.833-2.518 5.833-5.834 0-3.18-2.586-5.766-5.766-5.766-.001 0 .001 0 0 0zm3.321 8.24c-.114.33-.647.625-.892.671-.248.046-.499.076-1.597-.361-1.396-.557-2.316-1.936-2.385-2.031-.072-.094-.575-.765-.575-1.46s.362-1.042.491-1.18c.129-.138.281-.173.375-.173s.188 0 .269.006c.086.005.201-.033.314.24.114.276.39.953.424 1.022s.057.149.011.24-.069.159-.144.24-.153.188-.218.254c-.069.066-.141.138-.06.279.08.141.357.589.765.953.525.467.971.611 1.11.691.141.08.221.066.304-.029.083-.096.357-.417.451-.557s.188-.117.315-.069c.126.048.802.378.943.447s.233.102.267.159c.034.057.034.332-.08.662zM12 2C6.477 2 2 6.477 2 12c0 1.892.524 3.662 1.432 5.176L2 22l4.981-1.309A9.948 9.948 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.706 0-3.3-.435-4.69-1.203l-.337-.184-2.825.742.756-2.822-.206-.328A7.95 7.95 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+              </div>
+              Falar no WhatsApp
             </button>
-          </form>
-          
-          <div className="mt-4 text-center">
-            <p className="text-xs text-gray-400">
-              E-mail direto: <span className="text-primary font-medium">Feirãodaorcadf@gmail.com</span>
-            </p>
           </div>
+
+          <p className="mt-8 text-sm text-gray-500 font-medium">
+            Atendimento de segunda a sexta, das 08h às 18h
+          </p>
         </div>
 
-        {/* FAQ Teaser */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-           <div className="p-4 bg-gray-50 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900 text-sm">Perguntas Frequentes</h3>
-           </div>
-           
-           <button className="w-full p-4 text-left border-b border-gray-100 flex justify-between items-center hover:bg-gray-50 transition-colors">
-              <span className="text-sm text-gray-600">Como criar um anúncio?</span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-           </button>
-           <button className="w-full p-4 text-left border-b border-gray-100 flex justify-between items-center hover:bg-gray-50 transition-colors">
-              <span className="text-sm text-gray-600">Dicas de segurança</span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-           </button>
-           <button className="w-full p-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors">
-              <span className="text-sm text-gray-600">Política de reembolso</span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-           </button>
-        </div>
+
 
       </div>
     </div>

@@ -131,7 +131,7 @@ export const AdminRealEstateAds: React.FC<AdminRealEstateAdsProps> = ({ onBack, 
          <div className="min-h-screen bg-gray-50 pb-24 animate-in slide-in-from-right duration-300 relative">
 
             {/* Detail Header */}
-            <div className="bg-white px-4 py-4 sticky top-0 z-40 flex items-center justify-between border-b border-gray-200 shadow-sm">
+            <div className="bg-white px-4 py-4 sticky top-0 z-[100] flex items-center justify-between border-b border-gray-200 shadow-sm">
                <button onClick={() => setSelectedAd(null)} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
                   <ChevronLeft className="w-6 h-6 text-gray-700" />
                </button>
@@ -213,7 +213,7 @@ export const AdminRealEstateAds: React.FC<AdminRealEstateAdsProps> = ({ onBack, 
                   {/* Description */}
                   <div>
                      <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-500" /> Descrição do Vendedor
+                        <FileText className="w-4 h-4 text-gray-50" /> Descrição do Vendedor
                      </h3>
                      <div className="bg-white p-4 rounded-xl border border-gray-200 text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
                         {selectedAd.description || 'Sem descrição fornecida.'}
@@ -224,7 +224,7 @@ export const AdminRealEstateAds: React.FC<AdminRealEstateAdsProps> = ({ onBack, 
             </div>
 
             {/* Sticky Action Footer - Fixed Proportions */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+            <div className="fixed bottom-0 left-0 right-0 z-[150] flex justify-center pointer-events-none">
                <div className="w-full max-w-md bg-white border-t border-gray-200 p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] pointer-events-auto">
                   {selectedAd.status === AdStatus.PENDING ? (
                      <div className="flex gap-3">
@@ -272,7 +272,7 @@ export const AdminRealEstateAds: React.FC<AdminRealEstateAdsProps> = ({ onBack, 
       <div className="min-h-screen bg-gray-50 pb-20 animate-in slide-in-from-right duration-300">
 
          {/* Header */}
-         <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-3 shadow-sm">
+         <div className="sticky top-0 z-[100] bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-3 shadow-sm">
             <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
                <ChevronLeft className="w-6 h-6 text-gray-700" />
             </button>

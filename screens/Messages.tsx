@@ -12,7 +12,7 @@ interface MessagesProps {
 export const Messages: React.FC<MessagesProps> = ({ messages, onBack, onSelectChat }) => {
   return (
     <div className="min-h-screen bg-white pb-24 animate-in fade-in duration-300">
-      <div className="sticky top-0 z-50 bg-white px-4 py-4 flex items-center justify-between shadow-sm">
+      <div className="sticky top-0 z-[100] bg-white px-4 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-gray-900 ml-2">Mensagens</h1>
         </div>

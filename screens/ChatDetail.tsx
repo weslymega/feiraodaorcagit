@@ -10,7 +10,7 @@ interface ChatDetailProps {
   onBack: () => void;
   onAdClick?: () => void;
   onViewProfile?: () => void;
-  onSendMessage: (text: string, imageUrl?: string) => void;
+  onSendMessage: (text: string, images?: string[]) => void;
 }
 
 export const ChatDetail: React.FC<ChatDetailProps> = ({
@@ -22,6 +22,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
   onSendMessage
 }) => {
   const [inputText, setInputText] = useState('');
+  const [selectedImages, setSelectedImages] = useState<{ file: File; preview: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -35,85 +36,100 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
     scrollToBottom();
   }, [messages, isUploading]);
 
-  const handleSend = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!inputText.trim()) return;
+  // --- VALIDAÇÃO DE TEXTO ---
+  const textWords = inputText.trim() ? inputText.trim().split(/\s+/) : [];
+  const wordCount = textWords.length;
+  const charCount = inputText.length;
+  const hasLongWord = textWords.some(w => w.length > 30);
+  const isTextInvalid = wordCount > 50 || charCount > 500 || hasLongWord;
 
-    onSendMessage(inputText);
+  // --- VALIDAÇÃO DE IMAGENS ---
+  const isImagesInvalid = selectedImages.length > 3;
+
+  const isFormInvalid = (inputText.trim() === '' && selectedImages.length === 0) || isTextInvalid || isImagesInvalid;
+
+  const handleSend = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (isFormInvalid || isUploading) return;
+
+    let uploadedUrls: string[] = [];
+
+    if (selectedImages.length > 0) {
+      setIsUploading(true);
+      setUploadProgress(0);
+      try {
+        let processedCount = 0;
+        const uploadPromises = selectedImages.map(async ({ file }) => {
+          const compressed = await imageService.compress(file, 'chat');
+          const publicUrl = await imageService.upload(compressed, 'chat-images', chat.adId);
+          processedCount++;
+          setUploadProgress(Math.round((processedCount / selectedImages.length) * 100));
+          return publicUrl;
+        });
+        uploadedUrls = await Promise.all(uploadPromises);
+      } catch (error) {
+        console.error("Erro no upload:", error);
+        alert("Falha ao enviar imagens.");
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    // Envia mensagem única (Texto + Imagens)
+    onSendMessage(inputText.trim(), uploadedUrls.length > 0 ? uploadedUrls : undefined);
+    
+    // Limpa estado
     setInputText('');
+    setSelectedImages([]);
+    setIsUploading(false);
+    setUploadProgress(0);
   };
 
   const handleAttachClick = () => {
     fileInputRef.current?.click();
   };
 
-  // --- REMOVED LOCAL COMPRESSION IN FAVOR OF imageService ---
-
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Regra: Máximo de 10 fotos
-    if (files.length > 10) {
-      alert("Você pode enviar no máximo 10 fotos por vez.");
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
+    const fileArray = Array.from(files) as File[];
+    const newSelected = [...selectedImages];
 
-    setIsUploading(true); // Inicia o loading
-    setUploadProgress(0);
-
-    try {
-      const fileArray = Array.from(files) as File[];
-      const validFiles: File[] = [];
-
-      // Validação de tipo
-      fileArray.forEach((file) => {
-        const validTypes = ['image/jpeg', 'image/png'];
-        if (validTypes.includes(file.type)) {
-          validFiles.push(file);
-        } else {
-          alert(`O arquivo "${file.name}" foi ignorado. Apenas JPG e PNG.`);
-        }
-      });
-
-      if (validFiles.length === 0) {
-        setIsUploading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        return;
+    for (const file of fileArray) {
+      if (newSelected.length >= 3) {
+        alert("Máximo de 3 imagens permitido.");
+        break;
       }
 
-      let processedCount = 0;
-      // Processa todas as imagens em paralelo: Compressão + Upload para Storage
-      const uploadPromises = validFiles.map(async (file) => {
-        // 1. Comprimir (max 800px)
-        const compressed = await imageService.compress(file, 'chat');
-        
-        // 2. Upload para Storage (Pasta chat-images/adId/)
-        const publicUrl = await imageService.upload(compressed, 'chat-images', chat.adId);
+      // Validação de formato
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        alert(`Arquivo "${file.name}" inválido. Use JPG, PNG ou WEBP.`);
+        continue;
+      }
 
-        processedCount++;
-        setUploadProgress(Math.round((processedCount / validFiles.length) * 100));
+      // Validação de tamanho (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`Arquivo "${file.name}" é muito grande (Máximo 5MB).`);
+        continue;
+      }
 
-        return publicUrl;
+      newSelected.push({
+        file,
+        preview: URL.createObjectURL(file)
       });
-
-      const imageUrls = await Promise.all(uploadPromises);
-
-      // Envia as mensagens uma por uma com a URL final
-      imageUrls.forEach(url => {
-        onSendMessage('', url);
-      });
-
-    } catch (error) {
-      console.error("Erro ao processar imagens", error);
-      alert("Ocorreu um erro ao processar as imagens.");
-    } finally {
-      setIsUploading(false); // Para o loading
-      setUploadProgress(0);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+
+    setSelectedImages(newSelected);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = [...selectedImages];
+    URL.revokeObjectURL(newImages[index].preview);
+    newImages.splice(index, 1);
+    setSelectedImages(newImages);
   };
 
   return (
@@ -121,7 +137,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
 
       {/* Loading Overlay with Progress Bar */}
       {isUploading && (
-        <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
+        <div className="absolute inset-0 z-[1000] bg-black/20 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
           <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-3 w-64">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
             <p className="text-gray-800 font-bold text-sm">Comprimindo e enviando...</p>
@@ -138,7 +154,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
       )}
 
       {/* Header */}
-      <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm sticky top-0 z-20">
+      <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm sticky top-0 z-[100]">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-1 -ml-2 rounded-full hover:bg-gray-100">
             <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -166,7 +182,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
         <button
           onClick={() => onAdClick && onAdClick()}
           disabled={!onAdClick}
-          className="bg-white/90 backdrop-blur-sm border-b border-gray-200 p-3 flex items-center gap-3 sticky top-[64px] z-10 shadow-sm w-full text-left active:bg-gray-50 transition-colors"
+          className="bg-white/90 backdrop-blur-sm border-b border-gray-200 p-3 flex items-center gap-3 sticky top-[64px] z-[90] shadow-sm w-full text-left active:bg-gray-50 transition-colors"
         >
           <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
             <img src={chat.adImage || 'https://placehold.co/100x100?text=Orca'} className="w-full h-full object-cover" alt="Product" />
@@ -191,12 +207,27 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`max-w-[80%] rounded-xl p-3 relative shadow-sm text-sm ${msg.isMine
+            className={`max-w-[80%] rounded-xl p-3 relative shadow-sm text-sm transition-opacity ${msg.isMine
               ? 'bg-[#dcf8c6] self-end rounded-tr-none'
               : 'bg-white self-start rounded-tl-none'
-              }`}
+              } ${msg.sending ? 'opacity-70' : 'opacity-100'} ${msg.error ? 'border border-red-300' : ''}`}
           >
-            {msg.imageUrl ? (
+            {/* Novas Imagens (Múltiplas) */}
+            {msg.images && msg.images.length > 0 && (
+              <div className={`flex flex-wrap gap-1 mb-2 ${msg.images.length > 1 ? 'grid grid-cols-2' : ''}`}>
+                {msg.images.map((img, idx) => (
+                  <img
+                    key={idx}
+                    src={img}
+                    alt="Imagem enviada"
+                    className={`rounded-lg object-cover w-full ${msg.images!.length === 1 ? 'max-h-64' : 'aspect-square'}`}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Imagem Legada (Singular) */}
+            {msg.imageUrl && (!msg.images || msg.images.length === 0) && (
               <div className="mb-1">
                 <img
                   src={msg.imageUrl}
@@ -204,18 +235,29 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                   className="rounded-lg max-h-64 object-cover w-full"
                 />
               </div>
-            ) : (
-              <p className="text-gray-800 leading-relaxed pr-6">{msg.text}</p>
             )}
 
-            <div className={`flex items-center gap-1 mt-1 ${msg.imageUrl ? 'justify-end absolute bottom-2 right-2 bg-black/30 px-1.5 py-0.5 rounded-full backdrop-blur-sm' : 'justify-end'}`}>
-              <span className={`text-[10px] ${msg.imageUrl ? 'text-white' : 'text-gray-500'}`}>{msg.time}</span>
-              {msg.isMine && (
+            {msg.text && (
+              <p className="text-gray-800 leading-relaxed pr-6 whitespace-pre-wrap">{msg.text}</p>
+            )}
+
+            <div className={`flex items-center gap-1 mt-1 justify-end`}>
+              {msg.error && (
+                <span className="text-[10px] text-red-500 font-bold mr-1">Falhou</span>
+              )}
+              <span className={`text-[10px] text-gray-500`}>{msg.time}</span>
+              {msg.isMine && !msg.error && (
                 <>
-                  {msg.isRead && chat.readReceipts !== false ? (
-                    <CheckCheck className={`w-3 h-3 ${msg.imageUrl ? 'text-white' : 'text-blue-500'}`} />
+                  {msg.sending ? (
+                    <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
                   ) : (
-                    <Check className={`w-3 h-3 ${msg.imageUrl ? 'text-white' : 'text-gray-400'}`} />
+                    <>
+                      {msg.isRead && chat.readReceipts !== false ? (
+                        <CheckCheck className={`w-3 h-3 text-blue-500`} />
+                      ) : (
+                        <Check className={`w-3 h-3 text-gray-400`} />
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -225,49 +267,87 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Preview de Imagens Selecionadas */}
+      {selectedImages.length > 0 && (
+        <div className="bg-white p-3 border-t border-gray-200 flex gap-2 overflow-x-auto">
+          {selectedImages.map((img, idx) => (
+            <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
+              <img src={img.preview} className="w-full h-full object-cover" alt="Preview" />
+              <button
+                onClick={() => removeImage(idx)}
+                className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5 hover:bg-black/70"
+              >
+                <ArrowLeft className="w-3 h-3 rotate-45" /> {/* Use X icon if available, but ArrowLeft rotated is a hack or I can import X */}
+              </button>
+            </div>
+          ))}
+          <div className="flex flex-col justify-center px-2">
+            <span className={`text-[10px] font-bold ${selectedImages.length > 3 ? 'text-red-500' : 'text-gray-400'}`}>
+              {selectedImages.length}/3 fotos
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Input Area */}
-      <form
-        onSubmit={handleSend}
-        className="bg-white p-3 flex items-center gap-2 sticky bottom-0 border-t border-gray-200"
-      >
-        {/* Hidden File Input */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          accept="image/png, image/jpeg"
-          multiple
-          className="hidden"
-        />
+      <div className="bg-white border-t border-gray-200 p-2">
+        {/* Contadores */}
+        <div className="flex justify-between px-3 mb-1">
+          <div className="flex gap-3">
+            <span className={`text-[10px] font-medium ${wordCount > 50 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+              {wordCount}/50 palavras
+            </span>
+            <span className={`text-[10px] font-medium ${charCount > 500 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+              {charCount}/500 caracteres
+            </span>
+          </div>
+          {hasLongWord && <span className="text-[10px] text-red-500 font-bold">Palavra muito longa!</span>}
+        </div>
 
-        <button
-          type="button"
-          onClick={handleAttachClick}
-          disabled={isUploading}
-          className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
-          title="Anexar imagens"
+        <form
+          onSubmit={handleSend}
+          className="flex items-center gap-2"
         >
-          <Paperclip className="w-5 h-5" />
-        </button>
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/png, image/jpeg, image/webp"
+            multiple
+            className="hidden"
+          />
 
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Digite uma mensagem"
-          disabled={isUploading}
-          className="flex-1 bg-gray-100 border-none rounded-full px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-gray-800 disabled:bg-gray-50"
-        />
+          <button
+            type="button"
+            onClick={handleAttachClick}
+            disabled={isUploading || selectedImages.length >= 3}
+            className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+            title="Anexar imagens"
+          >
+            <Paperclip className="w-5 h-5" />
+          </button>
 
-        <button
-          type="submit"
-          disabled={!inputText.trim() || isUploading}
-          className={`p-3 rounded-full transition-colors flex items-center justify-center ${inputText.trim() ? 'bg-primary text-white shadow-md' : 'bg-gray-200 text-gray-400'
-            }`}
-        >
-          <Send className="w-5 h-5 ml-0.5" />
-        </button>
-      </form>
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder={selectedImages.length > 0 ? "Adicione uma legenda..." : "Digite uma mensagem"}
+            disabled={isUploading}
+            className={`flex-1 bg-gray-100 border-none rounded-2xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-gray-800 disabled:bg-gray-50 ${isTextInvalid ? 'ring-1 ring-red-300 bg-red-50' : ''
+              }`}
+          />
+
+          <button
+            type="submit"
+            disabled={isFormInvalid || isUploading}
+            className={`p-3 rounded-full transition-colors flex items-center justify-center ${!isFormInvalid ? 'bg-primary text-white shadow-md' : 'bg-gray-200 text-gray-400'
+              }`}
+          >
+            {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-0.5" />}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

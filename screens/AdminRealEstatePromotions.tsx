@@ -61,7 +61,7 @@ export const AdminRealEstatePromotions: React.FC<AdminRealEstatePromotionsProps>
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header */}
-            <div className="bg-white sticky top-0 z-50 px-6 py-6 border-b border-gray-100 flex items-center justify-between">
+            <div className="bg-white sticky top-0 z-[100] px-6 py-6 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
                         <ArrowLeft className="w-6 h-6 text-gray-800" />
@@ -168,7 +168,7 @@ export const AdminRealEstatePromotions: React.FC<AdminRealEstatePromotionsProps>
 
             {/* Modal */}
             {isModalOpen && editingPromo && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-[900] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
                         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="text-lg font-bold text-gray-900">

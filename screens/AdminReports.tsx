@@ -152,7 +152,7 @@ export const AdminReports: React.FC<AdminReportsProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gray-50 pb-10 animate-in slide-in-from-right duration-300">
 
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between shadow-sm">
+      <div className="sticky top-0 z-[100] bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
             <ChevronLeft className="w-6 h-6 text-gray-700" />

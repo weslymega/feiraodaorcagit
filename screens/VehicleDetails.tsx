@@ -9,6 +9,7 @@ import { Toast } from '../components/Shared';
 import { SmartImage } from '../components/ui/SmartImage';
 import { api } from '../services/api';
 import { Loader2 } from 'lucide-react';
+import { LocationSection } from '../components/LocationSection';
 
 interface VehicleDetailsProps {
   ad: AdItem;
@@ -389,14 +390,11 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
             </div>
           </div>
 
-          <div className="mb-4">
-            <h3 className="font-bold text-gray-900 mb-3 text-lg">Localização</h3>
-            <div className="bg-gray-100 rounded-2xl overflow-hidden h-40 relative flex items-center justify-center mb-2 border border-gray-200"><MapPin className="text-primary w-10 h-10 mb-2 drop-shadow-md" /><div className="absolute bottom-3 bg-white/95 backdrop-blur px-4 py-2 rounded-xl text-sm font-bold shadow-sm text-gray-800 border border-gray-100">{ad.location}</div></div>
-          </div>
+          <LocationSection ad={ad} />
         </div>
 
         {!ad.isOwner && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-50 max-w-md mx-auto rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
+          <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-[150] max-w-md mx-auto rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
             <button
               onClick={onStartChat}
               className="flex-1 bg-[#F1B911] hover:bg-[#D9A60D] text-white font-black py-4 rounded-2xl shadow-xl shadow-yellow-200/50 flex items-center justify-center gap-2 transition-all active:scale-[0.97]"

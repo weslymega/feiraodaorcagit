@@ -23,9 +23,18 @@ const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: string }>
 );
 
 export const AccountData: React.FC<AccountDataProps> = ({ user, onBack, onEdit }) => {
-  // Mock data for display purposes
-  const joinDate = "15 de Março de 2023";
-  const userId = "#8839201";
+  if (!user) return null;
+
+  const formattedJoinDate = user.createdAt 
+    ? new Date(user.createdAt).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      })
+    : user.joinDate || 'Não informado';
+
+  const displayId = user.id ? `#${user.id.slice(0, 8)}` : 'ID não disponível';
+  const isVerified = user.verified || !!user.emailConfirmedAt;
 
   return (
     <div className="min-h-screen bg-white pb-24 animate-in slide-in-from-right duration-300">
@@ -40,12 +49,14 @@ export const AccountData: React.FC<AccountDataProps> = ({ user, onBack, onEdit }
               className="w-full h-full rounded-full object-cover" 
             />
           </div>
-          <div className="absolute bottom-0 right-0 bg-blue-500 text-white p-1.5 rounded-full border-2 border-white" title="Conta Verificada">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
+          {isVerified && (
+            <div className="absolute bottom-0 right-0 bg-blue-500 text-white p-1.5 rounded-full border-2 border-white" title="Conta Verificada">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          )}
         </div>
         <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
-        <p className="text-gray-500 text-sm mb-4">ID: {userId}</p>
+        <p className="text-gray-500 text-sm mb-4">ID: {displayId}</p>
         
         <button 
           onClick={onEdit}
@@ -77,7 +88,7 @@ export const AccountData: React.FC<AccountDataProps> = ({ user, onBack, onEdit }
           <InfoRow 
             icon={<Calendar className="w-5 h-5" />} 
             label="Membro Desde" 
-            value={joinDate} 
+            value={formattedJoinDate} 
           />
           <InfoRow 
             icon={<UserIcon className="w-5 h-5" />} 
@@ -87,17 +98,19 @@ export const AccountData: React.FC<AccountDataProps> = ({ user, onBack, onEdit }
         </div>
       </div>
 
-      <div className="p-6 pt-0">
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3">
-            <ShieldCheck className="w-6 h-6 text-blue-600 flex-shrink-0" />
-            <div>
-                <h4 className="font-bold text-blue-900 text-sm mb-1">Conta Verificada</h4>
-                <p className="text-xs text-blue-700 leading-relaxed">
-                    Seus dados estão protegidos e validados conforme nossas diretrizes de segurança e privacidade.
-                </p>
-            </div>
+      {isVerified && (
+        <div className="p-6 pt-0">
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3">
+              <ShieldCheck className="w-6 h-6 text-blue-600 flex-shrink-0" />
+              <div>
+                  <h4 className="font-bold text-blue-900 text-sm mb-1">Conta Verificada</h4>
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                      Seus dados estão protegidos e validados conforme nossas diretrizes de segurança e privacidade.
+                  </p>
+              </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 import { ChevronLeft, Heart, Share2, MapPin, MessageSquare, User as UserIcon, ChevronRight, Wrench, Tag, Package, CheckCircle, QrCode, Printer, Download, Flag } from 'lucide-react';
 import { generateA4PrintTemplate } from '../services/printTemplates';
 import { AdItem, ReportItem } from '../types';
+import { LocationSection } from '../components/LocationSection';
 import { APP_URL } from '../constants';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
+import { SmartImage } from '../components/ui/SmartImage';
 
 interface PartServiceDetailsProps {
   ad: AdItem;
@@ -146,16 +148,25 @@ export const PartServiceDetails: React.FC<PartServiceDetailsProps> = ({ ad, onBa
         {/* Seller Info (Clickable) */}
         <div
           onClick={onViewProfile}
-          className="flex items-center gap-3 bg-gray-50 p-4 rounded-xl mb-6 cursor-pointer hover:bg-gray-100 transition-colors group active:scale-[0.98]"
+          className="flex items-center gap-4 bg-white border border-gray-100 shadow-sm p-4 rounded-2xl mb-8 cursor-pointer hover:bg-gray-50 transition-colors group active:scale-[0.98]"
         >
-          <div className="w-12 h-12 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden">
-            <UserIcon className="w-6 h-6 text-gray-400" />
+          <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm group-hover:border-primary transition-colors">
+            {ad.ownerAvatar ? (
+              <SmartImage src={ad.ownerAvatar} alt={ad.ownerName || "Vendedor"} className="w-full h-full object-cover" />
+            ) : (
+              <UserIcon className="w-7 h-7 text-gray-400" />
+            )}
           </div>
           <div className="flex-1">
-            <p className="font-bold text-gray-900">Vendedor</p>
-            <div className="flex items-center gap-1"><CheckCircle className="w-3 h-3 text-green-500" /><p className="text-xs text-gray-500">Identidade verificada</p></div>
+            <p className="font-bold text-gray-900 text-lg group-hover:text-primary transition-colors">
+              {ad.isOwner ? "Eu (Vendedor)" : (ad.ownerName || "Vendedor")}
+            </p>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <p className="text-xs text-gray-500">Online agora • Ver perfil</p>
+            </div>
           </div>
-          <button className="ml-auto text-primary text-sm font-bold group-hover:underline">Ver perfil</button>
+          <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary" />
         </div>
 
         {ad.isOwner && (
@@ -181,10 +192,12 @@ export const PartServiceDetails: React.FC<PartServiceDetailsProps> = ({ ad, onBa
           <h4 className="font-bold text-blue-900 text-sm mb-2">Dicas de Segurança</h4>
           <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside"><li>Não faça pagamentos antecipados.</li><li>Verifique o produto pessoalmente antes de comprar.</li><li>Prefira locais públicos para encontros.</li></ul>
         </div>
+
+        <LocationSection ad={ad} />
       </div>
 
       {!ad.isOwner && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-3 items-center z-50 max-w-md mx-auto">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-3 items-center z-[150] max-w-md mx-auto">
           <button onClick={onStartChat} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-full shadow flex items-center justify-center gap-2 transition-colors active:scale-95"><MessageSquare className="w-5 h-5" /> Chat</button>
         </div>
       )}

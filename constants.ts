@@ -1,5 +1,5 @@
 
-import { AdItem, AdStatus, MessageItem, TransactionData, User, NotificationItem, ReportItem } from './types';
+import { AdItem, AdStatus, MessageItem, User, NotificationItem, ReportItem } from './types';
 
 // --- LOGOS DO APLICATIVO ---
 // Logos recriadas para corresponder exatamente à identidade visual solicitada
@@ -8,11 +8,16 @@ export const APP_LOGOS = {
   FULL: "/assets/logo_orca_correct.png",
 
   // Ícone Quadrado: Apenas o símbolo (Asset Oficial Correto)
-  ICON: "/assets/logo_orca_correct.png"
+  ICON: "/assets/logo_orca_correct.png",
+
+  // Ilustração da tela Sobre
+  ABOUT: "/assets/about_illustration.png"
 };
 
 // --- CONFIGURAÇÃO DE DOMÍNIO ---
 export const APP_URL = import.meta.env.VITE_APP_URL || 'https://feiraodaorcagit-two.vercel.app';
+
+export const LOCATION_LABEL = "Localização baseada no CEP informado pelo anunciante.";
 
 export const CATEGORY_ICONS = {
   VEHICLES: "/assets/categories/car.png",
@@ -1043,20 +1048,6 @@ export const FAVORITES_DATA: AdItem[] = [
   }
 ];
 
-export const HISTORY_DATA: AdItem[] = [
-  {
-    userId: 'u_mock',
-    id: '201',
-    title: 'Honda Civic EX 2021',
-    price: 135000.00,
-    location: 'Curitiba, PR',
-    image: 'https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?auto=format&fit=crop&q=80&w=800',
-    status: AdStatus.BOUGHT,
-    date: '12 de Agosto, 2023',
-    category: 'veiculos',
-    vehicleType: 'Honda Civic'
-  }
-];
 
 export const MESSAGES_DATA: MessageItem[] = [
   {
@@ -1105,15 +1096,6 @@ export const MESSAGES_DATA: MessageItem[] = [
   }
 ];
 
-export const HISTORY_CHART_DATA: TransactionData[] = [
-  { name: 'Jan', value: 4000 },
-  { name: 'Fev', value: 3000 },
-  { name: 'Mar', value: 2000 },
-  { name: 'Abr', value: 2780 },
-  { name: 'Mai', value: 1890 },
-  { name: 'Jun', value: 2390 },
-  { name: 'Jul', value: 3490 },
-];
 
 // --- PROMOTIONAL BANNERS FOR CAROUSEL ---
 export interface PromoBanner {

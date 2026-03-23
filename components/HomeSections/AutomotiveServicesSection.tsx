@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Wrench, ChevronRight, MessageCircle } from 'lucide-react';
+import { Wrench, ChevronRight, MapPin } from 'lucide-react';
 import { AdItem, Screen } from '../../types';
 
 import { SmartImage } from '../ui/SmartImage';
@@ -66,7 +66,7 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
                         <div
                             key={service.id}
                             onClick={() => onAdClick(service)} // Main click for details
-                            className={`min-w-[200px] bg-white rounded-xl shadow-sm border ${borderColor} overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow relative animate-fadeIn`}
+                            className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border ${borderColor} overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow relative animate-fadeIn`}
                         >
                             <div className="h-28 w-full relative overflow-hidden">
                                 <SmartImage
@@ -100,16 +100,11 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
                                 </div>
                             )}
 
-                            <div className="flex gap-2 mt-auto">
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAdClick(service);
-                                    }}
-                                    className="flex-1 bg-purple-50 text-purple-700 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 hover:bg-purple-100"
-                                >
-                                    <MessageCircle className="w-3 h-3" /> Chat
-                                </button>
+                            <div className="flex items-center gap-1 mt-auto bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-100">
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <span className="text-[10px] text-gray-500 truncate font-medium">
+                                    {service.location}
+                                </span>
                             </div>
                         </div>
                     </div>

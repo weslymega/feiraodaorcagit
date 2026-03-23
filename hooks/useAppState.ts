@@ -98,6 +98,35 @@ export const useAppState = () => {
     };
   }, []);
 
+  // 1.2 Subscription Realtime para Status de Anúncios (Sincronização do Feed)
+  useEffect(() => {
+    console.log("📡 Subscribing to Anuncios Realtime (Status Sync)...");
+
+    const channel = (supabase as any)
+      .channel('public:anuncios_status')
+      .on('postgres_changes', {
+        event: 'UPDATE', // Monitorar mudanças de status
+        schema: 'public',
+        table: 'anuncios'
+      }, (payload: any) => {
+        const adId = payload.new.id;
+        const newStatus = String(payload.new.status || '').toLowerCase();
+        
+        // Regra: Se o anúncio não for mais 'active' ou 'ativo', removemos do feed local
+        const isActive = newStatus === 'active' || newStatus === 'ativo';
+
+        if (!isActive) {
+          console.log(`🚫 Anúncio ${adId} não é mais ativo (${newStatus}). Removendo do feed.`);
+          setRealAds((prev: AdItem[]) => (prev || []).filter(ad => ad.id !== adId));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      (supabase as any).removeChannel(channel);
+    };
+  }, []);
+
   // 1.1 Auth State Change Listener (Single Source of Truth)
   // Guard to prevent duplicate SIGNED_IN processing (fixes infinite loop)
   const authenticatedUserIdRef = useRef<string | null>(null);
@@ -124,7 +153,9 @@ export const useAppState = () => {
       joinDate: new Date(sessionUser.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
       phone: "",
       location: "Brasília, DF",
-      bio: ""
+      bio: "",
+      createdAt: sessionUser.created_at,
+      emailConfirmedAt: sessionUser.email_confirmed_at
     });
 
     // 2. Verificação de sessão inicial (Cold Boot)

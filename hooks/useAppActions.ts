@@ -1,4 +1,4 @@
-import { Screen, User, AdItem, AdStatus, MessageItem, NotificationItem, ReportItem, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
+import { Screen, User, AdItem, AdStatus, MessageItem, ChatMessage, NotificationItem, ReportItem, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
 import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, MOCK_NOTIFICATIONS, MOCK_REPORTS, MOCK_ADMIN_VEHICLES, MOCK_ADMIN_REAL_ESTATE, MOCK_ADMIN_PARTS_SERVICES } from '../constants';
 import { MOCK_SELLER } from '../constants';
 import { useRef, useEffect } from 'react';
@@ -553,7 +553,7 @@ export const useAppActions = (state: AppState) => {
 
         if (ad.category === 'autos' || ad.category === 'veiculos') setCurrentScreen(Screen.VEHICLE_DETAILS);
         else if (ad.category === 'imoveis') setCurrentScreen(Screen.REAL_ESTATE_DETAILS);
-        else if (ad.category === 'pecas' || ad.category === 'servicos') setCurrentScreen(Screen.PART_SERVICE_DETAILS);
+        else if (ad.category === 'pecas' || ad.category === 'servicos' || ad.category === 'produtos') setCurrentScreen(Screen.PART_SERVICE_DETAILS);
         else setCurrentScreen(Screen.VEHICLE_DETAILS);
     };
 
@@ -642,6 +642,12 @@ export const useAppActions = (state: AppState) => {
                         }
                         return ad;
                     }));
+
+                    // 🎯 FIX: Remover da lista global IMEDIATAMENTE após editar (evita info obsoleta no feed)
+                    if (setRealAds) {
+                        setRealAds((prev: AdItem[] = []) => prev.filter(ad => ad.id !== adToEdit.id));
+                    }
+
                     setToast({ message: "Anúncio enviado para reanálise!", type: 'success' });
                 } catch (updateError: any) {
                     console.error("❌ Erro ao persistir edição:", updateError);
@@ -926,14 +932,96 @@ export const useAppActions = (state: AppState) => {
         setChatMessages(msgs);
     };
 
-    const handleSendMessage = async (adId: string, receiverId: string, content: string, imageUrl?: string) => {
+    const handleSendMessage = async (adId: string, receiverId: string, content: string, images?: string[]) => {
+        if (!user || user.id === 'guest') return;
+
+        // --- VALIDAÇÕES OBRIGATÓRIAS (PRÉ-ENVIO) ---
+        if (!adId || !receiverId) {
+            setToast({ message: "Erro: Destinatário ou Anúncio não identificado.", type: 'error' });
+            return;
+        }
+
+        const trimmedContent = (content || "").trim();
+        const hasImages = images && images.length > 0;
+
+        if (!trimmedContent && !hasImages) {
+            setToast({ message: "A mensagem não pode estar vazia", type: 'error' });
+            return;
+        }
+
+        // Normalização de imagens
+        const validImages = Array.isArray(images) ? images : [];
+
+        // 0. VALIDAÇÃO LOCAL (Texto)
+        if (trimmedContent.length > 0) {
+            const words = trimmedContent.split(/\s+/);
+            if (words.length > 50) {
+                setToast({ message: "Limite de 50 palavras excedido", type: 'error' });
+                return;
+            }
+            if (words.some(w => w.length > 30)) {
+                setToast({ message: "Palavras muito longas não são permitidas", type: 'error' });
+                return;
+            }
+            if (trimmedContent.length > 500) {
+                setToast({ message: "Mensagem muito longa (máx 500 caracteres)", type: 'error' });
+                return;
+            }
+        }
+
+        // 0. VALIDAÇÃO LOCAL (Imagens)
+        if (validImages.length > 3) {
+            setToast({ message: "Máximo de 3 imagens por mensagem", type: 'error' });
+            return;
+        }
+
+        // 1. OTIMISMO: Adicionar mensagem localmente IMEDIATAMENTE
+        const tempId = `temp_${Date.now()}`;
+        const optimisticMsg: ChatMessage = {
+            id: tempId,
+            text: trimmedContent,
+            images: validImages,
+            isMine: true,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isRead: false,
+            sending: true // Flag para feedback visual
+        };
+
+        setChatMessages(prev => [...prev, optimisticMsg]);
+
         try {
-            await api.sendMessage(adId, receiverId, content, imageUrl);
-            // Re-carrega mensagens para garantir sincronismo (ou espera o realtime)
-            handleLoadMessages(adId, receiverId);
-            handleLoadConversations(); // Atualiza a lista de conversas (last message)
-        } catch (error) {
-            setToast({ message: "Erro ao enviar mensagem", type: 'error' });
+            console.log("📤 Enviando mensagem real para o banco...");
+            const finalImages = (validImages && validImages.length > 0) ? validImages : null;
+            await api.sendMessage(adId, receiverId, trimmedContent, finalImages || undefined);
+            
+            // 2. Sincronismo: Recarregar para pegar a ID real e timestamp do banco
+            await handleLoadMessages(adId, receiverId);
+            handleLoadConversations();
+        } catch (error: any) {
+            console.error("❌ Erro ao enviar mensagem (FULL):", JSON.stringify(error, null, 2));
+            
+            // Mostrar erro real do backend ou fallback amigável
+            let errorMsg = error?.message || "Erro ao enviar mensagem. Verifique sua conexão.";
+            
+            // Mapeamento amigável para triggers conhecidos (opcional, já que mostramos o real agora)
+            if (errorMsg.includes('SELF_CHAT_NOT_ALLOWED')) {
+                errorMsg = "Você não pode enviar mensagens para si mesmo.";
+            } else if (errorMsg.includes('MESSAGE_TOO_LONG')) {
+                errorMsg = "Mensagem muito longa (Máximo 500 caracteres).";
+            } else if (errorMsg.includes('TOO_MANY_IMAGES')) {
+                errorMsg = "Máximo de 3 imagens permitido.";
+            } else if (errorMsg.includes('WORD_TOO_LONG')) {
+                errorMsg = "A mensagem contém palavras muito longas (> 30 caracteres).";
+            } else if (errorMsg.includes('EMPTY_MESSAGE_NOT_ALLOWED')) {
+                errorMsg = "A mensagem não pode estar vazia.";
+            }
+
+            setToast({ message: errorMsg, type: 'error' });
+
+            // Marcar a mensagem como falha na UI
+            setChatMessages(prev => prev.map(msg => 
+                msg.id === tempId ? { ...msg, sending: false, error: true } : msg
+            ));
         }
     };
 
@@ -992,11 +1080,12 @@ export const useAppActions = (state: AppState) => {
     };
 
     const navigateToAdDetails = () => {
-        if (!selectedAd) return;
+        if (!selectedAd) {
+            console.warn('selectedAd undefined');
+            return;
+        }
         setPreviousScreen(Screen.CHAT_DETAIL);
-        if (selectedAd.category === 'autos') setCurrentScreen(Screen.VEHICLE_DETAILS);
-        else if (selectedAd.category === 'imoveis') setCurrentScreen(Screen.REAL_ESTATE_DETAILS);
-        else if (selectedAd.category === 'pecas' || selectedAd.category === 'servicos') setCurrentScreen(Screen.PART_SERVICE_DETAILS);
+        handleAdClick(selectedAd);
     };
 
     const handleBackFromProfile = () => {
@@ -1062,6 +1151,21 @@ export const useAppActions = (state: AppState) => {
     const openTrendingRealEstate = () => {
         setFilterContext({ mode: 'trending', sort: 'trending' });
         navigateTo(Screen.REAL_ESTATE_LIST);
+    };
+
+    const handleClearNotifications = () => {
+        if (!notifications || notifications.length === 0) {
+            setToast({ message: "Nenhuma notificação para limpar", type: 'info' });
+            return;
+        }
+
+        const confirmed = window.confirm("Tem certeza que deseja limpar todas as notificações?");
+        
+        if (!confirmed) return;
+
+        setNotifications(() => []);
+        
+        setToast({ message: "Notificações limpas com sucesso", type: 'success' });
     };
 
     return {
@@ -1132,6 +1236,7 @@ export const useAppActions = (state: AppState) => {
         chatMessages,
         handleSendMessage,
         handleLoadMessages,
-        handleLoadConversations
+        handleLoadConversations,
+        handleClearNotifications
     };
 };

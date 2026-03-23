@@ -2,7 +2,7 @@
 import React from 'react';
 import athosBg from '../assets/athos_bg_v3.jpg';
 import logoFull from '../assets/logo_full.png';
-import mercadoPagoLogo from '../assets/mercado-pago.png';
+
 import { Screen } from '../types';
 
 interface FooterProps {
@@ -57,23 +57,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 {/* Links em Linha */}
 
                 {/* Logo Mercado Pago */}
-                <div style={{
-                    width: "100%",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    padding: "16px 0"
-                }}>
-                    <img
-                        src={mercadoPagoLogo}
-                        alt="Mercado Pago"
-                        style={{
-                            height: "64px",
-                            width: "auto",
-                            objectFit: "contain"
-                        }}
-                    />
-                </div>
+
 
                 <div className="flex flex-wrap justify-center gap-6 mb-12">
                     <button
