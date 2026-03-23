@@ -61,7 +61,7 @@ serve(async (req) => {
         // 4. Validar Anúncio
         const { data: ad, error: adError } = await supabaseClient
             .from('anuncios')
-            .select('id, user_id, status')
+            .select('id, user_id, status, turbo_expires_at')
             .eq('id', adId)
             .single();
 
@@ -85,6 +85,19 @@ serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 400,
             });
+        }
+
+        // 🛡️ NOVO: Bloquear se já tiver Turbo Ativo
+        if (ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date()) {
+          console.warn(`[create-turbo-session] TURBO_ALREADY_ACTIVE: Ad ${adId}`);
+          return new Response(JSON.stringify({ 
+              error: 'TURBO_ALREADY_ACTIVE', 
+              message: 'Este anúncio já possui um destaque ativo.',
+              expiresAt: ad.turbo_expires_at 
+          }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+          });
         }
 
         // 5. Validar turboType e steps

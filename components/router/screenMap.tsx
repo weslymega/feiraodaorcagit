@@ -163,6 +163,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         if (state.setAdToEdit) state.setAdToEdit(ad);
                         navigateTo(Screen.BOOST_TURBO);
                     }}
+                    onShowToast={state.setToast}
                     onCreateNew={() => prepareCreateAd()}
                     onAdClick={handleAdClick}
                     initialTab={state.myAdsInitialTab}

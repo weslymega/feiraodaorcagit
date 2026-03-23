@@ -27,19 +27,8 @@ SELECT
     a.is_in_fair,
     p.name as owner_name,
     p.avatar_url as owner_avatar,
-    EXISTS (
-        SELECT 1 FROM ad_turbo_sessions s 
-        WHERE s.ad_id = a.id 
-        AND s.status = 'active' 
-        AND s.expires_at > now()
-    ) as is_turbo_active,
-    (
-        SELECT s.expires_at FROM ad_turbo_sessions s 
-        WHERE s.ad_id = a.id 
-        AND s.status = 'active' 
-        AND s.expires_at > now()
-        LIMIT 1
-    ) as turbo_expires_at
+    COALESCE(a.turbo_expires_at > now(), false) as is_turbo_active,
+    a.turbo_expires_at
 FROM public.anuncios a
 LEFT JOIN public.profiles p ON a.user_id = p.id;
 

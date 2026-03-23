@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
             // If record not found, CREATE IT (Safe Fallback)
             // This handles cases where our 'create-highlight-payment' failed to save MP ID
             // or if manual payment was created externally (shouldn't happen but good defense)
-            if (internalPaymentId) {
+            if (resolvedInternalId) {
                 // Try to find purely by ID if the OR failed (unlikely)
                 // But if we are here, we might need to rely on metadata to link to user/ad
             }
@@ -246,10 +246,25 @@ Deno.serve(async (req) => {
             }
 
             // B. Activate Highlight (Create new record)
-            // Duration: 7 days default
             const startDate = new Date();
             const endDate = new Date();
-            endDate.setDate(startDate.getDate() + 7);
+            
+            // Tentar buscar duração real do plano
+            let durationDays = 7;
+            try {
+                const { data: planData } = await supabase
+                    .from('highlight_plans')
+                    .select('duration_days')
+                    .eq('id', planId)
+                    .single();
+                if (planData?.duration_days) {
+                    durationDays = planData.duration_days;
+                }
+            } catch (err) {
+                console.warn('Fallback para 7 dias - erro ao buscar plano:', err);
+            }
+
+            endDate.setDate(startDate.getDate() + durationDays);
 
             const { error: insertHighlightError } = await supabase
                 .from('destaques_anuncios')
@@ -270,7 +285,21 @@ Deno.serve(async (req) => {
                     await logEvent('db.highlight_failed', paymentId, insertHighlightError, 'Failed to create highlight record');
                 }
             } else {
-                await logEvent('business.highlight_activated', paymentId, { ad_id: adId, end: endDate }, 'Highlight successfully activated');
+                // SINGLE SOURCE OF TRUTH: Update 'anuncios' table
+                const { error: adUpdateError } = await supabase
+                    .from('anuncios')
+                    .update({
+                        is_turbo: true,
+                        turbo_expires_at: endDate.toISOString(),
+                        updated_at: startDate.toISOString()
+                    })
+                    .eq('id', adId);
+
+                if (adUpdateError) {
+                    await logEvent('db.ad_update_failed', paymentId, adUpdateError, 'Failed to update anuncios.turbo_expires_at');
+                } else {
+                    await logEvent('business.highlight_activated', paymentId, { ad_id: adId, end: endDate }, 'Highlight successfully activated and synced to anuncios table');
+                }
             }
         }
 

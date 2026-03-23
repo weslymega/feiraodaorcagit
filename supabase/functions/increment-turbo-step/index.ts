@@ -178,7 +178,19 @@ serve(async (req) => {
                 return jsonResponse({ success: false, error: 'HIGHLIGHT_INSERT_FAILED', details: highlightError.message }, 500);
             }
 
-            // C. Atualizar Anúncio (anuncios)
+            // 🛡️ C. ZERO TRUST: Verificar se o anúncio já foi destacado por outra sessão concorrente
+            const { data: freshAd, error: freshAdError } = await supabaseAdmin
+                .from('anuncios')
+                .select('turbo_expires_at')
+                .eq('id', updatedSession.ad_id)
+                .single();
+
+            if (!freshAdError && freshAd?.turbo_expires_at && new Date(freshAd.turbo_expires_at) > new Date()) {
+                console.warn(`[increment-turbo-step] CONCURRENCY_CONFLICT: Ad ${updatedSession.ad_id} already boosted.`);
+                return jsonResponse({ success: false, error: 'TURBO_ALREADY_ACTIVE' }, 400);
+            }
+
+            // D. SINGLE SOURCE OF TRUTH: Atualizar Anúncio (anuncios)
             const { error: adUpdateError } = await supabaseAdmin
                 .from('anuncios')
                 .update({
@@ -186,14 +198,13 @@ serve(async (req) => {
                     turbo_type: updatedSession.turbo_type,
                     turbo_expires_at: expiresAt,
                     last_turbo_at: startDate.toISOString(),
-                    boost_plan: updatedSession.turbo_type, // Corrigido: Salva 'pro', 'max', 'premium' e não o UUID
+                    boost_plan: updatedSession.turbo_type, 
                     updated_at: startDate.toISOString()
                 })
                 .eq('id', updatedSession.ad_id);
 
             if (adUpdateError) {
                 console.error('[increment-turbo-step] Erro ao atualizar anúncio:', adUpdateError);
-                // Expor o erro real para o APK para depuração final
                 return jsonResponse({ 
                     success: false, 
                     error: `AD_UPDATE_FAILED: ${adUpdateError.message}`, 

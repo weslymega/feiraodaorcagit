@@ -122,7 +122,9 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         ownerAvatar: ad.profiles?.avatar_url || null,
         additionalInfo: detalhes.additionalInfo || ad.additionalInfo || [],
         isOwner: isOwner,
-        isInFair: ad.is_in_fair || false // Mapeando novo campo do banco
+        isInFair: ad.is_in_fair || false, // Mapeando novo campo do banco
+        turbo_expires_at: ad.turbo_expires_at,
+        last_turbo_at: ad.last_turbo_at
     };
 
     if (category === 'imoveis') {
@@ -948,6 +950,8 @@ export const api = {
                 .from('anuncios')
                 .select(`
                     *, 
+                    turbo_expires_at,
+                    last_turbo_at,
                     profiles:user_id(name, avatar_url),
                     destaques_anuncios(
                         plano_id,
@@ -987,6 +991,21 @@ export const api = {
                     if (activeHighlight && (!ad.boost_plan || ad.boost_plan === 'gratis')) {
                         // Removido active_highlight
                     }
+                }
+
+                // --- NOVO: SUPORTE AO TURBO_EXPIRES_AT (SINGLE SOURCE OF TRUTH) ---
+                const isTurboActive = ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date();
+                if (isTurboActive) {
+                    // Sincroniza turbo_expires_at para boostConfig.expiresAt para que o frontend existente funcione
+                    ad.detalhes = {
+                        ...(ad.detalhes || {}),
+                        boostConfig: {
+                            expiresAt: ad.turbo_expires_at,
+                            startDate: ad.last_turbo_at || ad.created_at,
+                            totalBumps: 0,
+                            bumpsRemaining: 0
+                        }
+                    };
                 }
 
                 return mapAdData(ad, true);

@@ -176,6 +176,10 @@ export interface AdItem {
   chatCount?: number; // Number of chats initiated for trending scoring
   priceType?: 'fixed' | 'starting_at'; // For services: fixed price or "A partir de"
   estimatedTime?: string; // For services: estimated time to complete
+
+  // Turbo Highlights (Single Source of Truth)
+  turbo_expires_at?: string;
+  is_turbo_active?: boolean;
 }
 
 export interface MessageItem {

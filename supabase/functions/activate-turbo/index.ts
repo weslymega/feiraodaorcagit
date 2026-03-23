@@ -75,7 +75,7 @@ serve(async (req) => {
         // 🎯 Validar Anúncio (Propriedade, Status e Existência no banco via Admin)
         const { data: ad, error: adError } = await supabaseAdmin
             .from('anuncios')
-            .select('id, user_id, status')
+            .select('id, user_id, status, turbo_expires_at')
             .eq('id', adId)
             .single();
 
@@ -95,6 +95,17 @@ serve(async (req) => {
         if (adStatus !== 'ativo' && adStatus !== 'active') {
             console.warn(`[activate-turbo] Anúncio ${adId} com status inválido para turbo: ${ad.status}`);
             return jsonResponse({ success: false, error: 'O anúncio precisa estar ATIVO para ser impulsionado.' }, 400);
+        }
+
+        // 🛡️ NOVO: Bloquear se já tiver Turbo Ativo (Single Source of Truth)
+        if (ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date()) {
+            console.warn(`[activate-turbo] TURBO_ALREADY_ACTIVE: Ad ${adId} expires at ${ad.turbo_expires_at}`);
+            return jsonResponse({ 
+                success: false, 
+                error: 'TURBO_ALREADY_ACTIVE',
+                message: 'Este anúncio já possui um destaque ativo.',
+                expiresAt: ad.turbo_expires_at
+            }, 400);
         }
 
         // 1️⃣ Bloquear múltiplas sessões ativas

@@ -13,10 +13,11 @@ interface MyAdsProps {
   onCreateNew?: () => void;
   onBoostAd?: (ad: AdItem) => void;
   onAdClick?: (ad: AdItem) => void;
+  onShowToast?: (toast: { message: string, type: 'success' | 'info' | 'error' | 'warning' }) => void;
   initialTab?: 'ativos' | 'inativos' | 'pendentes';
 }
 
-export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onCreateNew, onBoostAd, onAdClick, initialTab }) => {
+export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onCreateNew, onBoostAd, onAdClick, onShowToast, initialTab }) => {
 
   const [activeTab, setActiveTab] = useState<'ativos' | 'inativos' | 'pendentes'>(initialTab || 'ativos');
 
@@ -96,10 +97,17 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
   };
 
   const isHighlightActive = (ad: AdItem) => {
-    // Agora confiamos no boostConfig injetado pelo API.ts
-    if (!ad.boostConfig) return false;
-    if (!ad.boostConfig.expiresAt) return false;
-    return new Date(ad.boostConfig.expiresAt) > new Date();
+    // 1. Prioridade para turbo_expires_at (Single Source of Truth)
+    if (ad.turbo_expires_at) {
+      return new Date(ad.turbo_expires_at) > new Date();
+    }
+
+    // 2. Fallback para boostConfig (Legacy)
+    if (ad.boostConfig?.expiresAt) {
+      return new Date(ad.boostConfig.expiresAt) > new Date();
+    }
+
+    return false;
   };
 
   // Helper to check if the ad being edited is a paid plan
@@ -207,23 +215,38 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Redundant check if disabled, but good for safety
-                        if (ad.status !== AdStatus.ACTIVE || isHighlightActive(ad)) {
+
+                        if (ad.status !== AdStatus.ACTIVE) return;
+
+                        if (isHighlightActive(ad)) {
+                          const expiresAt = ad.turbo_expires_at || ad.boostConfig?.expiresAt;
+                          if (expiresAt && onShowToast) {
+                            const date = new Date(expiresAt);
+                            onShowToast({
+                              message: `Este anúncio já está destacado até ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`,
+                              type: 'warning'
+                            });
+                          }
                           return;
                         }
+
                         if (onBoostAd) {
                           onBoostAd(ad);
                         }
                         setActiveMenuId(null);
                       }}
-                      disabled={ad.status !== AdStatus.ACTIVE || isHighlightActive(ad)}
-                      className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 transition-colors font-bold ${ad.status !== AdStatus.ACTIVE || isHighlightActive(ad)
+                      disabled={ad.status !== AdStatus.ACTIVE}
+                      className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 transition-colors font-bold ${ad.status !== AdStatus.ACTIVE
                         ? 'text-gray-400 cursor-not-allowed bg-gray-50'
-                        : 'text-accent hover:bg-green-50'
+                        : isHighlightActive(ad)
+                          ? 'text-amber-600 bg-amber-50/50'
+                          : 'text-accent hover:bg-green-50'
                         }`}
                     >
-                      <Zap className={`w-4 h-4 ${ad.status !== AdStatus.ACTIVE || isHighlightActive(ad) ? 'fill-gray-400 text-gray-400' : 'fill-accent'}`} />
-                      {isHighlightActive(ad) ? `Ativo até ${new Date(ad.boostConfig!.expiresAt).toLocaleDateString('pt-BR')}` : 'Destacar'}
+                      <Zap className={`w-4 h-4 ${ad.status !== AdStatus.ACTIVE ? 'fill-gray-400 text-gray-400' : isHighlightActive(ad) ? 'fill-amber-500 text-amber-500' : 'fill-accent'}`} />
+                      {isHighlightActive(ad)
+                        ? `Ativo até ${new Date(ad.turbo_expires_at || ad.boostConfig!.expiresAt).toLocaleDateString('pt-BR')}`
+                        : 'Destacar'}
                     </button>
                     <div className="h-[1px] bg-gray-100"></div>
                     <button
