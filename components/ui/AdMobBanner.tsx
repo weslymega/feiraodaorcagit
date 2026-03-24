@@ -1,93 +1,105 @@
-
 import React, { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { BannerAdPosition } from '@capacitor-community/admob';
 import AdManager from '../../services/AdManager';
+import { Screen, User } from '../../types';
 
 interface AdMobBannerProps {
+  currentScreen?: Screen;
+  user?: User | null;
   position?: BannerAdPosition;
   className?: string;
 }
 
+// 🚩 FLAG GLOBAL DE SEGURANÇA (Set to false for testing)
+const ENABLE_ADS = false;
+
+// 🛡️ TELAS PERMITIDAS
+const ALLOWED_SCREENS: Screen[] = [
+  Screen.VEHICLES_LIST,
+  Screen.REAL_ESTATE_LIST,
+  Screen.PARTS_SERVICES_LIST
+];
+
 /**
- * AdMob Adaptive Banner Component
- * Follows Rule #5, #6, #7, #9: 
- * - Adaptive layout
- * - Above footer
- * - Skeleton for CLS
- * - Web fallback (null)
+ * AdMob Adaptive Banner Component - Guarded Mode
  */
 export const AdMobBanner: React.FC<AdMobBannerProps> = ({ 
+  currentScreen,
+  user,
   position = BannerAdPosition.BOTTOM_CENTER,
   className = "" 
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const isNative = Capacitor.isNativePlatform();
-
   const isMounted = React.useRef(true);
   const timeoutRef = React.useRef<any>(null);
 
+  // --- GUARDS DE SEGURANÇA (BLOQUEIO TOTAL) ---
+  
+  // 1. Flag Global
+  if (!ENABLE_ADS) return null;
+
+  // 2. Ambiente Nativo
+  if (!isNative || !document || !window) return null;
+
+  // 3. Usuário Logado (Impedir crash no Login/Register)
+  if (!user) {
+    console.warn("[AdMob] Bloqueio: Usuário não logado");
+    return null;
+  }
+
+  // 4. Tela Permitida
+  if (currentScreen && !ALLOWED_SCREENS.includes(currentScreen)) {
+    console.warn(`[AdMob] Bloqueio: Tela '${currentScreen}' não autorizada`);
+    return null;
+  }
+
   useEffect(() => {
     isMounted.current = true;
-    if (!isNative) return;
+    
+    console.log("[AdMob] Iniciando processo de exibição protegida...");
 
-    console.log("[AdMob] Componente montado. Agendando banner...");
-
-    // Atraso de 400ms para garantir que a transição de tela terminou
+    // Delay de segurança para garantir Activity estável
     timeoutRef.current = setTimeout(async () => {
-      if (!isMounted.current) {
-        console.log("[AdMob] Montagem cancelada: componente desmontado precoce.");
-        return;
-      }
+      if (!isMounted.current) return;
 
       try {
-        console.log("[AdMob] Solicitando showBanner ao Manager...");
+        console.log("[AdMob] Invocando showBanner (try-catch)...");
         await AdManager.showBanner(position);
         
         if (isMounted.current) {
           setIsLoading(false);
         }
       } catch (e) {
-        console.warn("[AdMob] Falha ao exibir banner no componente:", e);
+        console.error("[AdMob] Erro capturado ao exibir banner:", e);
         if (isMounted.current) {
           setIsLoading(false);
         }
       }
-    }, 400);
+    }, 1200);
 
-    // Limpeza rigorosa
     return () => {
-      console.log("[AdMob] Componente desmontando. Limpando...");
       isMounted.current = false;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       
-      if (isNative) {
-        // Remove da GPU/View nativa no unmount
-        AdManager.removeBanner().catch(err => 
-          console.warn("[AdMob] Erro ao remover banner no unmount:", err)
-        );
-      }
+      // Remove banner ao sair da tela para evitar race conditions
+      AdManager.removeBanner().catch(err => 
+        console.warn("[AdMob] Erro ao remover banner no unmount:", err)
+      );
     };
-  }, [position, isNative]);
-
-  if (!isNative) return null;
+  }, [position, currentScreen]);
 
   return (
     <div 
       className={`w-full flex flex-col items-center justify-center my-4 ${className}`}
-      style={{ minHeight: '60px' }} // Rule #7: CLS Protection
+      style={{ minHeight: '60px' }}
     >
       {isLoading && (
         <div className="w-full h-[60px] bg-gray-100 animate-pulse rounded-lg flex items-center justify-center">
           <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Publicidade</span>
         </div>
       )}
-      {/* 
-        Native AdMob banner is rendered over the webview by the plugin. 
-        This div just holds the space in the React layout.
-      */}
       <div id="admob-banner-placeholder" />
     </div>
   );

@@ -180,12 +180,12 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             return <CreateAd user={user} onBack={() => { (state.cameFromMyAds) ? navigateTo(Screen.MY_ADS) : goBackToDashboard(); if (state.setAdToEdit) state.setAdToEdit(undefined); if (state.setCameFromMyAds) state.setCameFromMyAds(false); }} onFinish={handleCreateAdFinish} editingAd={state.adToEdit} />;
         case Screen.VEHICLES_LIST:
             const vehicleListAds = activeRealAds.filter(ad => ad.category === 'veiculos');
-            return <VehiclesList ads={vehicleListAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => { if (state.setFilterContext) state.setFilterContext(null) }} promotions={vehiclesPromotions} onNavigate={navigateTo} />;
+            return <VehiclesList ads={vehicleListAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => { if (state.setFilterContext) state.setFilterContext(null) }} promotions={vehiclesPromotions} onNavigate={navigateTo} user={user} currentScreen={currentScreen} />;
         case Screen.REAL_ESTATE_LIST:
             const realEstateListAds = activeRealAds.filter(ad => ad.category === 'imoveis');
-            return <RealEstateList ads={realEstateListAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => { if (state.setFilterContext) state.setFilterContext(null) }} promotions={realEstatePromotions} onNavigate={navigateTo} />;
+            return <RealEstateList ads={realEstateListAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => { if (state.setFilterContext) state.setFilterContext(null) }} promotions={realEstatePromotions} onNavigate={navigateTo} user={user} currentScreen={currentScreen} />;
         case Screen.PARTS_SERVICES_LIST:
-            return <PartsServicesList ads={serviceAds || []} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => { if (state.setFilterContext) state.setFilterContext(null) }} promotions={partsServicesPromotions} />;
+            return <PartsServicesList ads={serviceAds || []} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => { if (state.setFilterContext) state.setFilterContext(null) }} promotions={partsServicesPromotions} user={user} currentScreen={currentScreen} />;
         case Screen.FEATURED_VEHICLES_LIST:
             return <FeaturedVehiclesScreen ads={displayFeaturedAds || []} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
         case Screen.FAIR_LIST:

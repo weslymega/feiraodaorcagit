@@ -9,6 +9,7 @@ import { Footer } from '../components/Footer';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getBoostRibbon } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
+import { AdMobBanner } from '../components/ui/AdMobBanner';
 import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface PartsServicesListProps {
@@ -20,6 +21,8 @@ interface PartsServicesListProps {
   filterContext?: FilterContext | null;
   onClearFilter?: () => void;
   promotions?: PartsServicesPromotion[];
+  user?: any;
+  currentScreen?: Screen;
 }
 
 const SERVICE_GROUPS = [
@@ -33,7 +36,7 @@ const SERVICE_GROUPS = [
 
 const CONDITIONS = ['Novo', 'Usado'];
 
-export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [] }) => {
+export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], user, currentScreen }) => {
   const [selectedGroup, setSelectedGroup] = useState('todos'); // Tabs do topo
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -515,6 +518,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
         </div>
       )}
 
+      <AdMobBanner user={user} currentScreen={currentScreen} />
       <Footer />
 
     </div>

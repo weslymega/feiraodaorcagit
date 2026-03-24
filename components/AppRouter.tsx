@@ -21,8 +21,6 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { PaymentStatusFeedback } from './PaymentStatusFeedback';
 import ScrollToTop from './ScrollToTop';
 
-import { AdMobBannerGlobal } from '../components/ui/AdMobBannerGlobal';
-
 interface AppRouterProps {
     state: AppState;
     actions: AppActions;
@@ -241,7 +239,6 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
                     unreadCount={unreadMessagesCount}
                 />
             )}
-            <AdMobBannerGlobal />
         </div>
     );
 };

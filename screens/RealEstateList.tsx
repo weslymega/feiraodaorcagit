@@ -9,6 +9,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
 import { getBoostPriority, getBoostRibbon } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
+import { AdMobBanner } from '../components/ui/AdMobBanner';
 import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface RealEstateListProps {
@@ -21,6 +22,8 @@ interface RealEstateListProps {
   onClearFilter?: () => void;
   promotions?: RealEstatePromotion[];
   onNavigate?: (screen: Screen) => void;
+  user?: any;
+  currentScreen?: Screen;
 }
 
 const PROPERTY_TYPES = ['Casa', 'Apartamento', 'Terreno', 'Comercial'];
@@ -39,7 +42,7 @@ const PROPERTY_QUICK_FILTERS = [
 
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 
-export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate }) => {
+export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate, user, currentScreen }) => {
   const [transactionType, setTransactionType] = useState<'sale' | 'rent'>('sale');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPropertyType, setSelectedPropertyType] = useState('todos');
@@ -692,6 +695,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         )
       }
 
+      <AdMobBanner user={user} currentScreen={currentScreen} />
       <Footer onNavigate={onNavigate} />
 
     </div >

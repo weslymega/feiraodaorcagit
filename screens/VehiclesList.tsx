@@ -13,6 +13,7 @@ import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getVehiclesWithFallback } from '../utils/adSelector';
 import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
+import { AdMobBanner } from '../components/ui/AdMobBanner';
 import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface VehiclesListProps {
@@ -25,6 +26,8 @@ interface VehiclesListProps {
   onClearFilter?: () => void;
   promotions?: VehiclesPromotion[];
   onNavigate?: (screen: Screen) => void;
+  user?: any;
+  currentScreen?: Screen;
 }
 
 // Grupos de Veículos (Categorias)
@@ -56,7 +59,7 @@ const FUEL_OPTIONS = ['Flex', 'Gasolina', 'Diesel', 'Elétrico', 'Híbrido'];
 const YEARS = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => 2026 - i);
 
 
-export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate }) => {
+export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate, user, currentScreen }) => {
   const [selectedGroup, setSelectedGroup] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [isRecentFilterActive, setIsRecentFilterActive] = useState(false);
@@ -787,6 +790,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       )}
 
       {/* Rule #5: Adaptive banner above footer */}
+      <AdMobBanner user={user} currentScreen={currentScreen} />
       <Footer onNavigate={onNavigate} />
 
     </div>
