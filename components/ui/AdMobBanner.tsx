@@ -12,7 +12,7 @@ interface AdMobBannerProps {
 }
 
 // 🚩 FLAG GLOBAL DE SEGURANÇA (Set to false for testing)
-const ENABLE_ADS = false;
+const ENABLE_ADS = true;
 
 // 🛡️ TELAS PERMITIDAS
 const ALLOWED_SCREENS: Screen[] = [
@@ -58,21 +58,25 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
   useEffect(() => {
     isMounted.current = true;
     
-    console.log("[AdMob] Iniciando processo de exibição protegida...");
+    console.log("[AdMob] 🔍 Iniciando processo de exibição protegida...");
 
-    // Delay de segurança para garantir Activity estável
+    // Delay de segurança para garantir Activity estável (800ms - 1200ms)
     timeoutRef.current = setTimeout(async () => {
-      if (!isMounted.current) return;
+      if (!isMounted.current) {
+        console.warn("[AdMob] ⏹️ Componente desmontado antes do delay de segurança");
+        return;
+      }
 
       try {
-        console.log("[AdMob] Invocando showBanner (try-catch)...");
+        console.log("[AdMob] ⚡ Tentando exibir banner...");
         await AdManager.showBanner(position);
         
         if (isMounted.current) {
+          console.log("[AdMob] ✅ Banner exibido com sucesso");
           setIsLoading(false);
         }
       } catch (e) {
-        console.error("[AdMob] Erro capturado ao exibir banner:", e);
+        console.error("[AdMob] ❌ Erro ao exibir banner:", e);
         if (isMounted.current) {
           setIsLoading(false);
         }

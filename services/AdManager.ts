@@ -182,6 +182,7 @@ class AdManager {
                 if (!this.isInitialized) {
                     await AdMob.initialize();
                     this.isInitialized = true;
+                    console.log('[AdMob] ✅ Native SDK Initialized');
                 }
                 this.setupListeners();
                 await this.preload();
@@ -366,7 +367,7 @@ class AdManager {
 
             // 2. Guard de App Pronto
             if (!this.isAppReady) {
-                console.warn('[AdMob] App não está pronto ainda');
+                console.warn('[AdMob] ⏳ App não está pronto ainda (Guard de 1s)');
                 return;
             }
 
@@ -378,11 +379,12 @@ class AdManager {
 
             // 4. Guard de Duplicação Simples
             if (this.isBannerShowing || this.isBannerLoading) {
-                console.warn('[AdMob] Banner já está sendo exibido ou carregando');
+                console.warn('[AdMob] 🔁 Banner já está ativo ou em carregamento');
                 return;
             }
 
             this.isBannerLoading = true;
+            console.log('[AdMob] 🏁 Iniciando AdMob.showBanner nativo...');
 
             try {
                 const options: BannerAdOptions = {
@@ -401,7 +403,7 @@ class AdManager {
 
                 this.isBannerShowing = true;
                 this.hasInitializedBanner = true; // Marca como inicializado globalmente
-                console.log('[AdMob] Banner Global exibido com sucesso');
+                console.log('[AdMob] ✨ Banner Global exibido com sucesso');
             } catch (error) {
                 console.error('[AdMob] Erro ao exibir banner global:', error);
             } finally {

@@ -12,6 +12,7 @@ import {
   MOCK_REPORTS,
   PROMO_BANNERS
 } from '../constants';
+import AdManager from '../services/AdManager';
 
 // --- HELPER PARA CARREGAR DADOS SALVOS ---
 const loadFromStorage = <T,>(key: string, fallback: T): T => {
@@ -58,6 +59,14 @@ export const useAppState = () => {
   // Chat/Messages state
   const [conversations, setConversations] = useState<MessageItem[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  // 0. Inicialização Global de AdMob (Adiado por segurança)
+  useEffect(() => {
+    if (sessionReady) {
+      console.log("[AdMob] 🚩 Inicialização global solicitada pelo Root");
+      AdManager.initialize();
+    }
+  }, [sessionReady]);
 
   // 1. Subscription Realtime para Configurações Globais
   useEffect(() => {
