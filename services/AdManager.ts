@@ -53,6 +53,7 @@ class AdManager {
     private onDismissedCallbacks: AdEventHandler[] = [];
     private onCompletedCallbacks: AdEventHandler[] = []; // New
     private onErrorCallbacks: AdErrorHandler[] = [];
+    private bannerListeners: ((showing: boolean) => void)[] = [];
 
     private constructor() {
         if (Capacitor.isNativePlatform()) {
@@ -340,6 +341,19 @@ class AdManager {
     public onDismissed(cb: AdEventHandler) { this.onDismissedCallbacks.push(cb); }
     public onCompleted(cb: AdEventHandler) { this.onCompletedCallbacks.push(cb); }
     public onError(cb: AdErrorHandler) { this.onErrorCallbacks.push(cb); }
+    public onBannerStateChange(cb: (showing: boolean) => void) { 
+        this.bannerListeners.push(cb);
+        // Notifica o estado atual imediatamente para o novo listener
+        cb(this.isBannerShowing);
+    }
+
+    private notifyBannerListeners() {
+        this.bannerListeners.forEach(cb => cb(this.isBannerShowing));
+    }
+
+    public isBannerActive(): boolean {
+        return this.isBannerShowing;
+    }
 
     public removeAllListeners() {
         this.onReadyCallbacks = [];
@@ -402,6 +416,7 @@ class AdManager {
                 ]);
 
                 this.isBannerShowing = true;
+                this.notifyBannerListeners();
                 this.hasInitializedBanner = true; // Marca como inicializado globalmente
                 console.log('[AdMob] ✨ Banner Global exibido com sucesso');
             } catch (error) {
@@ -422,6 +437,7 @@ class AdManager {
             try {
                 await AdMob.removeBanner();
                 this.isBannerShowing = false;
+                this.notifyBannerListeners();
                 this.hasInitializedBanner = false; // Permite reinicializar se necessário (ex: logout)
             } catch (error) {
                 console.warn('[AdMob] removeBanner falhou:', error);

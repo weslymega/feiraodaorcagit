@@ -14,7 +14,6 @@ import { getVehiclesWithFallback } from '../utils/adSelector';
 import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
-import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface VehiclesListProps {
   ads: AdItem[];
@@ -366,7 +365,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-[110px]">
       <Header
         title="Veículos"
         onBack={onBack}
@@ -515,10 +514,6 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
           [1, 2, 3].map(i => <AdCardSkeleton key={i} variant="vertical" />)
         ) : feedItems.length > 0 ? (
           feedItems.map((item, index) => {
-            // Se for um slot de anúncio (Regra #3)
-            if ('isAd' in item) {
-              return <AdMobNativeCard key={item.adId} />;
-            }
 
             const ad = item;
             const isFav = favorites.some(f => f.id === ad.id);

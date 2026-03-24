@@ -12,6 +12,7 @@ import {
   Heart
 } from 'lucide-react';
 import { Screen } from '../types';
+import AdManager from '../services/AdManager';
 
 interface HeaderProps {
   title: string;
@@ -42,6 +43,15 @@ interface BottomNavProps {
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate, unreadCount = 0 }) => {
+  const [isBannerVisible, setIsBannerVisible] = React.useState(AdManager.isBannerActive());
+
+  useEffect(() => {
+    // Escuta mudanças no estado do banner para ajustar o layout
+    AdManager.onBannerStateChange((visible) => {
+      setIsBannerVisible(visible);
+    });
+  }, []);
+
   const getIconClass = (screen: Screen) => {
     return currentScreen === screen ? "text-primary" : "text-gray-400";
   };
@@ -51,7 +61,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate,
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-[150] max-w-md mx-auto shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
+    <div 
+      className="fixed left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-[150] max-w-md mx-auto shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-[20px] transition-all duration-300"
+      style={{ bottom: isBannerVisible ? '50px' : '0px' }}
+    >
       <button
         onClick={() => onNavigate(Screen.DASHBOARD)}
         className={`flex flex-col items-center gap-1 transition-colors`}

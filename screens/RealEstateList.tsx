@@ -10,7 +10,6 @@ import { SmartImage } from '../components/ui/SmartImage';
 import { getBoostPriority, getBoostRibbon } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
-import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface RealEstateListProps {
   ads: AdItem[];
@@ -283,7 +282,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-[110px]">
       <Header
         title="Imóveis"
         onBack={onBack}
@@ -405,9 +404,6 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         ) : feedItems.length > 0 ? (
           feedItems.map((item) => {
             // Se for um slot de anúncio (Regra #3)
-            if ('isAd' in item) {
-              return <AdMobNativeCard key={item.adId} />;
-            }
 
             const ad = item;
             const isFav = favorites.some(f => f.id === ad.id);
