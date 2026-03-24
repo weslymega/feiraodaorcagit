@@ -9,7 +9,6 @@ import { Footer } from '../components/Footer';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getBoostRibbon } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
-import { AdMobBanner } from '../components/ui/AdMobBanner';
 import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface PartsServicesListProps {
@@ -516,7 +515,6 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
         </div>
       )}
 
-      <AdMobBanner />
       <Footer />
 
     </div>

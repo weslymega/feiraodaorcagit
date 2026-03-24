@@ -31,34 +31,42 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
     isMounted.current = true;
     if (!isNative) return;
 
-    // Atraso inicial para garantir que a tela terminou de renderizar
+    console.log("[AdMob] Componente montado. Agendando banner...");
+
+    // Atraso de 400ms para garantir que a transição de tela terminou
     timeoutRef.current = setTimeout(async () => {
-      if (!isMounted.current) return;
+      if (!isMounted.current) {
+        console.log("[AdMob] Montagem cancelada: componente desmontado precoce.");
+        return;
+      }
 
       try {
+        console.log("[AdMob] Solicitando showBanner ao Manager...");
         await AdManager.showBanner(position);
+        
         if (isMounted.current) {
           setIsLoading(false);
         }
       } catch (e) {
-        console.warn("[AdMob] Erro ao carregar banner no componente:", e);
+        console.warn("[AdMob] Falha ao exibir banner no componente:", e);
         if (isMounted.current) {
           setIsLoading(false);
         }
       }
-    }, 300);
+    }, 400);
 
-    // Limpeza obrigatória ao sair da tela
+    // Limpeza rigorosa
     return () => {
+      console.log("[AdMob] Componente desmontando. Limpando...");
       isMounted.current = false;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
       
       if (isNative) {
-        // Remove o banner da visão nativa IMEDIATAMENTE ao desmontar
+        // Remove da GPU/View nativa no unmount
         AdManager.removeBanner().catch(err => 
-          console.warn("[AdMob] Erro na limpeza do banner:", err)
+          console.warn("[AdMob] Erro ao remover banner no unmount:", err)
         );
       }
     };

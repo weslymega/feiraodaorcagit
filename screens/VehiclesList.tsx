@@ -13,7 +13,6 @@ import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getVehiclesWithFallback } from '../utils/adSelector';
 import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
-import { AdMobBanner } from '../components/ui/AdMobBanner';
 import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface VehiclesListProps {
@@ -788,7 +787,6 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       )}
 
       {/* Rule #5: Adaptive banner above footer */}
-      <AdMobBanner />
       <Footer onNavigate={onNavigate} />
 
     </div>

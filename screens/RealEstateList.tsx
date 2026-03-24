@@ -9,7 +9,6 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
 import { getBoostPriority, getBoostRibbon } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
-import { AdMobBanner } from '../components/ui/AdMobBanner';
 import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface RealEstateListProps {
@@ -693,7 +692,6 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         )
       }
 
-      <AdMobBanner />
       <Footer onNavigate={onNavigate} />
 
     </div >
