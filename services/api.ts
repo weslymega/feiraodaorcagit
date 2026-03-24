@@ -345,7 +345,13 @@ export const api = {
      */
     updateTermsAcceptance: async () => {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('User not authenticated');
+        
+        if (!user?.id) {
+            console.error("❌ Erro: Tentativa de aceite sem user.id");
+            throw new Error('User not authenticated');
+        }
+
+        console.log("💾 Registrando aceite para:", user.id);
 
         const { error } = await supabase
             .from('profiles')

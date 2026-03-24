@@ -348,23 +348,30 @@ class AdManager {
     public async showBanner(position: BannerAdPosition = BannerAdPosition.BOTTOM_CENTER) {
         if (!Capacitor.isNativePlatform()) return;
 
-        // Queue the show operation
+        // Fila de execução para evitar chamadas paralelas
         this.bannerPromise = this.bannerPromise.then(async () => {
-            console.log('[AdMob] showBanner called. State:', {
+            console.log('[AdMob] Iniciando showBanner...', {
                 showing: this.isBannerShowing,
                 loading: this.isBannerLoading,
                 transitioning: this.isTransitioning
             });
 
-            if (this.isTransitioning || this.isBannerShowing || this.isBannerLoading) {
-                console.log('[AdMob] showBanner skipped (already showing, loading or transitioning)');
+            // Se já estiver processando ou em transição, ignoramos para evitar o crash
+            if (this.isTransitioning || this.isBannerLoading) {
+                console.warn('[AdMob] showBanner abortado: transição em curso ou carregando');
+                return;
+            }
+
+            // Se o banner já estiver visível, não precisamos chamar novamente
+            if (this.isBannerShowing) {
+                console.log('[AdMob] Banner já está visível');
                 return;
             }
 
             this.isBannerLoading = true;
 
             try {
-                // Android-specific safety delay
+                // 1. Delay de segurança para Android (Garante que a View/Hierarquia esteja pronta)
                 if (Capacitor.getPlatform() === 'android') {
                     await new Promise(r => setTimeout(r, 150));
                 }
@@ -374,14 +381,19 @@ class AdManager {
                     adSize: BannerAdSize.ADAPTIVE_BANNER,
                     position: position,
                     margin: 0,
-                    isTesting: true // Set to false in production
+                    isTesting: true // Ajustar para false em produção
                 };
 
-                await AdMob.showBanner(options);
+                // 2. Proteção de Timeout de 5s para não travar a fila
+                await Promise.race([
+                    AdMob.showBanner(options),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("AdMob Timeout")), 5000))
+                ]);
+
                 this.isBannerShowing = true;
-                console.log('[AdMob] showBanner success');
+                console.log('[AdMob] showBanner sucesso');
             } catch (error) {
-                console.warn('[AdMob] showBanner failed:', error);
+                console.warn('[AdMob] showBanner falhou ou timeout:', error);
             } finally {
                 this.isBannerLoading = false;
             }
@@ -394,12 +406,11 @@ class AdManager {
         if (!Capacitor.isNativePlatform()) return;
 
         this.bannerPromise = this.bannerPromise.then(async () => {
-            console.log('[AdMob] hideBanner called');
             try {
                 await AdMob.hideBanner();
                 this.isBannerShowing = false;
             } catch (error) {
-                console.warn('[AdMob] hideBanner failed:', error);
+                console.warn('[AdMob] hideBanner falhou:', error);
             }
         });
 
@@ -410,12 +421,12 @@ class AdManager {
         if (!Capacitor.isNativePlatform()) return;
 
         this.bannerPromise = this.bannerPromise.then(async () => {
-            console.log('[AdMob] resumeBanner called');
+            if (this.isBannerShowing) return;
             try {
                 await AdMob.resumeBanner();
                 this.isBannerShowing = true;
             } catch (error) {
-                console.warn('[AdMob] resumeBanner failed:', error);
+                console.warn('[AdMob] resumeBanner falhou:', error);
             }
         });
 
@@ -426,22 +437,23 @@ class AdManager {
         if (!Capacitor.isNativePlatform()) return;
 
         this.bannerPromise = this.bannerPromise.then(async () => {
-            console.log('[AdMob] removeBanner called');
+            console.log('[AdMob] Removendo banner...');
             this.isTransitioning = true;
 
             try {
-                await AdMob.removeBanner();
-            } catch (error) {
-                console.warn('[AdMob] removeBanner failed:', error);
-            } finally {
-                this.isBannerShowing = false;
+                // Sempre resetamos estados de carregamento
                 this.isBannerLoading = false;
                 
-                // Allow some time for native view to clean up before next banner
-                setTimeout(() => {
-                    this.isTransitioning = false;
-                    console.log('[AdMob] Transition lock released');
-                }, 200);
+                await AdMob.removeBanner();
+                this.isBannerShowing = false;
+            } catch (error) {
+                console.warn('[AdMob] removeBanner falhou (pode já estar removido):', error);
+            } finally {
+                // Delay para garantir que o nativo limpou a View antes de liberar a trava
+                // Usamos await para que a PROMISE da fila só resolva após o delay
+                await new Promise(r => setTimeout(r, 200));
+                this.isTransitioning = false;
+                console.log('[AdMob] Trava de transição liberada');
             }
         });
 

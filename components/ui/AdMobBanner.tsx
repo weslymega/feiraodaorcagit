@@ -31,7 +31,7 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
     isMounted.current = true;
     if (!isNative) return;
 
-    // Small delay to ensure view is ready (Rule #2)
+    // Atraso inicial para garantir que a tela terminou de renderizar
     timeoutRef.current = setTimeout(async () => {
       if (!isMounted.current) return;
 
@@ -41,14 +41,14 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
           setIsLoading(false);
         }
       } catch (e) {
-        console.warn("[AdMob] Banner failed to load:", e);
+        console.warn("[AdMob] Erro ao carregar banner no componente:", e);
         if (isMounted.current) {
           setIsLoading(false);
         }
       }
     }, 300);
 
-    // Clean up on unmount
+    // Limpeza obrigatória ao sair da tela
     return () => {
       isMounted.current = false;
       if (timeoutRef.current) {
@@ -56,9 +56,9 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
       }
       
       if (isNative) {
-        // Essential: Remove from native view on unmount (Rule #3)
+        // Remove o banner da visão nativa IMEDIATAMENTE ao desmontar
         AdManager.removeBanner().catch(err => 
-          console.warn("[AdMob] Cleanup removeBanner failed:", err)
+          console.warn("[AdMob] Erro na limpeza do banner:", err)
         );
       }
     };
