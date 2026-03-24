@@ -110,8 +110,8 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
     return false;
   };
 
-  // Helper to check if the ad being edited is a paid plan
-  const isPaidAd = editAd && (
+  // Helper to check if the ad being edited has an active highlight
+  const isHighlightedAd = editAd && (
     editAd.isFeatured ||
     (editAd.boostPlan && editAd.boostPlan !== 'gratis')
   );
@@ -150,19 +150,19 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
           <div
             key={ad.id}
             onClick={() => onAdClick && onAdClick(ad)}
-            className={`bg-white p-4 rounded-2xl shadow-sm border flex flex-col gap-3 relative active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${ad.status === AdStatus.PENDING ? 'border-orange-200 bg-orange-50/20' :
+            className={`bg-white p-4 rounded-2xl shadow-sm border flex flex-col gap-3 relative active:scale-[0.99] transition-transform cursor-pointer ${activeMenuId === ad.id ? 'z-50' : 'z-10'} ${ad.status === AdStatus.PENDING ? 'border-orange-200 bg-orange-50/20' :
               ad.status === AdStatus.REJECTED ? 'border-red-200 bg-red-50/20' :
                 ad.isFeatured ? 'border-l-4 border-l-accent border-y-gray-100 border-r-gray-100' : 'border-gray-100'
               }`}
           >
             {/* Boost Visual Indicator (Background watermark for premium) */}
             {ad.boostPlan === 'Premium' && ad.status === AdStatus.ACTIVE && (
-              <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none">
+              <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none overflow-hidden rounded-tr-2xl">
                 <TrendingUp className="w-24 h-24" />
               </div>
             )}
 
-            <div className="flex justify-between items-start z-10">
+            <div className="flex justify-between items-start">
               <div className="flex gap-2 items-center">
                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1 ${ad.status === AdStatus.ACTIVE ? 'bg-green-100 text-green-700' :
                   ad.status === AdStatus.PENDING ? 'bg-orange-100 text-orange-700' :
@@ -198,7 +198,7 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                 </button>
 
                 {activeMenuId === ad.id && (
-                  <div className="absolute right-0 top-8 bg-white rounded-xl shadow-xl border border-gray-100 w-40 overflow-hidden z-20 animate-in fade-in zoom-in duration-200">
+                  <div className="absolute right-0 top-10 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-gray-100 w-48 overflow-hidden z-[100] animate-in fade-in zoom-in duration-200 py-1.5">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -360,18 +360,29 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
       {editAd && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-100 animate-in zoom-in-95 duration-200 border border-gray-100">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto ${isPaidAd ? 'bg-amber-50' : 'bg-blue-50'}`}>
-              {isPaidAd ? <AlertTriangle className="w-8 h-8 text-amber-500" /> : <Clock className="w-8 h-8 text-blue-500" />}
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto ${isHighlightActive(editAd) ? 'bg-amber-50' : 'bg-blue-50'}`}>
+              {isHighlightActive(editAd) ? <Zap className="w-8 h-8 text-amber-500 fill-amber-500" /> : <Edit2 className="w-8 h-8 text-blue-500" />}
             </div>
             <h3 className="text-xl font-bold text-center text-gray-900 mb-2">
-              {isPaidAd ? 'Edição de Destaque' : 'Atenção ao Editar'}
+              {isHighlightActive(editAd) ? 'Destaque Ativo' : 'Editar Anúncio'}
             </h3>
-            <p className="text-gray-500 text-center mb-8 text-sm leading-relaxed">
-              {isPaidAd
-                ? <>Você pode alterar as informações, mas o <strong>plano contratado será mantido</strong>. As alterações passarão por uma nova análise de até <strong>24 horas</strong>.</>
-                : <>Ao editar este anúncio, você só poderá realizar novas alterações <strong>24 horas</strong> após a publicação.</>
-              }
-            </p>
+            <div className="text-gray-500 text-center mb-8 text-sm leading-relaxed">
+              {isHighlightActive(editAd) ? (
+                <p>
+                  Este anúncio está com destaque ativo até <strong>{new Date(editAd.turbo_expires_at || editAd.boostConfig!.expiresAt).toLocaleDateString('pt-BR')}</strong>.
+                  <br /><br />
+                  Se continuar, o <strong>destaque será removido</strong> e o anúncio voltará ao normal para edição.
+                  <br /><br />
+                  Deseja continuar?
+                </p>
+              ) : (
+                <p>
+                  Você pode alterar as informações do anúncio.
+                  <br /><br />
+                  As alterações passarão por uma nova análise de até <strong>24 horas</strong>.
+                </p>
+              )}
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setEditAd(null)}
@@ -381,7 +392,7 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
               </button>
               <button
                 onClick={confirmEdit}
-                className={`flex-1 py-3.5 text-white font-bold rounded-xl shadow-lg transition-colors ${isPaidAd
+                className={`flex-1 py-3.5 text-white font-bold rounded-xl shadow-lg transition-colors ${isHighlightActive(editAd)
                   ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200'
                   : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
                   }`}

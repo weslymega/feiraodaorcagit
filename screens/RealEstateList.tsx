@@ -8,6 +8,9 @@ import { Footer } from '../components/Footer';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
 import { getBoostPriority, getBoostRibbon } from '../utils/boostRibbon';
+import { injectAdsIntoFeed } from '../utils/adInjection';
+import { AdMobBanner } from '../components/ui/AdMobBanner';
+import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface RealEstateListProps {
   ads: AdItem[];
@@ -183,6 +186,11 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
     return filtered;
   }, [ads, transactionType, searchTerm, filters, selectedPropertyType, isTrending]);
+
+  // Feed Injection logic (Rule #3, #8)
+  const feedItems = useMemo(() => {
+    return injectAdsIntoFeed(filteredAds);
+  }, [filteredAds]);
 
   const searchSuggestions = useMemo(() => {
     if (searchTerm.length < 2) return [];
@@ -392,8 +400,14 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
         {ads === undefined ? (
           [1, 2, 3].map(i => <AdCardSkeleton key={i} variant="vertical" />)
-        ) : filteredAds.length > 0 ? (
-          filteredAds.map((ad) => {
+        ) : feedItems.length > 0 ? (
+          feedItems.map((item) => {
+            // Se for um slot de anúncio (Regra #3)
+            if ('isAd' in item) {
+              return <AdMobNativeCard key={item.adId} />;
+            }
+
+            const ad = item;
             const isFav = favorites.some(f => f.id === ad.id);
             const ribbon = getBoostRibbon(ad.boostPlan || 'none');
             
@@ -679,6 +693,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         )
       }
 
+      <AdMobBanner />
       <Footer onNavigate={onNavigate} />
 
     </div >

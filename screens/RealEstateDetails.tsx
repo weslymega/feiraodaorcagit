@@ -229,9 +229,21 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
         <LocationSection ad={ad} />
       </div>
 
-      {!ad.isOwner && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-[150] max-w-md mx-auto shadow-[0_-5px_20px_rgba(0,0,0,0.05)] rounded-t-[30px]">
-          <button onClick={onStartChat} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-100 flex items-center justify-center gap-2 transition-all active:scale-95"><MessageSquare className="w-5 h-5" /> <span>Chat</span></button>
+      {(!ad.isOwner) && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-[200] max-w-md mx-auto rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
+          <button
+            onClick={onStartChat}
+            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-orange-100/50 flex items-center justify-center gap-2 transition-all active:scale-[0.97]"
+          >
+            <MessageSquare className="w-5 h-5 fill-current" />
+            <span>Chat</span>
+          </button>
+          <button
+            onClick={handleShareQR}
+            className="bg-[#20C961] hover:bg-[#1BAE53] text-white p-4 rounded-2xl shadow-xl shadow-green-200/50 transition-all active:scale-[0.97]"
+          >
+            <Share2 className="w-6 h-6" />
+          </button>
         </div>
       )}
     </div>

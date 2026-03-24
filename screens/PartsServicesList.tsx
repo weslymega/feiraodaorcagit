@@ -8,6 +8,9 @@ import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getBoostRibbon } from '../utils/boostRibbon';
+import { injectAdsIntoFeed } from '../utils/adInjection';
+import { AdMobBanner } from '../components/ui/AdMobBanner';
+import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface PartsServicesListProps {
   ads: AdItem[];
@@ -151,6 +154,11 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
     });
   }, [ads, selectedGroup, searchTerm, filters]);
 
+  // Feed Injection logic (Rule #3, #8)
+  const feedItems = useMemo(() => {
+    return injectAdsIntoFeed(filteredAds);
+  }, [filteredAds]);
+
   const isPromotionVisible = (promo: PartsServicesPromotion) => {
     const today = new Date();
     return promo.active &&
@@ -287,8 +295,14 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
       <div className="px-4 flex flex-col gap-4 relative z-0">
         {ads === undefined ? (
           [1, 2, 3].map(i => <AdCardSkeleton key={i} variant="vertical" className="h-32" />)
-        ) : filteredAds.length > 0 ? (
-          filteredAds.map((ad) => {
+        ) : feedItems.length > 0 ? (
+          feedItems.map((item) => {
+            // Se for um slot de anúncio (Regra #3)
+            if ('isAd' in item) {
+              return <AdMobNativeCard key={item.adId} />;
+            }
+
+            const ad = item;
             const isFav = favorites.some(f => f.id === ad.id);
             const ribbon = getBoostRibbon(ad.boostPlan || 'none');
             
@@ -502,6 +516,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
         </div>
       )}
 
+      <AdMobBanner />
       <Footer />
 
     </div>

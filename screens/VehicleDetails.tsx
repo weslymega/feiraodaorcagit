@@ -393,8 +393,8 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
           <LocationSection ad={ad} />
         </div>
 
-        {!ad.isOwner && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-[150] max-w-md mx-auto rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
+        {(!ad.isOwner) && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-[200] max-w-md mx-auto rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
             <button
               onClick={onStartChat}
               className="flex-1 bg-[#F1B911] hover:bg-[#D9A60D] text-white font-black py-4 rounded-2xl shadow-xl shadow-yellow-200/50 flex items-center justify-center gap-2 transition-all active:scale-[0.97]"

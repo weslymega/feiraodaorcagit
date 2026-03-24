@@ -12,6 +12,9 @@ import { SmartImage } from '../components/ui/SmartImage';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getVehiclesWithFallback } from '../utils/adSelector';
 import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
+import { injectAdsIntoFeed } from '../utils/adInjection';
+import { AdMobBanner } from '../components/ui/AdMobBanner';
+import { AdMobNativeCard } from '../components/ui/AdMobNativeCard';
 
 interface VehiclesListProps {
   ads: AdItem[];
@@ -315,6 +318,11 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   }, [ads, selectedGroup, searchTerm, filters]);
 
+  // Feed Injection logic (Rule #3, #8)
+  const feedItems = useMemo(() => {
+    return injectAdsIntoFeed(filteredAds);
+  }, [filteredAds]);
+
 
   const isPromotionVisible = (promo: VehiclesPromotion) => {
     const today = new Date();
@@ -503,8 +511,14 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       <div className="px-4 flex flex-col gap-4 relative z-0">
         {ads === undefined ? (
           [1, 2, 3].map(i => <AdCardSkeleton key={i} variant="vertical" />)
-        ) : filteredAds.length > 0 ? (
-          filteredAds.map((ad) => {
+        ) : feedItems.length > 0 ? (
+          feedItems.map((item, index) => {
+            // Se for um slot de anúncio (Regra #3)
+            if ('isAd' in item) {
+              return <AdMobNativeCard key={item.adId} />;
+            }
+
+            const ad = item;
             const isFav = favorites.some(f => f.id === ad.id);
 
             // Visual Styles for Boosted Ads
@@ -773,6 +787,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
         </div>
       )}
 
+      {/* Rule #5: Adaptive banner above footer */}
+      <AdMobBanner />
       <Footer onNavigate={onNavigate} />
 
     </div>

@@ -704,6 +704,11 @@ export const api = {
         // CRITICAL SECURITY: Ignore status from payload and force 'pending'
         updatePayload.status = 'pending';
 
+        // Support clearing/setting highlight if explicitly provided
+        if (adData.turbo_expires_at !== undefined) {
+            updatePayload.turbo_expires_at = adData.turbo_expires_at;
+        }
+
         const { error } = await supabase
             .from('anuncios')
             .update(updatePayload)

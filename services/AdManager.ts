@@ -1,7 +1,12 @@
 import {
     AdMob,
     RewardAdPluginEvents,
-    AdOptions
+    AdOptions,
+    BannerAdOptions,
+    BannerAdPosition,
+    BannerAdSize,
+    BannerAdPluginEvents,
+    InterstitialAdPluginEvents
 } from '@capacitor-community/admob';
 import { Capacitor } from '@capacitor/core';
 
@@ -19,7 +24,9 @@ type AdErrorHandler = (error: string) => void;
 class AdManager {
     private static instance: AdManager;
     private state: AdState = AdState.IDLE;
-    private adId: string = 'ca-app-pub-3940256099942544/5224354917'; // Default Test ID
+    private rewardAdId: string = 'ca-app-pub-3940256099942544/5224354917'; // Test ID
+    private bannerAdId: string = 'ca-app-pub-3940256099942544/6300978111'; // Test ID
+    private interstitialAdId: string = 'ca-app-pub-3940256099942544/1033173712'; // Test ID
     private isInitialized: boolean = false;
     private listenersInitialized: boolean = false; // Singleton listener guard
     private timeoutId: any = null;
@@ -154,7 +161,7 @@ class AdManager {
     }
 
     public async initialize(customAdId?: string) {
-        if (customAdId) this.adId = customAdId;
+        if (customAdId) this.rewardAdId = customAdId;
 
         try {
             if (Capacitor.isNativePlatform()) {
@@ -242,7 +249,7 @@ class AdManager {
             console.log('[AdMob-v8] prepareRewardVideoAd executing...');
             this.state = AdState.LOADING;
             const options: AdOptions = {
-                adId: this.adId,
+                adId: this.rewardAdId,
             };
             try {
                 await AdMob.prepareRewardVideoAd(options);
@@ -326,6 +333,66 @@ class AdManager {
         this.onDismissedCallbacks = [];
         this.onCompletedCallbacks = [];
         this.onErrorCallbacks = [];
+    }
+
+    // --- BANNER METHODS ---
+
+    public async showBanner(position: BannerAdPosition = BannerAdPosition.BOTTOM_CENTER) {
+        if (!Capacitor.isNativePlatform()) return;
+        
+        try {
+            const options: BannerAdOptions = {
+                adId: this.bannerAdId,
+                adSize: BannerAdSize.ADAPTIVE_BANNER,
+                position: position,
+                margin: 0, // We handle margins in our React wrapper
+                isTesting: true // Set to false in production
+            };
+            await AdMob.showBanner(options);
+            console.log('[AdMob] Banner shown successfully');
+        } catch (error) {
+            console.error('[AdMob] Banner show failed:', error);
+        }
+    }
+
+    public async hideBanner() {
+        if (!Capacitor.isNativePlatform()) return;
+        try {
+            await AdMob.hideBanner();
+        } catch (error) {
+            console.error('[AdMob] Banner hide failed:', error);
+        }
+    }
+
+    public async resumeBanner() {
+        if (!Capacitor.isNativePlatform()) return;
+        try {
+            await AdMob.resumeBanner();
+        } catch (error) {
+            console.error('[AdMob] Banner resume failed:', error);
+        }
+    }
+
+    public async removeBanner() {
+        if (!Capacitor.isNativePlatform()) return;
+        try {
+            await AdMob.removeBanner();
+        } catch (error) {
+            console.error('[AdMob] Banner removal failed:', error);
+        }
+    }
+
+    // --- INTERSTITIAL METHODS ---
+
+    public async showInterstitial() {
+        if (!Capacitor.isNativePlatform()) return;
+        
+        try {
+            await AdMob.prepareInterstitial({ adId: this.interstitialAdId });
+            await AdMob.showInterstitial();
+        } catch (error) {
+            console.error('[AdMob] Interstitial failed:', error);
+        }
     }
 }
 

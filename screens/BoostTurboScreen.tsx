@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AdItem } from '../types';
 import { api, supabase } from '../services/api';
 import { Header } from '../components/Shared';
-import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, Rocket } from 'lucide-react';
+import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, Rocket, Info } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 import AdManager from '../services/AdManager';
@@ -505,6 +505,42 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                 >
                                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Play className="w-5 h-5 fill-current" /> Escolher Plano</>}
                                 </button>
+                            </div>
+
+                            {/* NOVO: SEÇÃO COMO FUNCIONA */}
+                            <div className="mt-10 bg-blue-50/50 rounded-3xl p-6 border border-blue-100/50 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-500">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="p-2 bg-blue-600 rounded-lg">
+                                        <Info className="w-4 h-4 text-white" />
+                                    </div>
+                                    <h4 className="font-black text-blue-900 uppercase text-sm tracking-tight">Como funciona o Turbo?</h4>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div className="flex gap-3">
+                                        <div className="mt-1 text-blue-600 font-bold text-lg">🚀</div>
+                                        <div>
+                                            <p className="text-xs font-black text-blue-900 uppercase">Topo das buscas</p>
+                                            <p className="text-[11px] text-blue-800/70 font-medium leading-relaxed">Seu anúncio ganha prioridade absoluta e aparece acima dos anúncios gratuitos nos resultados.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex gap-3">
+                                        <div className="mt-1 text-blue-600 font-bold text-lg">✨</div>
+                                        <div>
+                                            <p className="text-xs font-black text-blue-900 uppercase">Selo de Destaque</p>
+                                            <p className="text-[11px] text-blue-800/70 font-medium leading-relaxed">Uma etiqueta exclusiva é adicionada à foto do seu anúncio, aumentando a taxa de cliques.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <div className="mt-1 text-blue-600 font-bold text-lg">🔥</div>
+                                        <div>
+                                            <p className="text-xs font-black text-blue-900 uppercase">Máximo Alcance</p>
+                                            <p className="text-[11px] text-blue-800/70 font-medium leading-relaxed">O algoritmo do Feirão da Orca prioriza anúncios destacados para aparecerem mais vezes no feed principal.</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </>
