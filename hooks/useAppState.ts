@@ -155,7 +155,9 @@ export const useAppState = () => {
       location: "Brasília, DF",
       bio: "",
       createdAt: sessionUser.created_at,
-      emailConfirmedAt: sessionUser.email_confirmed_at
+      emailConfirmedAt: sessionUser.email_confirmed_at,
+      acceptedTerms: sessionUser.user_metadata?.accepted_terms || false,
+      acceptedAt: sessionUser.user_metadata?.accepted_at
     });
 
     // 2. Verificação de sessão inicial (Cold Boot)
@@ -286,6 +288,12 @@ export const useAppState = () => {
           const freshProfile = await api.getProfile();
           if (freshProfile) {
             setUser(prev => prev ? ({ ...prev, ...freshProfile }) : null);
+            
+            // Mandatory Terms Acceptance Guard
+            if (freshProfile.acceptedTerms === false) {
+              console.log("⚠️ [Auth] Usuário não aceitou os termos. Redirecionando...");
+              setCurrentScreen(Screen.ACCEPT_TERMS);
+            }
           }
 
           const parallelTasks = [

@@ -97,6 +97,18 @@ export const useAppActions = (state: AppState) => {
     }, [user?.id, selectedChat?.id, selectedAd?.id]);
 
     // --- AUTH ACTIONS ---
+    const handleAcceptTerms = async () => {
+        try {
+            await api.updateTermsAcceptance();
+            setUser(prev => prev ? ({ ...prev, acceptedTerms: true, acceptedAt: new Date().toISOString() }) : null);
+            setCurrentScreen(Screen.DASHBOARD);
+            setToast({ message: "Termos aceitos com sucesso! Bem-vindo.", type: 'success' });
+        } catch (error) {
+            console.error("❌ Erro ao aceitar termos:", error);
+            setToast({ message: "Erro ao registrar aceite. Tente novamente.", type: 'error' });
+        }
+    };
+
     const handleForgotPassword = async (email: string) => {
         try {
             await api.sendPasswordReset(email);
@@ -272,6 +284,8 @@ export const useAppActions = (state: AppState) => {
                     data: {
                         name: newUserData.name,
                         full_name: newUserData.name,
+                        accepted_terms: true,
+                        accepted_at: new Date().toISOString()
                     }
                 }
             });
@@ -1270,6 +1284,7 @@ export const useAppActions = (state: AppState) => {
         handleSendMessage,
         handleLoadMessages,
         handleLoadConversations,
-        handleClearNotifications
+        handleClearNotifications,
+        handleAcceptTerms
     };
 };

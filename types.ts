@@ -54,7 +54,8 @@ export enum Screen {
   ABOUT_US = 'ABOUT_US',
   TERMS_OF_USE = 'TERMS_OF_USE',
   PRIVACY_POLICY = 'PRIVACY_POLICY',
-  RESET_PASSWORD = 'RESET_PASSWORD'
+  RESET_PASSWORD = 'RESET_PASSWORD',
+  ACCEPT_TERMS = 'ACCEPT_TERMS'
 }
 
 export interface User {
@@ -80,6 +81,8 @@ export interface User {
   readReceipts?: boolean;
   createdAt?: string;
   emailConfirmedAt?: string;
+  acceptedTerms?: boolean;
+  acceptedAt?: string;
 }
 
 export enum AdStatus {

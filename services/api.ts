@@ -334,8 +334,34 @@ export const api = {
             bio: data.bio || '',
             joinDate: data.created_at ? new Date(data.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : '',
             showOnlineStatus: data.show_online_status ?? true,
-            readReceipts: data.read_receipts ?? true
+            readReceipts: data.read_receipts ?? true,
+            acceptedTerms: data.accepted_terms || false,
+            acceptedAt: data.accepted_at
         };
+    },
+
+    /**
+     * Update Terms Acceptance Status
+     */
+    updateTermsAcceptance: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabase
+            .from('profiles')
+            .update({
+                accepted_terms: true,
+                accepted_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+
+        if (error) {
+            console.error("❌ Erro ao atualizar aceite de termos no DB:", error);
+            throw error;
+        }
+
+        console.log("✅ Aceite de termos registrado no DB");
+        return true;
     },
 
     /**

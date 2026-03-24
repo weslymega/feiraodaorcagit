@@ -18,6 +18,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -25,6 +27,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
     // Validações
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       setError('Por favor, preencha todos os campos.');
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setError('Você precisa aceitar os Termos de Uso e a Política de Privacidade.');
       return;
     }
 
@@ -61,6 +68,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const openUrl = (url: string) => {
+    window.open(url, '_blank');
   };
 
   return (
@@ -165,10 +176,20 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
             />
           </div>
 
+          {/* Checkbox de Termos */}
+          <div className="flex items-start gap-3 mt-1 px-1 group cursor-pointer" onClick={() => setAcceptedTerms(!acceptedTerms)}>
+            <div className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center transition-all ${acceptedTerms ? 'bg-accent border-accent' : 'bg-black/40 border-white/20'}`}>
+              {acceptedTerms && <ArrowRight className="w-3.5 h-3.5 text-blue-900 rotate-[-45deg]" />}
+            </div>
+            <p className="text-white/80 text-xs leading-relaxed select-none">
+              Li e aceito os <span onClick={(e) => { e.stopPropagation(); openUrl('https://feiraodaorca.com.br/termos'); }} className="text-accent font-bold hover:underline">Termos de Uso</span> e a <span onClick={(e) => { e.stopPropagation(); openUrl('https://feiraodaorca.com.br/politica'); }} className="text-accent font-bold hover:underline">Política de Privacidade</span>.
+            </p>
+          </div>
+
           <button
             type="submit"
-            disabled={isLoading}
-            className={`w-full py-4 bg-accent hover:bg-yellow-400 text-blue-900 rounded-2xl font-bold text-lg shadow-lg shadow-black/20 mt-2 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group ${isLoading ? 'opacity-80 cursor-wait' : ''}`}
+            disabled={isLoading || !acceptedTerms}
+            className={`w-full py-4 bg-accent hover:bg-yellow-400 text-blue-900 rounded-2xl font-bold text-lg shadow-lg shadow-black/20 mt-2 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group ${isLoading || !acceptedTerms ? 'opacity-50 grayscale cursor-not-allowed shadow-none' : ''}`}
           >
             {isLoading ? (
               <Loader2 className="w-6 h-6 animate-spin" />
@@ -182,8 +203,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-white/80 text-xs">
-            Ao criar uma conta, você concorda com nossos <br /> <span className="font-bold underline cursor-pointer">Termos de Serviço</span> e <span className="font-bold underline cursor-pointer">Política de Privacidade</span>.
+          <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold">
+            Feirão da Orca © 2026
           </p>
         </div>
       </div>

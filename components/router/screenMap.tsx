@@ -9,6 +9,7 @@ import {
 // Screens
 import { LoginScreen } from '../../screens/LoginScreen';
 import { RegisterScreen } from '../../screens/RegisterScreen';
+import { AcceptTermsScreen } from '../../screens/AcceptTermsScreen';
 import { ForgotPassword } from '../../screens/ForgotPassword';
 import { Dashboard } from '../../screens/Dashboard';
 import { UserPanel } from '../../screens/UserPanel';
@@ -120,6 +121,8 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             return <RegisterScreen onBack={() => navigateTo(Screen.LOGIN)} onRegister={handleRegister} />;
         case Screen.FORGOT_PASSWORD:
             return <ForgotPassword onBack={() => navigateTo(Screen.LOGIN)} onSendResetEmail={handleForgotPassword} />;
+        case Screen.ACCEPT_TERMS:
+            return <AcceptTermsScreen onAccept={actions.handleAcceptTerms} onLogout={handleLogout} />;
 
         case Screen.DASHBOARD:
             if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />;

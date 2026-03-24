@@ -24,25 +24,42 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const isNative = Capacitor.isNativePlatform();
 
+  const isMounted = React.useRef(true);
+  const timeoutRef = React.useRef<any>(null);
+
   useEffect(() => {
+    isMounted.current = true;
     if (!isNative) return;
 
-    const startBanner = async () => {
+    // Small delay to ensure view is ready (Rule #2)
+    timeoutRef.current = setTimeout(async () => {
+      if (!isMounted.current) return;
+
       try {
         await AdManager.showBanner(position);
-        setIsLoading(false);
+        if (isMounted.current) {
+          setIsLoading(false);
+        }
       } catch (e) {
         console.warn("[AdMob] Banner failed to load:", e);
-        setIsLoading(false);
+        if (isMounted.current) {
+          setIsLoading(false);
+        }
       }
-    };
-
-    startBanner();
+    }, 300);
 
     // Clean up on unmount
     return () => {
+      isMounted.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
       if (isNative) {
-        AdManager.hideBanner();
+        // Essential: Remove from native view on unmount (Rule #3)
+        AdManager.removeBanner().catch(err => 
+          console.warn("[AdMob] Cleanup removeBanner failed:", err)
+        );
       }
     };
   }, [position, isNative]);

@@ -36,8 +36,14 @@ class AdManager {
     // Queue State
     private requiredAds: number = 0;
     private watchedAds: number = 0;
-    private isProcessingReward: boolean = false; // Guard for sync
+    private isProcessingReward: boolean = false;
     private queueActive: boolean = false;
+
+    // Banner & Concurrency State
+    private isTransitioning: boolean = false;
+    private isBannerShowing: boolean = false;
+    private isBannerLoading: boolean = false;
+    private bannerPromise: Promise<void> = Promise.resolve();
 
     // Callbacks
     private onReadyCallbacks: AdEventHandler[] = [];
@@ -337,49 +343,109 @@ class AdManager {
 
     // --- BANNER METHODS ---
 
+    // --- BANNER METHODS (QUEUED & THREAD-SAFE) ---
+
     public async showBanner(position: BannerAdPosition = BannerAdPosition.BOTTOM_CENTER) {
         if (!Capacitor.isNativePlatform()) return;
-        
-        try {
-            const options: BannerAdOptions = {
-                adId: this.bannerAdId,
-                adSize: BannerAdSize.ADAPTIVE_BANNER,
-                position: position,
-                margin: 0, // We handle margins in our React wrapper
-                isTesting: true // Set to false in production
-            };
-            await AdMob.showBanner(options);
-            console.log('[AdMob] Banner shown successfully');
-        } catch (error) {
-            console.error('[AdMob] Banner show failed:', error);
-        }
+
+        // Queue the show operation
+        this.bannerPromise = this.bannerPromise.then(async () => {
+            console.log('[AdMob] showBanner called. State:', {
+                showing: this.isBannerShowing,
+                loading: this.isBannerLoading,
+                transitioning: this.isTransitioning
+            });
+
+            if (this.isTransitioning || this.isBannerShowing || this.isBannerLoading) {
+                console.log('[AdMob] showBanner skipped (already showing, loading or transitioning)');
+                return;
+            }
+
+            this.isBannerLoading = true;
+
+            try {
+                // Android-specific safety delay
+                if (Capacitor.getPlatform() === 'android') {
+                    await new Promise(r => setTimeout(r, 150));
+                }
+
+                const options: BannerAdOptions = {
+                    adId: this.bannerAdId,
+                    adSize: BannerAdSize.ADAPTIVE_BANNER,
+                    position: position,
+                    margin: 0,
+                    isTesting: true // Set to false in production
+                };
+
+                await AdMob.showBanner(options);
+                this.isBannerShowing = true;
+                console.log('[AdMob] showBanner success');
+            } catch (error) {
+                console.warn('[AdMob] showBanner failed:', error);
+            } finally {
+                this.isBannerLoading = false;
+            }
+        });
+
+        return this.bannerPromise;
     }
 
     public async hideBanner() {
         if (!Capacitor.isNativePlatform()) return;
-        try {
-            await AdMob.hideBanner();
-        } catch (error) {
-            console.error('[AdMob] Banner hide failed:', error);
-        }
+
+        this.bannerPromise = this.bannerPromise.then(async () => {
+            console.log('[AdMob] hideBanner called');
+            try {
+                await AdMob.hideBanner();
+                this.isBannerShowing = false;
+            } catch (error) {
+                console.warn('[AdMob] hideBanner failed:', error);
+            }
+        });
+
+        return this.bannerPromise;
     }
 
     public async resumeBanner() {
         if (!Capacitor.isNativePlatform()) return;
-        try {
-            await AdMob.resumeBanner();
-        } catch (error) {
-            console.error('[AdMob] Banner resume failed:', error);
-        }
+
+        this.bannerPromise = this.bannerPromise.then(async () => {
+            console.log('[AdMob] resumeBanner called');
+            try {
+                await AdMob.resumeBanner();
+                this.isBannerShowing = true;
+            } catch (error) {
+                console.warn('[AdMob] resumeBanner failed:', error);
+            }
+        });
+
+        return this.bannerPromise;
     }
 
     public async removeBanner() {
         if (!Capacitor.isNativePlatform()) return;
-        try {
-            await AdMob.removeBanner();
-        } catch (error) {
-            console.error('[AdMob] Banner removal failed:', error);
-        }
+
+        this.bannerPromise = this.bannerPromise.then(async () => {
+            console.log('[AdMob] removeBanner called');
+            this.isTransitioning = true;
+
+            try {
+                await AdMob.removeBanner();
+            } catch (error) {
+                console.warn('[AdMob] removeBanner failed:', error);
+            } finally {
+                this.isBannerShowing = false;
+                this.isBannerLoading = false;
+                
+                // Allow some time for native view to clean up before next banner
+                setTimeout(() => {
+                    this.isTransitioning = false;
+                    console.log('[AdMob] Transition lock released');
+                }, 200);
+            }
+        });
+
+        return this.bannerPromise;
     }
 
     // --- INTERSTITIAL METHODS ---
