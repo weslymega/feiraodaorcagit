@@ -21,15 +21,15 @@ BEGIN
   SET 
     deleted_at = NOW(),
     is_blocked = true,
-    full_name = 'Usuário Excluído',
+    name = 'Usuário Excluído',
     avatar_url = NULL,
     bio = 'Esta conta foi encerrada pelo usuário.'
   WHERE id = target_user_id;
 
-  -- B. Desativar Anúncios Ativos (Não deletar, apenas desativar)
-  UPDATE public.ads
-  SET status = 'Inativo'
-  WHERE user_id = target_user_id AND status = 'Ativo';
+  -- B. Desativar Anncios Ativos (No deletar, apenas arquivar)
+  UPDATE public.anuncios
+  SET status = 'archived'
+  WHERE user_id = target_user_id AND status = 'active';
 
   -- C. Registro de log (opcional, se houver tabela de logs)
   -- INSERT INTO public.audit_logs (user_id, action) VALUES (target_user_id, 'account_deletion_requested');

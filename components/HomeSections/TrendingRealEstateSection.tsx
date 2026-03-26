@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
-import { Home, ChevronRight, TrendingUp, BedDouble, Ruler } from 'lucide-react';
+import { Home, ChevronRight, TrendingUp, BedDouble, Ruler, Zap, Trophy, Star } from 'lucide-react';
 import { AdItem, Screen } from '../../types';
-
+import { Header, PriceTag, HighlightRibbon } from '../Shared';
 import { SmartImage } from '../ui/SmartImage';
 import { AdCardSkeleton } from '../skeletons/AdCardSkeleton';
-import { getBoostPriority } from '../../utils/boostRibbon';
+import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../../utils/boostRibbon';
 
 interface TrendingRealEstateProps {
     ads?: AdItem[];
@@ -67,18 +67,17 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
             </div>
 
             <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar snap-x">
-                {trendingAds.map((estate, index) => (
-                    <div
-                        key={estate.id}
-                        onClick={() => onAdClick(estate)}
-                        className="min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow group relative animate-fadeIn"
-                    >
-                        {/* Badge TOP */}
-                        {index < 3 && (
-                            <div className="absolute top-2 left-2 z-10 bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded shadow-sm">
-                                TOP {index + 1}
-                            </div>
-                        )}
+                {trendingAds.map((estate) => {
+                    const isTurboActive = estate.turbo_expires_at && new Date(estate.turbo_expires_at) > new Date();
+                    const borderClass = getBoostBorderClass(estate.boostPlan, !!isTurboActive);
+
+                    return (
+                        <div
+                            key={estate.id}
+                            onClick={() => onAdClick(estate)}
+                            className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow group relative animate-fadeIn ${borderClass}`}
+                        >
+                            <HighlightRibbon ad={estate} />
 
                         <div className="h-32 w-full relative">
                             <SmartImage
@@ -113,7 +112,7 @@ export const TrendingRealEstateSection: React.FC<TrendingRealEstateProps> = ({ a
                             </div>
                         </div>
                     </div>
-                ))}
+                )})}
 
                 <button
                     onClick={onViewAll || (() => onNavigate(Screen.REAL_ESTATE_LIST))}

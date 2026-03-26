@@ -164,6 +164,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
                 autoComplete="off"
                 className="w-full pl-11 pr-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
                 placeholder="Seu e-mail"
+                maxLength={254}
               />
             </div>
           </div>
@@ -180,6 +181,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassw
                 autoComplete="new-password"
                 className="w-full pl-11 pr-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
                 placeholder="Sua senha"
+                maxLength={100}
               />
             </div>
           </div>

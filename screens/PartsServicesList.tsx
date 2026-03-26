@@ -1,15 +1,16 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Filter, Search, Heart, Wrench, Sparkles, Speaker, ChevronRight, X, DollarSign, MapPin, Package, Check, Car } from 'lucide-react';
-import { Header, PriceTag } from '../components/Shared';
+import { Header, PriceTag, HighlightRibbon } from '../components/Shared';
 import { AdItem, FilterContext, AdStatus, PartsServicesPromotion } from '../types';
 import { PARTS_SERVICES_PROMO_BANNERS } from '../constants';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
-import { getBoostRibbon } from '../utils/boostRibbon';
+import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
+import AdManager from '../services/AdManager';
 
 interface PartsServicesListProps {
   ads: AdItem[];
@@ -39,6 +40,13 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
   const [selectedGroup, setSelectedGroup] = useState('todos'); // Tabs do topo
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isBannerVisible, setIsBannerVisible] = useState(AdManager.isBannerActive());
+
+  useEffect(() => {
+    return AdManager.onBannerStateChange((visible) => {
+      setIsBannerVisible(visible);
+    });
+  }, []);
 
   // Filtros Avançados
   const [filters, setFilters] = useState({
@@ -302,32 +310,21 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
             const ad = item;
             const isFav = favorites.some(f => f.id === ad.id);
-            const ribbon = getBoostRibbon(ad.boostPlan || 'none');
-            
-            let borderColor = "border-gray-100";
-            if (ribbon) {
-              borderColor = ad.boostPlan === 'max' ? "border-yellow-400 ring-1 ring-yellow-400" :
-                            ad.boostPlan === 'pro' ? "border-cyan-400" : "border-gray-200";
-            }
+            const isTurboActive = ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date();
+            const borderClass = getBoostBorderClass(ad.boostPlan, !!isTurboActive);
 
             return (
               <div
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className={`bg-white rounded-2xl shadow-sm border ${borderColor} overflow-hidden cursor-pointer active:scale-[0.99] transition-all flex h-32 animate-fadeIn relative`}
+                className={`bg-white rounded-2xl shadow-sm border ${borderClass} overflow-hidden cursor-pointer active:scale-[0.99] transition-all flex h-32 animate-fadeIn relative`}
               >
                 <div className="w-32 h-full relative flex-shrink-0 overflow-hidden">
                   <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
                   
-                  {ribbon && (
-                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
-                      <div className={`absolute top-2 -left-10 bg-gradient-to-r ${ribbon.gradient} text-white text-[8px] font-black px-10 py-1 transform -rotate-45 shadow-sm border-y border-white/20 flex items-center justify-center uppercase tracking-wider`}>
-                        {ribbon.label}
-                      </div>
-                    </div>
-                  )}
+                  <HighlightRibbon ad={ad} />
 
-                  <div className={`absolute bottom-0 right-0 ${ribbon ? 'opacity-90' : ''} bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-tl-lg`}>
+                  <div className={`absolute bottom-0 right-0 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-tl-lg`}>
                     {ad.partType?.split(' ')[0] || 'Item'}
                   </div>
                 </div>
@@ -376,10 +373,13 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
       {/* --- FILTER MODAL --- */}
       {isFilterOpen && (
-        <div className="fixed inset-0 z-[900] flex items-end justify-center">
+        <div className="fixed inset-0 z-[1000] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 
-          <div className="bg-white w-full max-w-md h-[85vh] rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col overflow-hidden">
+          <div 
+            className="bg-white w-full max-w-md h-[85vh] rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col overflow-hidden transition-all duration-300"
+            style={{ bottom: isBannerVisible ? '50px' : '0px' }}
+          >
 
             {/* Header */}
             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white">

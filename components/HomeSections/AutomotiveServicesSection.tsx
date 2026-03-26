@@ -5,7 +5,8 @@ import { AdItem, Screen } from '../../types';
 
 import { SmartImage } from '../ui/SmartImage';
 import { AdCardSkeleton } from '../skeletons/AdCardSkeleton';
-import { getBoostRibbon } from '../../utils/boostRibbon';
+import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../../utils/boostRibbon';
+import { Header, PriceTag, HighlightRibbon } from '../Shared';
 
 interface AutomotiveServicesProps {
     ads?: AdItem[];
@@ -55,18 +56,14 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
 
             <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar snap-x">
                 {serviceAds.map((service) => {
-                    const ribbon = getBoostRibbon(service.boostPlan || 'none');
-                    let borderColor = "border-gray-100";
-                    if (ribbon) {
-                        borderColor = service.boostPlan === 'max' ? "border-yellow-400 ring-1 ring-yellow-400" :
-                            service.boostPlan === 'pro' ? "border-cyan-400" : "border-gray-200";
-                    }
+                    const isTurboActive = service.turbo_expires_at && new Date(service.turbo_expires_at) > new Date();
+                    const borderClass = getBoostBorderClass(service.boostPlan, !!isTurboActive);
 
                     return (
                         <div
                             key={service.id}
                             onClick={() => onAdClick(service)} // Main click for details
-                            className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border ${borderColor} overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow relative animate-fadeIn`}
+                            className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border ${borderClass} overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow relative animate-fadeIn`}
                         >
                             <div className="h-28 w-full relative overflow-hidden">
                                 <SmartImage
@@ -76,15 +73,9 @@ export const AutomotiveServicesSection: React.FC<AutomotiveServicesProps> = ({ a
                                     skeletonClassName="h-28 w-full"
                                 />
                                 
-                                {ribbon && (
-                                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
-                                        <div className={`absolute top-2 -left-10 bg-gradient-to-r ${ribbon.gradient} text-white text-[8px] font-black px-10 py-1 transform -rotate-45 shadow-sm border-y border-white/20 flex items-center justify-center uppercase tracking-wider`}>
-                                            {ribbon.label}
-                                        </div>
-                                    </div>
-                                )}
+                                <HighlightRibbon ad={service} />
 
-                                <div className={`absolute top-2 right-2 ${ribbon ? 'opacity-90' : ''} bg-white/90 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded text-gray-700`}>
+                                <div className={`absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded text-gray-700`}>
                                     {service.partType || 'Serviço'}
                                 </div>
                             </div>

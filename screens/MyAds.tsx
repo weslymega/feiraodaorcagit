@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAppState } from '../hooks/useAppState';
 import { Plus, MoreVertical, Trash2, Edit2, X, AlertTriangle, Clock, TrendingUp, Calendar, Zap, Lock, Info } from 'lucide-react';
-import { Header, PriceTag } from '../components/Shared';
+import { Header, PriceTag, HighlightRibbon } from '../components/Shared';
 import { AdItem, AdStatus } from '../types';
+import { getBoostBorderClass } from '../utils/boostRibbon';
 
 interface MyAdsProps {
   ads: AdItem[];
@@ -152,9 +153,10 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
             onClick={() => onAdClick && onAdClick(ad)}
             className={`bg-white p-4 rounded-2xl shadow-sm border flex flex-col gap-3 relative active:scale-[0.99] transition-transform cursor-pointer ${activeMenuId === ad.id ? 'z-50' : 'z-10'} ${ad.status === AdStatus.PENDING ? 'border-orange-200 bg-orange-50/20' :
               ad.status === AdStatus.REJECTED ? 'border-red-200 bg-red-50/20' :
-                ad.isFeatured ? 'border-l-4 border-l-accent border-y-gray-100 border-r-gray-100' : 'border-gray-100'
+                isHighlightActive(ad) ? getBoostBorderClass(ad.boostPlan) : 'border-gray-100'
               }`}
           >
+            <HighlightRibbon ad={ad} />
             {/* Boost Visual Indicator (Background watermark for premium) */}
             {ad.boostPlan === 'Premium' && ad.status === AdStatus.ACTIVE && (
               <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none overflow-hidden rounded-tr-2xl">

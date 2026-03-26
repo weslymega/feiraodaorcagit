@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChevronLeft, Map, ToggleLeft, ToggleRight, Server, Globe, Power } from 'lucide-react';
+import { ChevronLeft, Map, ToggleLeft, ToggleRight, Server, Power } from 'lucide-react';
 import { Header } from '../components/Shared';
 
 interface AdminSystemSettingsProps {
@@ -70,16 +70,6 @@ export const AdminSystemSettings: React.FC<AdminSystemSettingsProps> = ({
             onChange={() => onToggleMaintenance(!maintenanceMode)}
         />
 
-        <div className="opacity-50 pointer-events-none filter grayscale">
-            <SettingToggle 
-                icon={<Globe className="w-5 h-5" />}
-                title="API FIPE Externa"
-                description="Usa conexão direta com servidor FIPE."
-                checked={true}
-                onChange={() => {}}
-                disabled
-            />
-        </div>
 
         <div className={`mt-8 p-4 border rounded-xl transition-colors ${maintenanceMode ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
             <h4 className={`flex items-center gap-2 font-bold mb-2 ${maintenanceMode ? 'text-red-800' : 'text-yellow-800'}`}>

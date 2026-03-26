@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Filter, Search, Heart, MapPin, Key, ChevronRight, X, Check, DollarSign, Ruler, ArrowRight, Home, Building, Trees, Briefcase, Star, Trophy } from 'lucide-react';
-import { Header, PriceTag } from '../components/Shared';
+import { Header, PriceTag, HighlightRibbon } from '../components/Shared';
 import { AdItem, FilterContext, AdStatus, RealEstatePromotion, Screen } from '../types';
 import { REAL_ESTATE_PROMO_BANNERS } from '../constants';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
-import { getBoostPriority, getBoostRibbon } from '../utils/boostRibbon';
+import AdManager from '../services/AdManager';
+import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
 
@@ -49,6 +50,13 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
   // Filter Modal State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isBannerVisible, setIsBannerVisible] = useState(AdManager.isBannerActive());
+
+  useEffect(() => {
+    return AdManager.onBannerStateChange((visible) => {
+      setIsBannerVisible(visible);
+    });
+  }, []);
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
 
   // Complex Filter State
@@ -407,19 +415,14 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
             const ad = item;
             const isFav = favorites.some(f => f.id === ad.id);
-            const ribbon = getBoostRibbon(ad.boostPlan || 'none');
-            
-            let borderColor = "border-gray-100";
-            if (ribbon) {
-              borderColor = ad.boostPlan === 'max' ? "border-yellow-400 ring-1 ring-yellow-400" :
-                            ad.boostPlan === 'pro' ? "border-cyan-400" : "border-gray-200";
-            }
+            const isTurboActive = ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date();
+            const borderClass = getBoostBorderClass(ad.boostPlan, !!isTurboActive);
 
             return (
               <div
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className={`bg-white rounded-2xl shadow-sm border ${borderColor} overflow-hidden cursor-pointer active:scale-[0.99] transition-all group animate-fadeIn`}
+                className={`bg-white rounded-2xl shadow-sm border ${borderClass} overflow-hidden cursor-pointer active:scale-[0.99] transition-all group animate-fadeIn`}
               >
                 <div className="relative h-56 w-full overflow-hidden">
                   <SmartImage
@@ -429,13 +432,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                     skeletonClassName="h-56 w-full"
                   />
                   
-                  {ribbon && (
-                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
-                      <div className={`absolute top-4 -left-10 bg-gradient-to-r ${ribbon.gradient} text-white text-[10px] font-black px-10 py-1.5 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider`}>
-                        {ribbon.label}
-                      </div>
-                    </div>
-                  )}
+                  <HighlightRibbon ad={ad} />
 
                   <div className="absolute top-3 right-3 flex gap-2">
                     <button
@@ -497,12 +494,15 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       {/* --- FILTER MODAL (FIXED PROPORTIONS) --- */}
       {
         isFilterOpen && (
-          <div className="fixed inset-0 z-[900] flex items-end justify-center">
+          <div className="fixed inset-0 z-[1000] flex items-end justify-center">
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 
             {/* Modal Container - Max Width applied here to fix proportionality */}
-            <div className="bg-white w-full max-w-md h-[92vh] rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col overflow-hidden">
+            <div 
+              className="bg-white w-full max-w-md h-[92vh] rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col overflow-hidden transition-all duration-300"
+              style={{ bottom: isBannerVisible ? '50px' : '0px' }}
+            >
 
               {/* Header do Filtro */}
               <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white">

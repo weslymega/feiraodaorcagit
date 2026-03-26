@@ -85,8 +85,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
   const [counts, setCounts] = React.useState({
     totalUsers: 0,
     activeAds: 0,
-    pendingAds: 0,
-    revenue: 0
+    pendingAds: 0
   });
 
   React.useEffect(() => {
@@ -112,19 +111,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
       const activeCount = adsCountData?.filter(ad => ad.status === 'ativo' || ad.status === 'active').length || 0;
       const pendingCount = adsCountData?.filter(ad => ad.status === 'pendente' || ad.status === 'pending').length || 0;
 
-      // Calculate revenue
-      const revenue = adsCountData?.reduce((acc, ad) => {
-        if (ad.boost_plan === 'premium') return acc + 100;
-        if (ad.boost_plan === 'advanced') return acc + 60;
-        if (ad.boost_plan === 'basic') return acc + 30;
-        return acc;
-      }, 0) || 0;
 
       setCounts({
         totalUsers: users.length,
         activeAds: activeCount,
-        pendingAds: pendingCount,
-        revenue: revenue
+        pendingAds: pendingCount
       });
     } catch (err: any) {
       console.error('Failed to load admin stats:', err);
@@ -160,7 +151,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
           <StatCard
             title="Total de Usuários"
             value={loading ? '-' : counts.totalUsers}
-            growth={loading ? '' : "12%"}
             icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-5 h-5" />}
             bgClass="bg-blue-100"
             textClass="text-blue-700"
@@ -168,7 +158,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
           <StatCard
             title="Anúncios Ativos"
             value={loading ? '-' : counts.activeAds}
-            growth={loading ? '' : "5.4%"}
             icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-5 h-5" />}
             bgClass="bg-purple-100"
             textClass="text-purple-700"
@@ -182,14 +171,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
             icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-5 h-5" />}
             bgClass="bg-orange-100"
             textClass="text-orange-700"
-          />
-          <StatCard
-            title="Receita Total"
-            value={loading ? '-' : `R$ ${counts.revenue.toLocaleString('pt-BR')}`}
-            growth={loading ? '' : "8.3%"}
-            icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-5 h-5" />}
-            bgClass="bg-green-100"
-            textClass="text-green-700"
           />
         </div>
 
@@ -251,13 +232,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
             bgClass="bg-blue-100"
             iconClass="text-blue-700"
             onClick={() => onNavigate && onNavigate(Screen.ADMIN_VEHICLES_PROMOTIONS)}
-          />
-          <ManagementItem
-            icon={<BarChart className="w-5 h-5" />}
-            label="Relatórios e Estatísticas"
-            bgClass="bg-green-100"
-            iconClass="text-green-700"
-            onClick={() => onNavigate && onNavigate(Screen.ADMIN_REPORTS)}
           />
           <ManagementItem
             icon={<Shield className="w-5 h-5" />}

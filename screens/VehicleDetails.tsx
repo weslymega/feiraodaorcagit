@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Heart, Share2, Calculator, MapPin, MessageSquare, Phone, User as UserIcon, ChevronRight, QrCode, Printer, Download, Map, Clock, Camera, Flag, AlertTriangle, CheckCircle } from 'lucide-react';
+import { ChevronLeft, Heart, Share2, Calculator, MapPin, MessageSquare, Phone, User as UserIcon, ChevronRight, QrCode, Printer, Download, Map, Clock, Camera, Flag, AlertTriangle, CheckCircle, UserX } from 'lucide-react';
 import { generateA4PrintTemplate } from '../services/printTemplates';
 import { AdItem, ReportItem } from '../types';
 import { APP_URL } from '../constants';
@@ -20,6 +20,7 @@ interface VehicleDetailsProps {
   onToggleFairPresence: () => void;
   onViewProfile?: () => void;
   onReport?: (report: ReportItem) => void;
+  onBlockUser?: (userId: string) => void;
 }
 
 // Helper component for specs
@@ -31,7 +32,7 @@ const SpecItem: React.FC<{ label: string; value: string | number }> = ({ label, 
 );
 
 
-export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onStartChat, isFavorite, onToggleFavorite, onToggleFairPresence, onViewProfile, onReport }) => {
+export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onStartChat, isFavorite, onToggleFavorite, onToggleFairPresence, onViewProfile, onReport, onBlockUser }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -207,6 +208,15 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
           <div className="absolute top-0 left-0 right-0 p-4 pt-6 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent pointer-events-none z-30">
             <button onClick={onBack} className="p-2.5 rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-black/50 pointer-events-auto border border-white/10 shadow-lg transition-all active:scale-90"><ChevronLeft className="w-6 h-6" /></button>
             <div className="flex gap-2 pointer-events-auto">
+              {!ad.isOwner && onBlockUser && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onBlockUser(ad.userId); }} 
+                  className="p-2.5 rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-red-600 border border-white/10 transition-all active:scale-90" 
+                  title="Bloquear Usuário"
+                >
+                  <UserX className="w-5 h-5" />
+                </button>
+              )}
               <button onClick={(e) => { e.stopPropagation(); setIsReportModalOpen(true); }} className="p-2.5 rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-red-500 border border-white/10 transition-all active:scale-90" title="Denunciar"><Flag className="w-5 h-5" /></button>
               <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }} className={`p-2.5 rounded-full backdrop-blur-md transition-all border shadow-lg active:scale-90 ${isFavorite ? 'bg-red-500 border-red-500 text-white shadow-red-500/30' : 'bg-black/30 border-white/10 text-white hover:bg-white/20'}`}><Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} /></button>
               <button
@@ -303,10 +313,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
               <p className="font-bold text-gray-900 text-lg group-hover:text-primary transition-colors">
                 {ad.isOwner ? "Eu (Vendedor)" : (ad.ownerName || "Vendedor")}
               </p>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <p className="text-xs text-gray-500">Online agora • Ver perfil</p>
-              </div>
+              <p className="text-xs text-secondary-500 font-medium group-hover:underline">Ver perfil</p>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary" />
           </div>

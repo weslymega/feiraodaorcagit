@@ -31,9 +31,6 @@ export const Messages: React.FC<MessagesProps> = ({ messages, onBack, onSelectCh
           >
             <div className="relative">
               <img src={msg.avatarUrl} alt={msg.senderName} className="w-14 h-14 rounded-full object-cover" />
-              {msg.online && (
-                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
-              )}
             </div>
 
             <div className="flex-1 min-w-0">

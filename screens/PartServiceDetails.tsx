@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronLeft, Heart, Share2, MapPin, MessageSquare, User as UserIcon, ChevronRight, Wrench, Tag, Package, CheckCircle, QrCode, Printer, Download, Flag } from 'lucide-react';
+import { ChevronLeft, Heart, Share2, MapPin, MessageSquare, User as UserIcon, ChevronRight, Wrench, Tag, Package, CheckCircle, QrCode, Printer, Download, Flag, UserX } from 'lucide-react';
 import { generateA4PrintTemplate } from '../services/printTemplates';
 import { AdItem, ReportItem } from '../types';
 import { LocationSection } from '../components/LocationSection';
@@ -15,9 +15,10 @@ interface PartServiceDetailsProps {
   onStartChat?: () => void;
   onViewProfile?: () => void;
   onReport?: (report: ReportItem) => void;
+  onBlockUser?: (userId: string) => void;
 }
 
-export const PartServiceDetails: React.FC<PartServiceDetailsProps> = ({ ad, onBack, onStartChat, onViewProfile, onReport }) => {
+export const PartServiceDetails: React.FC<PartServiceDetailsProps> = ({ ad, onBack, onStartChat, onViewProfile, onReport, onBlockUser }) => {
   if (!ad) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-red-50 text-center">
@@ -122,6 +123,15 @@ export const PartServiceDetails: React.FC<PartServiceDetailsProps> = ({ ad, onBa
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
           <button onClick={onBack} className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 pointer-events-auto"><ChevronLeft className="w-6 h-6" /></button>
           <div className="flex gap-3 pointer-events-auto">
+            {!ad.isOwner && onBlockUser && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onBlockUser(ad.userId); }} 
+                className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-red-500 border border-white/10 transition-all active:scale-90" 
+                title="Bloquear Usuário"
+              >
+                <UserX className="w-6 h-6" />
+              </button>
+            )}
             <button onClick={(e) => { e.stopPropagation(); setIsReportModalOpen(true); }} className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-red-500 hover:border-red-500 transition-colors" title="Denunciar"><Flag className="w-6 h-6" /></button>
             <button className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30"><Heart className="w-6 h-6" /></button>
             <button onClick={(e) => { e.stopPropagation(); handleShareQR(); }} className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30"><Share2 className="w-6 h-6" /></button>
@@ -161,10 +171,7 @@ export const PartServiceDetails: React.FC<PartServiceDetailsProps> = ({ ad, onBa
             <p className="font-bold text-gray-900 text-lg group-hover:text-primary transition-colors">
               {ad.isOwner ? "Eu (Vendedor)" : (ad.ownerName || "Vendedor")}
             </p>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <p className="text-xs text-gray-500">Online agora • Ver perfil</p>
-            </div>
+            <p className="text-xs text-secondary-500 font-medium group-hover:underline">Ver perfil</p>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary" />
         </div>

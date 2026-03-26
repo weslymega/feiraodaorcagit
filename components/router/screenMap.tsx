@@ -1,9 +1,10 @@
 import React from 'react';
+import { User as UserIcon } from 'lucide-react';
 import { Screen, AdItem } from '../../types';
 import { AppState } from '../../types/AppState';
 import { AppActions } from '../../types/AppActions';
 import {
-    MOCK_SELLER
+    APP_LOGOS
 } from '../../constants';
 
 // Screens
@@ -28,6 +29,7 @@ import { AccountData } from '../../screens/AccountData';
 import { Notifications } from '../../screens/Notifications';
 import { Privacy } from '../../screens/Privacy';
 import { Security } from '../../screens/Security';
+import { BlockedUsersScreen } from '../../screens/BlockedUsersScreen';
 import { AboutApp } from '../../screens/AboutApp';
 import { HelpSupport } from '../../screens/HelpSupport';
 import { AboutUs } from '../../screens/AboutUs';
@@ -45,7 +47,6 @@ import { AdminUsers } from '../../screens/AdminUsers';
 import { AdminVehicleAds } from '../../screens/AdminVehicleAds';
 import { AdminRealEstateAds } from '../../screens/AdminRealEstateAds';
 import { AdminPartsServicesAds } from '../../screens/AdminPartsServicesAds';
-import { AdminReports } from '../../screens/AdminReports';
 import { BoostTurboScreen } from '../../screens/BoostTurboScreen';
 import { AdminSystemSettings } from '../../screens/AdminSystemSettings';
 import { AdminContentModeration } from '../../screens/AdminContentModeration';
@@ -192,13 +193,31 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             return <FairList ads={fairAds || []} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} />;
 
         case Screen.PUBLIC_PROFILE:
+            if (!viewingProfile) {
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-gray-50 text-center animate-in fade-in duration-300">
+                        <UserIcon className="w-16 h-16 text-gray-200 mb-4" />
+                        <h2 className="text-xl font-bold text-gray-800 mb-2">Perfil não disponível</h2>
+                        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                            Não foi possível carregar as informações deste anunciante no momento. Por favor, tente novamente mais tarde.
+                        </p>
+                        <button 
+                            onClick={handleBackFromProfile} 
+                            className="px-8 py-3 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-blue-100 hover:scale-[1.02] transition-transform active:scale-[0.98]"
+                        >
+                            Voltar
+                        </button>
+                    </div>
+                );
+            }
+
             const adsToShow = viewingProfile?.id === user?.id
                 ? myAds
                 : activeRealAds.filter(ad => ad.userId === viewingProfile?.id);
 
             return (
                 <PublicProfile
-                    user={viewingProfile || MOCK_SELLER}
+                    user={viewingProfile}
                     ads={adsToShow}
                     onBack={handleBackFromProfile}
                     onAdClick={handleAdClick}
@@ -206,6 +225,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                     favorites={favorites}
                     onToggleFavorite={handleToggleFavorite}
                     onReport={handleAddReport}
+                    onBlockUser={actions.handleBlockUser}
                 />
             );
 
@@ -232,6 +252,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         onToggleFairPresence={() => handleToggleFairPresence(selectedAd)}
                         onViewProfile={handleViewProfile}
                         onReport={handleAddReport}
+                        onBlockUser={actions.handleBlockUser}
                     />
                 </ErrorBoundary>
             );
@@ -245,6 +266,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                             onStartChat={handleStartChatFromAd}
                             onViewProfile={handleViewProfile}
                             onReport={handleAddReport}
+                            onBlockUser={actions.handleBlockUser}
                         />
                     ) : (
                         user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />
@@ -261,6 +283,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                             onStartChat={handleStartChatFromAd}
                             onViewProfile={handleViewProfile}
                             onReport={handleAddReport}
+                            onBlockUser={actions.handleBlockUser}
                         />
                     ) : (
                         user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />
@@ -289,6 +312,8 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                             handleSendMessage(adId, selectedChat.otherUserId, text, images);
                         }
                     }}
+                    onBlockUser={actions.handleBlockUser}
+                    isBlocked={user ? state.isBlockedBetween(user.id, selectedChat.otherUserId) : false}
                 />
             ) : (
                 <Messages messages={state.conversations || []} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />
@@ -300,7 +325,10 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             return <Notifications onBack={handleBackFromDetails} onGoToChat={() => navigateTo(Screen.MESSAGES)} onClearAll={handleClearNotifications} items={allNotifications} />;
         case Screen.PRIVACY:
             if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />;
-            return <Privacy user={user} onBack={() => navigateTo(Screen.SETTINGS)} onUpdateSettings={handleUpdatePrivacySettings} />;
+            return <Privacy user={user} onBack={() => navigateTo(Screen.SETTINGS)} onUpdateSettings={handleUpdatePrivacySettings} onNavigate={navigateTo} />;
+        case Screen.BLOCKED_USERS:
+            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />;
+            return <BlockedUsersScreen onBack={() => navigateTo(Screen.PRIVACY)} onUnblock={actions.handleUnblockUser} />;
         case Screen.SECURITY:
             return <Security onBack={() => navigateTo(Screen.SETTINGS)} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} onDeleteAccount={handleDeleteAccount} />;
         case Screen.ABOUT_APP:
@@ -329,8 +357,6 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             return (user && user.isAdmin) ? <AdminRealEstateAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminRealEstateAds} onUpdateAd={handleAdminAdUpdate} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />);
         case Screen.ADMIN_PARTS_SERVICES:
             return (user && user.isAdmin) ? <AdminPartsServicesAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminPartsServicesAds} onUpdateAd={handleAdminAdUpdate} onNavigate={navigateTo} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />);
-        case Screen.ADMIN_REPORTS:
-            return (user && user.isAdmin) ? <AdminReports onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />);
         case Screen.ADMIN_SYSTEM_SETTINGS:
             return (user && user.isAdmin) ? <AdminSystemSettings onBack={() => navigateTo(Screen.ADMIN_PANEL)} fairActive={fairActive} onToggleFair={toggleFairActive} maintenanceMode={maintenanceMode} onToggleMaintenance={toggleMaintenanceModeAction} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />);
         case Screen.ADMIN_CONTENT_MODERATION:

@@ -521,7 +521,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                         <div className="mt-1 text-blue-600 font-bold text-lg">🚀</div>
                                         <div>
                                             <p className="text-xs font-black text-blue-900 uppercase">Topo das buscas</p>
-                                            <p className="text-[11px] text-blue-800/70 font-medium leading-relaxed">Seu anúncio ganha prioridade absoluta e aparece acima dos anúncios gratuitos nos resultados.</p>
+                                            <p className="text-[11px] text-blue-800/70 font-medium leading-relaxed">Seu anúncio ganha prioridade absoluta e aparece acima dos anúncios sem destaques nos resultados.</p>
                                         </div>
                                     </div>
                                     

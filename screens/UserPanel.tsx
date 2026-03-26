@@ -33,7 +33,7 @@ export const UserPanel: React.FC<UserPanelProps> = ({ user, onNavigate, onLogout
         <div className="relative z-10 flex justify-between items-start mb-6">
           <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
             <MapPin className="w-4 h-4 text-accent" />
-            <span className="text-xs font-medium">Brasília, DF</span>
+            <span className="text-xs font-medium">{user.location || "Localização não informada"}</span>
           </div>
           <button onClick={onLogout} className="bg-white/10 backdrop-blur-md hover:bg-white/20 px-3 py-1 rounded-full text-xs font-bold transition-colors border border-white/20">
             Sair
@@ -50,7 +50,7 @@ export const UserPanel: React.FC<UserPanelProps> = ({ user, onNavigate, onLogout
             )}
           </div>
           <h2 className="text-2xl font-bold text-white tracking-tight">{user.name}</h2>
-          <p className="text-blue-200 text-sm font-light mb-4">{user.email}</p>
+          {/* <p className="text-blue-200 text-sm font-light mb-4">{user.email}</p> */}
 
           <button
             onClick={() => onNavigate(Screen.EDIT_PROFILE)}

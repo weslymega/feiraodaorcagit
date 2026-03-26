@@ -59,6 +59,20 @@ export const useAppState = () => {
   // Chat/Messages state
   const [conversations, setConversations] = useState<MessageItem[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  
+  // Privacy: Bloqueios
+  const [blockedByMe, setBlockedByMe] = useState<string[]>([]);
+  const [blockedByOthers, setBlockedByOthers] = useState<string[]>([]);
+
+  const isBlockedBetween = (id1: string, id2: string) => {
+    if (!id1 || !id2) return false;
+    const currentUserId = user?.id;
+    if (!currentUserId) return false;
+
+    // Se o alvo de interesse for id2, verificamos se EU bloqueei id2 ou se id2 me bloqueou
+    const otherId = (id1 === currentUserId) ? id2 : id1;
+    return blockedByMe.includes(otherId) || blockedByOthers.includes(otherId);
+  };
 
   // 0. Inicialização Global de AdMob (Adiado por segurança)
   useEffect(() => {
@@ -296,6 +310,15 @@ export const useAppState = () => {
         if (user?.id) {
           const freshProfile = await api.getProfile();
           if (freshProfile) {
+            if (freshProfile.deletedAt) {
+              console.log("🚫 [Auth] Conta excluída detectada. Deslogando...");
+              await supabase.auth.signOut();
+              setUser(null);
+              setCurrentScreen(Screen.LOGIN);
+              alert("Esta conta foi excluída e não pode mais ser acessada.");
+              return;
+            }
+
             setUser(prev => prev ? ({ ...prev, ...freshProfile }) : null);
             
             // Mandatory Terms Acceptance Guard
@@ -312,7 +335,9 @@ export const useAppState = () => {
             api.getPromotions('dashboard').then(res => res.length > 0 && setDashboardPromotions(res)),
             api.getPromotions('veiculos').then(res => res.length > 0 && setVehiclesPromotions(res)),
             api.getPromotions('imoveis').then(res => res.length > 0 && setRealEstatePromotions(res)),
-            api.getPromotions('pecas_servicos').then(res => res.length > 0 && setPartsServicesPromotions(res))
+            api.getPromotions('pecas_servicos').then(res => res.length > 0 && setPartsServicesPromotions(res)),
+            api.getBlockedUserIds().then(res => res && setBlockedByMe(res)),
+            api.getWhoBlockedMeIds().then(res => res && setBlockedByOthers(res))
           ];
 
           const isAdminInDB = freshProfile?.isAdmin || user.isAdmin;
@@ -428,6 +453,9 @@ export const useAppState = () => {
     vehiclesPromotions, setVehiclesPromotions,
     conversations, setConversations,
     chatMessages, setChatMessages,
-    pendingHighlightAd, setPendingHighlightAd
+    pendingHighlightAd, setPendingHighlightAd,
+    blockedByMe, setBlockedByMe,
+    blockedByOthers, setBlockedByOthers,
+    isBlockedBetween
   };
 };

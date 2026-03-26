@@ -70,3 +70,19 @@ export const getBoostPriority = (planName?: string | null): number => {
   const config = getBoostRibbon(planName);
   return config ? config.priority : 0;
 };
+/**
+ * Helper to get the Tailwind border classes for a given boost plan.
+ */
+export const getBoostBorderClass = (planName?: string | null, isActive: boolean = true): string => {
+  if (!isActive) return 'border-gray-100';
+  
+  const ribbon = getBoostRibbon(planName);
+  if (!ribbon) return 'border-gray-100';
+
+  const normalized = planName?.toLowerCase() || '';
+  if (normalized === 'max') return 'border-yellow-400 ring-1 ring-yellow-400/30';
+  if (normalized === 'pro') return 'border-cyan-400 ring-1 ring-cyan-400/30';
+  if (normalized === 'premium') return 'border-gray-200';
+
+  return 'border-gray-200';
+};

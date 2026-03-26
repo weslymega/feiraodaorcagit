@@ -1,13 +1,14 @@
 
 import React from 'react';
-import { Eye, MessageCircle } from 'lucide-react';
+import { Eye, MessageCircle, UserX, ChevronRight } from 'lucide-react';
 import { Header } from '../components/Shared';
-import { User } from '../types';
+import { User, Screen } from '../types';
 
 interface PrivacyProps {
   user: User;
   onBack: () => void;
   onUpdateSettings: (settings: { showOnlineStatus?: boolean, readReceipts?: boolean }) => void;
+  onNavigate: (screen: any) => void;
 }
 
 const ToggleRow: React.FC<{
@@ -43,7 +44,7 @@ const ToggleRow: React.FC<{
   </div>
 );
 
-export const Privacy: React.FC<PrivacyProps> = ({ user, onBack, onUpdateSettings }) => {
+export const Privacy: React.FC<PrivacyProps> = ({ user, onBack, onUpdateSettings, onNavigate }) => {
   return (
     <div className="min-h-screen bg-gray-50 pb-24 animate-in slide-in-from-right duration-300">
       <Header title="Privacidade" onBack={onBack} />
@@ -72,17 +73,22 @@ export const Privacy: React.FC<PrivacyProps> = ({ user, onBack, onUpdateSettings
           />
         </div>
 
-        {/* Interações */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Interações</h3>
-
-          <ToggleRow
-            icon={<MessageCircle className="w-5 h-5" />}
-            label="Confirmação de Leitura"
-            description="Mostrar quando você visualizou mensagens no chat."
-            checked={!!user.readReceipts}
-            onChange={() => onUpdateSettings({ readReceipts: !user.readReceipts })}
-          />
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider p-4 pb-2">Segurança e Bloqueios</h3>
+          
+          <button 
+            onClick={() => onNavigate(Screen.BLOCKED_USERS)}
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
+          >
+            <div className="flex items-center gap-4">
+              <UserX className="w-5 h-5 text-red-500" />
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">Usuários Bloqueados</h4>
+                <p className="text-xs text-gray-500">Gerencie quem você bloqueou no app</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </button>
         </div>
 
         <p className="text-center text-xs text-gray-400 px-4">

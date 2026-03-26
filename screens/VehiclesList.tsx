@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Filter, Search, Heart, Car, ChevronRight, X, Check, Gauge, Calendar, DollarSign, Fuel, Palette, Zap, Tag, Loader2, Edit3, ListFilter, Trophy, Star } from 'lucide-react';
-import { Header, PriceTag } from '../components/Shared';
+import { Header, PriceTag, HighlightRibbon } from '../components/Shared';
 import { AdItem, FilterContext, AdStatus, VehiclesPromotion, Screen } from '../types';
 import { fipeApi, FipeItem, FipeVehicleType } from '../services/fipeApi';
 import { VEHICLES_PROMO_BANNERS } from '../constants';
@@ -11,9 +11,10 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getVehiclesWithFallback } from '../utils/adSelector';
-import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
+import { getBoostRibbon, getBoostPriority, getBoostBorderClass } from '../utils/boostRibbon';
 import { injectAdsIntoFeed } from '../utils/adInjection';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
+import AdManager from '../services/AdManager';
 
 interface VehiclesListProps {
   ads: AdItem[];
@@ -94,6 +95,14 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     if (group === 'caminhão' || group === 'caminhao') return 'caminhoes';
     return 'carros';
   };
+
+  const [isBannerVisible, setIsBannerVisible] = useState(AdManager.isBannerActive());
+
+  useEffect(() => {
+    return AdManager.onBannerStateChange((visible) => {
+      setIsBannerVisible(visible);
+    });
+  }, []);
 
   // Load Brands when vehicle type (selectedGroup) changes
   useEffect(() => {
@@ -519,23 +528,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
             const isFav = favorites.some(f => f.id === ad.id);
 
             // Visual Styles for Boosted Ads
-            const ribbon = getBoostRibbon(ad.boostPlan);
-            let borderClass = 'border-gray-100';
-            let badge = null;
-
-            if (ribbon) {
-              borderClass = ad.boostPlan === 'max' ? 'border-yellow-400 ring-1 ring-yellow-400/30' :
-                             ad.boostPlan === 'pro' ? 'border-primary ring-1 ring-primary/30' : 'border-gray-200';
-
-              badge = (
-                <div className={`absolute top-3 left-3 bg-gradient-to-r ${ribbon.gradient} text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-20 uppercase tracking-wider`}>
-                  {ad.boostPlan === 'pro' && <Zap className="w-3 h-3 fill-current" />}
-                  {ad.boostPlan === 'max' && <Trophy className="w-3 h-3 fill-current" />}
-                  {ad.boostPlan === 'premium' && <Star className="w-3 h-3 fill-current" />}
-                  {ribbon.label}
-                </div>
-              );
-            }
+            const isTurboActive = ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date();
+            const borderClass = getBoostBorderClass(ad.boostPlan, !!isTurboActive);
 
             return (
               <div
@@ -552,7 +546,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                   />
 
                   {/* Badge de Destaque (Se houver) */}
-                  {badge}
+                  <HighlightRibbon ad={ad} />
 
                   <div className="absolute top-3 right-3 flex gap-2 z-30">
                     <button
@@ -598,10 +592,13 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
       {/* FILTER MODAL (Bottom Sheet) - Reduced Content */}
       {isFilterOpen && (
-        <div className="fixed inset-0 z-[900] flex items-end justify-center">
+        <div className="fixed inset-0 z-[1000] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 
-          <div className="bg-white w-full max-w-md rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col max-h-[85vh]">
+          <div 
+            className="bg-white w-full max-w-md rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col max-h-[85vh] transition-all duration-300"
+            style={{ bottom: isBannerVisible ? '50px' : '0px' }}
+          >
             {/* Modal Header */}
             <div className="px-6 pt-4 pb-4 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-[30px]">
               <div className="flex items-center gap-2">

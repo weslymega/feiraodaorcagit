@@ -9,10 +9,15 @@ import {
   Menu,
   CheckCircle,
   Info,
-  Heart
+  Heart,
+  Zap,
+  Trophy,
+  Star
 } from 'lucide-react';
 import { Screen } from '../types';
 import AdManager from '../services/AdManager';
+import { getBoostRibbon } from '../utils/boostRibbon';
+import { AdItem } from '../types';
 
 interface HeaderProps {
   title: string;
@@ -22,7 +27,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ title, onBack, rightElement }) => {
   return (
-    <div className="sticky top-0 z-[100] bg-white/95 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
+    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
       <div className="flex items-center gap-3">
         {onBack && (
           <button onClick={onBack} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-primary">
@@ -174,7 +179,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   };
 
   const toastContent = (
-    <div className={`fixed top-4 left-4 right-4 z-[9999] flex items-center justify-center pointer-events-none animate-in slide-in-from-top duration-300`}>
+    <div className={`fixed top-[70px] left-4 right-4 z-[9999] flex items-center justify-center pointer-events-none animate-in slide-in-from-top duration-300`}>
       <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl ${styles[type]} max-w-sm w-full`}>
         {icon[type]}
         <span className="font-bold text-sm">{message}</span>
@@ -183,4 +188,25 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   );
 
   return createPortal(toastContent, document.body);
+};
+
+// --- HIGHLIGHT RIBBON COMPONENT ---
+export const HighlightRibbon: React.FC<{ ad: AdItem }> = ({ ad }) => {
+  const isTurboActive = ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date();
+  
+  if (!isTurboActive) return null;
+
+  const ribbon = getBoostRibbon(ad.boostPlan);
+  if (!ribbon) return null;
+
+  return (
+    <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+      <div className={`absolute top-2 -left-10 bg-gradient-to-r ${ribbon.gradient} text-white text-[8px] font-black px-10 py-1 transform -rotate-45 shadow-sm border-y border-white/20 flex items-center justify-center uppercase tracking-wider`}>
+        {ad.boostPlan === 'pro' && <Zap className="w-2 h-2 mr-1 fill-current" />}
+        {ad.boostPlan === 'max' && <Trophy className="w-2 h-2 mr-1 fill-current" />}
+        {ad.boostPlan === 'premium' && <Star className="w-2 h-2 mr-1 fill-current" />}
+        {ribbon.label}
+      </div>
+    </div>
+  );
 };

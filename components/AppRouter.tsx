@@ -2,10 +2,7 @@
 import React from 'react';
 import { Screen, AdItem, AdStatus, NotificationItem } from '../types';
 import {
-    MOCK_ADMIN_REAL_ESTATE,
-    MOCK_ADMIN_PARTS_SERVICES,
-    APP_LOGOS,
-    MOCK_SELLER
+    APP_LOGOS
 } from '../constants';
 
 import { AppState } from '../types/AppState';
@@ -169,7 +166,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         );
     }
 
-    const showBottomNav = currentScreen !== Screen.LOGIN && currentScreen !== Screen.REGISTER && currentScreen !== Screen.ACCEPT_TERMS && currentScreen !== Screen.FORGOT_PASSWORD && currentScreen !== Screen.EDIT_PROFILE && currentScreen !== Screen.CHANGE_PASSWORD && currentScreen !== Screen.CREATE_AD && currentScreen !== Screen.VEHICLE_DETAILS && currentScreen !== Screen.REAL_ESTATE_DETAILS && currentScreen !== Screen.PART_SERVICE_DETAILS && currentScreen !== Screen.PUBLIC_PROFILE && currentScreen !== Screen.CHAT_DETAIL && currentScreen !== Screen.ADMIN_PANEL && currentScreen !== Screen.ADMIN_USERS && currentScreen !== Screen.ADMIN_VEHICLES && currentScreen !== Screen.ADMIN_REAL_ESTATE && currentScreen !== Screen.ADMIN_PARTS_SERVICES && currentScreen !== Screen.ADMIN_REPORTS && currentScreen !== Screen.ADMIN_SYSTEM_SETTINGS && currentScreen !== Screen.ADMIN_CONTENT_MODERATION && currentScreen !== Screen.ADMIN_DASHBOARD_PROMOTIONS && currentScreen !== Screen.ADMIN_REAL_ESTATE_PROMOTIONS && currentScreen !== Screen.ADMIN_PARTS_SERVICES_PROMOTIONS && currentScreen !== Screen.ADMIN_VEHICLES_PROMOTIONS;
+    const showBottomNav = currentScreen !== Screen.LOGIN && currentScreen !== Screen.REGISTER && currentScreen !== Screen.ACCEPT_TERMS && currentScreen !== Screen.FORGOT_PASSWORD && currentScreen !== Screen.EDIT_PROFILE && currentScreen !== Screen.CHANGE_PASSWORD && currentScreen !== Screen.CREATE_AD && currentScreen !== Screen.VEHICLE_DETAILS && currentScreen !== Screen.REAL_ESTATE_DETAILS && currentScreen !== Screen.PART_SERVICE_DETAILS && currentScreen !== Screen.PUBLIC_PROFILE && currentScreen !== Screen.CHAT_DETAIL && currentScreen !== Screen.ADMIN_PANEL && currentScreen !== Screen.ADMIN_USERS && currentScreen !== Screen.ADMIN_VEHICLES && currentScreen !== Screen.ADMIN_REAL_ESTATE && currentScreen !== Screen.ADMIN_PARTS_SERVICES && currentScreen !== Screen.ADMIN_SYSTEM_SETTINGS && currentScreen !== Screen.ADMIN_CONTENT_MODERATION && currentScreen !== Screen.ADMIN_DASHBOARD_PROMOTIONS && currentScreen !== Screen.ADMIN_REAL_ESTATE_PROMOTIONS && currentScreen !== Screen.ADMIN_PARTS_SERVICES_PROMOTIONS && currentScreen !== Screen.ADMIN_VEHICLES_PROMOTIONS;
 
     const unreadMessagesCount = state.conversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
 

@@ -7,7 +7,8 @@ import { Screen, User, AdItem, DashboardPromotion } from '../types';
 import { POPULAR_REAL_ESTATE, POPULAR_SERVICES, POPULAR_CARS, APP_LOGOS, PROMO_BANNERS, CATEGORY_ICONS } from '../constants';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
-import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
+import { getBoostRibbon, getBoostPriority, getBoostBorderClass } from '../utils/boostRibbon';
+import { Header, PriceTag, HighlightRibbon } from '../components/Shared';
 
 interface DashboardProps {
   user: User;
@@ -119,24 +120,8 @@ import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 
 // Horizontal Ad Card with logic for different boost plans
 const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, onClick }) => {
-
-  // Determine Boost Styles
-  const ribbon = getBoostRibbon(ad.boostPlan);
-  let boostBadge = null;
-  let borderColor = "border-gray-100";
-
-  if (ribbon) {
-    borderColor = ad.boostPlan === 'max' ? "border-yellow-400 ring-1 ring-yellow-400" : 
-                  ad.boostPlan === 'pro' ? "border-cyan-400" : "border-gray-200";
-
-    boostBadge = (
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
-        <div className={`absolute top-3 -left-8 bg-gradient-to-r ${ribbon.gradient} text-white text-[9px] font-black px-8 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center uppercase tracking-wider`}>
-          {ribbon.label}
-        </div>
-      </div>
-    );
-  }
+  const isTurboActive = ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date();
+  const borderClass = getBoostBorderClass(ad.boostPlan, !!isTurboActive);
 
   // Count photos
   const imageCount = ad.images?.length || 1;
@@ -144,7 +129,7 @@ const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, 
   return (
     <div
       onClick={onClick}
-      className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] relative border ${borderColor} animate-fadeIn`}
+      className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] relative border ${borderClass} animate-fadeIn`}
     >
       <div className="h-28 w-full relative">
         <SmartImage
@@ -153,7 +138,7 @@ const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, 
           className="w-full h-full object-cover"
           skeletonClassName="h-28 w-full"
         />
-        {boostBadge}
+        <HighlightRibbon ad={ad} />
 
         {/* Photo Counter Badge */}
         <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 z-30 shadow-sm border border-white/10">

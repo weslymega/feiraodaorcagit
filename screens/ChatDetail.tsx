@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, Check, CheckCheck, ArrowLeft, Loader2, ChevronRight } from 'lucide-react';
+import { Send, Paperclip, Check, CheckCheck, ArrowLeft, Loader2, ChevronRight, UserX, ShieldAlert } from 'lucide-react';
 import { MessageItem, ChatMessage } from '../types';
 import { imageService } from '../services/imageService';
 
@@ -11,6 +11,8 @@ interface ChatDetailProps {
   onAdClick?: () => void;
   onViewProfile?: () => void;
   onSendMessage: (text: string, images?: string[]) => void;
+  onBlockUser?: (userId: string) => void;
+  isBlocked?: boolean;
 }
 
 export const ChatDetail: React.FC<ChatDetailProps> = ({
@@ -19,7 +21,9 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
   onBack,
   onAdClick,
   onViewProfile,
-  onSendMessage
+  onSendMessage,
+  onBlockUser,
+  isBlocked = false
 }) => {
   const [inputText, setInputText] = useState('');
   const [selectedImages, setSelectedImages] = useState<{ file: File; preview: string }[]>([]);
@@ -50,7 +54,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (isFormInvalid || isUploading) return;
+    if (isFormInvalid || isUploading || isBlocked) return;
 
     let uploadedUrls: string[] = [];
 
@@ -167,14 +171,23 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
           >
             <div className="relative">
               <img src={chat.avatarUrl} alt={chat.senderName} className="w-10 h-10 rounded-full object-cover group-hover:opacity-90" />
-              {chat.online && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>}
             </div>
             <div>
               <h1 className="font-bold text-gray-900 text-sm group-hover:text-primary transition-colors">{chat.senderName}</h1>
-              {chat.online && <p className="text-xs text-green-600 font-medium">Online agora</p>}
+              {isBlocked && <p className="text-xs text-red-500 font-medium">Usuário Bloqueado</p>}
             </div>
           </div>
         </div>
+
+        {onBlockUser && !isBlocked && (
+          <button
+            onClick={() => onBlockUser(chat.otherUserId)}
+            className="p-2 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+            title="Bloquear Usuário"
+          >
+            <UserX className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Ad Context Header (Clickable) */}
@@ -204,6 +217,14 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
 
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+        {isBlocked && (
+          <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-4 flex items-center gap-3">
+            <ShieldAlert className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <p className="text-xs text-red-700 leading-relaxed">
+              Este usuário está bloqueado. Você não verá novos anúncios dele e não podem trocar mensagens.
+            </p>
+          </div>
+        )}
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -332,16 +353,16 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder={selectedImages.length > 0 ? "Adicione uma legenda..." : "Digite uma mensagem"}
-            disabled={isUploading}
+            placeholder={isBlocked ? "Usuário bloqueado" : (selectedImages.length > 0 ? "Adicione uma legenda..." : "Digite uma mensagem")}
+            disabled={isUploading || isBlocked}
             className={`flex-1 bg-gray-100 border-none rounded-2xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-gray-800 disabled:bg-gray-50 ${isTextInvalid ? 'ring-1 ring-red-300 bg-red-50' : ''
               }`}
           />
 
           <button
             type="submit"
-            disabled={isFormInvalid || isUploading}
-            className={`p-3 rounded-full transition-colors flex items-center justify-center ${!isFormInvalid ? 'bg-primary text-white shadow-md' : 'bg-gray-200 text-gray-400'
+            disabled={isFormInvalid || isUploading || isBlocked}
+            className={`p-3 rounded-full transition-colors flex items-center justify-center ${(!isFormInvalid && !isBlocked) ? 'bg-primary text-white shadow-md' : 'bg-gray-200 text-gray-400'
               }`}
           >
             {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-0.5" />}

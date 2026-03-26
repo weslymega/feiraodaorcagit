@@ -336,7 +336,9 @@ export const api = {
             showOnlineStatus: data.show_online_status ?? true,
             readReceipts: data.read_receipts ?? true,
             acceptedTerms: data.accepted_terms || false,
-            acceptedAt: data.accepted_at
+            acceptedAt: data.accepted_at,
+            cep: data.cep || '',
+            deletedAt: data.deleted_at
         };
     },
 
@@ -467,6 +469,7 @@ export const api = {
         if (userData.phone !== undefined) updateData.phone = userData.phone;
         if (userData.location !== undefined) updateData.location = userData.location;
         if (userData.bio !== undefined) updateData.bio = userData.bio;
+        if (userData.cep !== undefined) updateData.cep = userData.cep;
 
         const { error } = await supabase
             .from('profiles')
@@ -1212,6 +1215,118 @@ export const api = {
     requestAccountDeletion: async () => {
         const { error } = await supabase.rpc('request_account_deletion');
         if (error) throw error;
+    },
+
+    /**
+     * PRIVACY: Bloqueio de Usuários
+     */
+    blockUser: async (blockedId: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Usuário não autenticado");
+
+        // Hardening: Impedir auto-bloqueio no nível de API
+        if (user.id === blockedId) {
+            console.warn("⚠️ Tentativa de auto-bloqueio bloqueada na API");
+            return;
+        }
+
+        console.log(`📡 Tentando bloquear usuário: ${blockedId} (por: ${user.id})`);
+
+        const { error } = await supabase
+            .from('user_blocks')
+            .insert({
+                blocker_id: user.id,
+                blocked_id: blockedId
+            });
+        
+        if (error) {
+            console.error("❌ Erro Supabase ao bloquear:", {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
+            
+            if (error.code === '23505') return; // Já bloqueado
+            throw error;
+        }
+        console.log("✅ Usuário bloqueado com sucesso no DB");
+    },
+
+    unblockUser: async (blockedId: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Usuário não autenticado");
+
+        const { error } = await supabase
+            .from('user_blocks')
+            .delete()
+            .eq('blocker_id', user.id)
+            .eq('blocked_id', blockedId);
+        
+        if (error) throw error;
+    },
+
+    getBlockedUserIds: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from('user_blocks')
+            .select('blocked_id')
+            .eq('blocker_id', user.id);
+        
+        if (error) {
+            console.error("Erro ao buscar bloqueados:", error.message);
+            // Fallback para evitar travamentos se a conexão falhar
+            if (error.code === 'PGRST116' || error.message.includes('not found')) return [];
+            throw error;
+        }
+        return (data || []).map(b => b.blocked_id);
+    },
+
+    getWhoBlockedMeIds: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from('user_blocks')
+            .select('blocker_id')
+            .eq('blocked_id', user.id);
+        
+        if (error) {
+            console.error("Erro ao buscar quem me bloqueou:", error.message);
+            if (error.code === 'PGRST116' || error.message.includes('not found')) return [];
+            throw error;
+        }
+        return (data || []).map(b => b.blocker_id);
+    },
+
+    getBlockedUsersFull: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from('user_blocks')
+            .select(`
+                blocked_id,
+                profiles:blocked_id (
+                    id,
+                    name,
+                    avatar_url
+                )
+            `)
+            .eq('blocker_id', user.id);
+        
+        if (error) {
+            console.error("Erro ao buscar bloqueados (full):", error.message);
+            if (error.code === 'PGRST116' || error.message.includes('not found')) return [];
+            throw error;
+        }
+        return (data || []).map((b: any) => ({
+            id: b.blocked_id,
+            name: b.profiles?.name || 'Usuário Orca',
+            avatarUrl: b.profiles?.avatar_url || 'https://via.placeholder.com/100'
+        }));
     },
 
     /**

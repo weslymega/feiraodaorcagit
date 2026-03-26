@@ -128,6 +128,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
               onChange={handleChange}
               className="w-full pl-11 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
               placeholder="Nome completo"
+              maxLength={100}
             />
           </div>
 
@@ -143,6 +144,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
               onChange={handleChange}
               className="w-full pl-11 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
               placeholder="Seu e-mail"
+              maxLength={254}
             />
           </div>
 
@@ -158,6 +160,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
               onChange={handleChange}
               className="w-full pl-11 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
               placeholder="Senha (min. 6 caracteres)"
+              maxLength={100}
             />
           </div>
 
@@ -173,6 +176,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
               onChange={handleChange}
               className="w-full pl-11 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
               placeholder="Confirme a senha"
+              maxLength={100}
             />
           </div>
 

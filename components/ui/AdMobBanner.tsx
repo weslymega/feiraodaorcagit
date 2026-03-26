@@ -64,6 +64,11 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
     };
   }, [position, currentScreen]);
 
-  // Retorna null para não interferir no layout (espaço é via padding-bottom na lista)
-  return null;
+  // Retorna um marcador visual (invisível ao toque) com z-index definido
+  return (
+    <div 
+      className="fixed bottom-0 left-0 w-full z-10 pointer-events-none h-[50px]" 
+      aria-hidden="true"
+    />
+  );
 };

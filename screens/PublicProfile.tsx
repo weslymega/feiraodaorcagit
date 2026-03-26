@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronLeft, MapPin, Calendar, ShieldCheck, Heart, Clock, Search, Flag, User as UserIcon } from 'lucide-react';
+import { ChevronLeft, MapPin, Calendar, ShieldCheck, Heart, Clock, Search, Flag, User as UserIcon, UserX } from 'lucide-react';
 import { PriceTag, Toast } from '../components/Shared';
 import { AdItem, User, ReportItem } from '../types';
 import { ReportModal } from '../components/ReportModal';
@@ -14,6 +14,7 @@ interface PublicProfileProps {
   favorites: AdItem[];
   onToggleFavorite: (ad: AdItem) => void;
   onReport?: (report: ReportItem) => void;
+  onBlockUser?: (userId: string) => void;
 }
 
 export const PublicProfile: React.FC<PublicProfileProps> = ({
@@ -24,7 +25,8 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
   onStartChat,
   favorites,
   onToggleFavorite,
-  onReport
+  onReport,
+  onBlockUser
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -80,13 +82,24 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
             <ChevronLeft className="w-6 h-6 text-gray-800" />
           </button>
 
-          <button
-            onClick={() => setIsReportModalOpen(true)}
-            className="p-2 rounded-full hover:bg-red-50 group transition-colors"
-            title="Denunciar Usuário"
-          >
-            <Flag className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors" />
-          </button>
+          <div className="flex gap-1 items-center">
+            {onBlockUser && (
+              <button
+                onClick={() => onBlockUser(user.id)}
+                className="p-2 rounded-full hover:bg-red-50 group transition-colors"
+                title="Bloquear Usuário"
+              >
+                <UserX className="w-5 h-5 text-gray-400 group-hover:text-red-600 transition-colors" />
+              </button>
+            )}
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="p-2 rounded-full hover:bg-red-50 group transition-colors"
+              title="Denunciar Usuário"
+            >
+              <Flag className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors" />
+            </button>
+          </div>
         </div>
 
         {/* Profile Content */}
@@ -113,24 +126,19 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
           <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
             <div className="flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5" />
-              {user.location || "Brasília, DF"}
+              {user.location || "Localização não informada"}
             </div>
             <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
             <div className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
-              Desde {user.joinDate || "2023"}
+              Desde {user.joinDate || "Membro Recente"}
             </div>
           </div>
 
-          {/* Stats Row */}
           <div className="flex w-full justify-center gap-4 mb-6">
             <div className="flex flex-col items-center bg-gray-50 px-5 py-2 rounded-2xl border border-gray-100 min-w-[80px]">
               <span className="font-bold text-gray-900 text-lg">{ads.length}</span>
               <span className="text-[10px] text-gray-400 font-bold uppercase">Anúncios</span>
-            </div>
-            <div className="flex flex-col items-center bg-gray-50 px-5 py-2 rounded-2xl border border-gray-100 min-w-[80px]">
-              <span className="font-bold text-gray-900 text-lg">1h</span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase">Resp. Média</span>
             </div>
           </div>
 
@@ -202,7 +210,7 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
                     <PriceTag value={ad.price} />
                     <div className="flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">
                       <Clock className="w-3 h-3" />
-                      <span>Ontem</span>
+                      <span>{ad.date || (ad.createdAt ? new Date(ad.createdAt).toLocaleDateString('pt-BR') : "Recente")}</span>
                     </div>
                   </div>
                 </div>

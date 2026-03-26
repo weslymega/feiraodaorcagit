@@ -37,7 +37,6 @@ export enum Screen {
   ADMIN_VEHICLES = 'ADMIN_VEHICLES', // Nova rota de gerenciamento de veículos
   ADMIN_REAL_ESTATE = 'ADMIN_REAL_ESTATE', // Nova rota de gerenciamento de imóveis
   ADMIN_PARTS_SERVICES = 'ADMIN_PARTS_SERVICES', // Nova rota de gerenciamento de peças e serviços
-  ADMIN_REPORTS = 'ADMIN_REPORTS', // Nova rota de relatórios
   ADMIN_SYSTEM_SETTINGS = 'ADMIN_SYSTEM_SETTINGS', // Nova rota de configurações do sistema
   ADMIN_CONTENT_MODERATION = 'ADMIN_CONTENT_MODERATION', // Nova rota de moderação
   ADMIN_DASHBOARD_PROMOTIONS = 'ADMIN_DASHBOARD_PROMOTIONS', // Nova rota de gerenciamento de propagandas do dashboard
@@ -55,7 +54,8 @@ export enum Screen {
   TERMS_OF_USE = 'TERMS_OF_USE',
   PRIVACY_POLICY = 'PRIVACY_POLICY',
   RESET_PASSWORD = 'RESET_PASSWORD',
-  ACCEPT_TERMS = 'ACCEPT_TERMS'
+  ACCEPT_TERMS = 'ACCEPT_TERMS',
+  BLOCKED_USERS = 'BLOCKED_USERS'
 }
 
 export interface User {
@@ -83,6 +83,7 @@ export interface User {
   emailConfirmedAt?: string;
   acceptedTerms?: boolean;
   acceptedAt?: string;
+  deletedAt?: string;
 }
 
 export enum AdStatus {
@@ -288,4 +289,9 @@ export interface AdHighlight {
   starts_at: string;
   ends_at: string;
   status: 'active' | 'expired' | 'cancelled';
+}
+export interface BlockedUser {
+  id: string;
+  name: string;
+  avatarUrl: string;
 }

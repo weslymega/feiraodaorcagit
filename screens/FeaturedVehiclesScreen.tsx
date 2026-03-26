@@ -1,8 +1,8 @@
 import React from 'react';
 import { Star, Heart, Calendar, Gauge, MapPin, Trophy } from 'lucide-react';
-import { Header, PriceTag } from '../components/Shared';
+import { Header, PriceTag, HighlightRibbon } from '../components/Shared';
 import { AdItem } from '../types';
-import { getBoostRibbon, getBoostPriority } from '../utils/boostRibbon';
+import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../utils/boostRibbon';
 
 interface FeaturedVehiclesScreenProps {
   ads: AdItem[];
@@ -40,25 +40,17 @@ export const FeaturedVehiclesScreen: React.FC<FeaturedVehiclesScreenProps> = ({
         {sortedAds.length > 0 ? (
           sortedAds.map((ad) => {
             const isFav = favorites.some(f => f.id === ad.id);
-            const ribbon = getBoostRibbon(ad.boostPlan);
+            const isTurboActive = ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date();
+            const borderClass = getBoostBorderClass(ad.boostPlan, !!isTurboActive);
 
             return (
               <div
                 key={ad.id}
                 onClick={() => onAdClick(ad)}
-                className={`bg-white rounded-3xl shadow-lg border-2 overflow-hidden cursor-pointer active:scale-[0.98] transition-all group relative ${
-                  ad.boostPlan === 'max' ? 'border-yellow-400 ring-2 ring-yellow-400/20' :
-                  ad.boostPlan === 'pro' ? 'border-cyan-400' : 'border-gray-100'
-                }`}
+                className={`bg-white rounded-3xl shadow-lg border-2 overflow-hidden cursor-pointer active:scale-[0.98] transition-all group relative ${borderClass}`}
               >
                 {/* Visual Ribbon Sash */}
-                {ribbon && (
-                  <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-20">
-                    <div className={`absolute top-4 -left-12 bg-gradient-to-r ${ribbon.gradient} text-white text-[10px] font-black px-12 py-1 transform -rotate-45 shadow-md border-y border-white/20 flex items-center justify-center gap-1 w-40 text-center uppercase`}>
-                      {ribbon.label}
-                    </div>
-                  </div>
-                )}
+                <HighlightRibbon ad={ad} />
 
                 <div className="relative h-56 w-full">
                   <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />

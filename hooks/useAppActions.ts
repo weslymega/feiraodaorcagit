@@ -301,7 +301,7 @@ export const useAppActions = (state: AppState) => {
                     balance: 0,
                     adsCount: 0,
                     phone: "",
-                    location: "Brasília, DF",
+                    location: "",
                     bio: "Novo no Feirão da Orca",
                     joinDate: new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
                     verified: false,
@@ -607,14 +607,20 @@ export const useAppActions = (state: AppState) => {
     const handleViewProfile = async () => {
         if (!selectedAd) return;
 
+        const { isBlockedBetween } = state;
+        if (isBlockedBetween(user?.id || '', selectedAd.userId)) {
+            setToast({ message: "O perfil deste usuário não está disponível devido a um bloqueio.", type: 'error' });
+            return;
+        }
+
         try {
             if (selectedAd.isOwner) {
                 setViewingProfile({
                     ...user,
                     rating: 5.0,
-                    joinDate: user.joinDate || "Mar 2023",
+                    joinDate: user.joinDate || "Recente",
                     verified: true,
-                    location: user.location || "Brasília, DF",
+                    location: user.location || "Localização não informada",
                     bio: user.bio || "Usuário do Feirão da Orca"
                 });
             } else {
@@ -624,7 +630,7 @@ export const useAppActions = (state: AppState) => {
                 if (publicProfile) {
                     setViewingProfile(publicProfile);
                 } else {
-                    // Generic fallback if fetch fails
+                    // Generic fallback if fetch fails or blocked at DB level
                     setViewingProfile({
                         id: selectedAd.userId,
                         name: selectedAd.ownerName || 'Vendedor',
@@ -647,26 +653,56 @@ export const useAppActions = (state: AppState) => {
         }
     };
 
-    const handleViewProfileFromChat = () => {
+    const handleViewProfileFromChat = async () => {
         if (!selectedChat) return;
 
-        const profileUser: User = {
-            id: selectedChat.otherUserId,
-            name: selectedChat.senderName,
-            email: "usuario@chat.com",
-            avatarUrl: selectedChat.avatarUrl,
-            balance: 0,
-            phone: "",
-            location: "Brasília, DF",
-            bio: "Usuário do Feirão da Orca",
-            joinDate: "Recente",
-            verified: false,
-            adsCount: 0
-        };
+        const { isBlockedBetween } = state;
+        if (isBlockedBetween(user?.id || '', selectedChat.otherUserId)) {
+            setToast({ message: "O perfil deste usuário não está disponível devido a um bloqueio.", type: 'error' });
+            return;
+        }
 
-        setViewingProfile(profileUser);
-        setPreviousScreen(Screen.CHAT_DETAIL);
-        setCurrentScreen(Screen.PUBLIC_PROFILE);
+        try {
+            // Fetch real public profile
+            const publicProfile = await api.getPublicProfile(selectedChat.otherUserId);
+
+            if (publicProfile) {
+                setViewingProfile(publicProfile);
+            } else {
+                // Generic fallback if fetch fails
+                setViewingProfile({
+                    id: selectedChat.otherUserId,
+                    name: selectedChat.senderName,
+                    email: "", // Never expose email
+                    avatarUrl: selectedChat.avatarUrl,
+                    balance: 0,
+                    phone: "",
+                    location: "Localização não informada",
+                    bio: "Usuário do Feirão da Orca",
+                    joinDate: "Recente",
+                    verified: false,
+                    adsCount: 0
+                } as User);
+            }
+        } catch (error) {
+            console.error("Error viewing profile from chat:", error);
+            // Minimal fallback
+            setViewingProfile({
+                id: selectedChat.otherUserId,
+                name: selectedChat.senderName,
+                email: "",
+                avatarUrl: selectedChat.avatarUrl,
+                balance: 0,
+                location: "Localização não informada",
+                bio: "Usuário do Feirão da Orca",
+                joinDate: "Recente",
+                verified: false,
+                adsCount: 0
+            } as User);
+        } finally {
+            setPreviousScreen(Screen.CHAT_DETAIL);
+            setCurrentScreen(Screen.PUBLIC_PROFILE);
+        }
     };
 
     const handleCreateAdFinish = async (adData: Partial<AdItem>, createdAd?: AdItem) => {
@@ -970,13 +1006,92 @@ export const useAppActions = (state: AppState) => {
     };
 
     const handleLoadConversations = async () => {
+        const { blockedByMe, blockedByOthers } = state;
+        const allBlocked = [...blockedByMe, ...blockedByOthers];
+        
         const convs = await api.getUserConversations();
-        setConversations(convs);
+        
+        // Filtragem front-end (Hardening)
+        const filtered = convs.filter(c => !allBlocked.includes(c.otherUserId));
+        setConversations(filtered);
     };
 
     const handleLoadMessages = async (adId: string, otherUserId: string) => {
+        const { isBlockedBetween } = state;
+        
+        // Se houver bloqueio, não carregamos mensagens (Hardening)
+        if (isBlockedBetween(user?.id || '', otherUserId)) {
+            setChatMessages([]);
+            return;
+        }
+
         const msgs = await api.getChatMessages(adId, otherUserId);
         setChatMessages(msgs);
+    };
+
+    const handleBlockUser = async (blockedId: string) => {
+        if (!user || user.id === 'guest') {
+            setToast({ message: "Você precisa estar logado para bloquear um usuário.", type: 'error' });
+            return;
+        }
+
+        if (user.id === blockedId) {
+            setToast({ message: "Você não pode bloquear a si mesmo.", type: 'error' });
+            return;
+        }
+
+        // Validação básica de UUID para evitar 400
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(blockedId)) {
+            console.error("❌ ID de usuário inválido para bloqueio:", blockedId);
+            setToast({ message: "Este usuário não pode ser bloqueado (ID inválido).", type: 'error' });
+            return;
+        }
+
+        if (!window.confirm("Você não verá mais anúncios nem mensagens deste usuário, e ele também não verá os seus. Deseja continuar?")) return;
+
+        try {
+            await api.blockUser(blockedId);
+            
+            // Atualização de Estado Local
+            const { setBlockedByMe, setRealAds, setConversations } = state;
+            setBlockedByMe(prev => [...prev, blockedId]);
+            
+            // Re-filtrar listas imediatamente
+            setRealAds((prev: AdItem[] = []) => prev.filter(ad => ad.userId !== blockedId));
+            setConversations((prev: MessageItem[]) => prev.filter(c => c.otherUserId !== blockedId));
+
+            setToast({ message: "Usuário bloqueado com sucesso.", type: 'success' });
+            
+            // Se estiver no chat ou detalhes dele, voltar
+            if (currentScreen === Screen.CHAT_DETAIL || currentScreen === Screen.PUBLIC_PROFILE) {
+                 setCurrentScreen(Screen.DASHBOARD);
+            }
+        } catch (error: any) {
+            console.error("Erro ao bloquear:", error);
+            setToast({ message: "Erro ao bloquear usuário.", type: 'error' });
+        }
+    };
+
+    const handleUnblockUser = async (blockedId: string) => {
+        if (!user || user.id === 'guest') return;
+
+        try {
+            await api.unblockUser(blockedId);
+            
+            // Atualização de Estado Local
+            const { setBlockedByMe } = state;
+            setBlockedByMe(prev => prev.filter(id => id !== blockedId));
+            
+            setToast({ message: "Usuário desbloqueado.", type: 'success' });
+            
+            // Recarregar dados globais para restaurar visibilidade
+            handleLoadConversations();
+            // handleLoadAds() - as listagens já recarregam via useEffect na maioria dos casos
+        } catch (error: any) {
+            console.error("Erro ao desbloquear:", error);
+            setToast({ message: "Erro ao desbloquear usuário.", type: 'error' });
+        }
     };
 
     const handleSendMessage = async (adId: string, receiverId: string, content: string, images?: string[]) => {
@@ -1019,6 +1134,12 @@ export const useAppActions = (state: AppState) => {
         // 0. VALIDAÇÃO LOCAL (Imagens)
         if (validImages.length > 3) {
             setToast({ message: "Máximo de 3 imagens por mensagem", type: 'error' });
+            return;
+        }
+
+        const { isBlockedBetween } = state;
+        if (isBlockedBetween(user.id, receiverId)) {
+            setToast({ message: "Você não pode interagir com este usuário devido a um bloqueio.", type: 'error' });
             return;
         }
 
@@ -1284,6 +1405,8 @@ export const useAppActions = (state: AppState) => {
         handleSendMessage,
         handleLoadMessages,
         handleLoadConversations,
+        handleBlockUser,
+        handleUnblockUser,
         handleClearNotifications,
         handleAcceptTerms
     };
