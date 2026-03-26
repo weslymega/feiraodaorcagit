@@ -1,17 +1,17 @@
 {
-    "cleanUrls": true,
-    "rewrites": [
-        {
-            "source": "/termos",
-            "destination": "/termos/index.html"
-        },
-        {
-            "source": "/privacidade",
-            "destination": "/privacidade/index.html"
-        },
-        {
-            "source": "/((?!termos|privacidade).*)",
-            "destination": "/index.html"
-        }
-    ]
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/termos",
+      "destination": "/termos/index.html"
+    },
+    {
+      "source": "/privacidade",
+      "destination": "/privacidade/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
