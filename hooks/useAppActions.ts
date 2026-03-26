@@ -12,6 +12,7 @@ export const useAppActions = (state: AppState) => {
         user, setUser,
         myAds, setMyAds,
         favorites, setFavorites,
+        setAuthLoading,
 
         notifications, setNotifications,
         reports, setReports,
@@ -99,13 +100,23 @@ export const useAppActions = (state: AppState) => {
     // --- AUTH ACTIONS ---
     const handleAcceptTerms = async () => {
         try {
+            // STEP 1: Update DB
             await api.updateTermsAcceptance();
-            setUser(prev => prev ? ({ ...prev, acceptedTerms: true, acceptedAt: new Date().toISOString() }) : null);
+            
+            // STEP 2: Update Local State IMMEDIATELY (Loop Protection)
+            setUser(prev => prev ? ({ 
+                ...prev, 
+                acceptedTerms: true, 
+                acceptedAt: new Date().toISOString() 
+            }) : null);
+            
+            // STEP 3: Navigate only after state is updated
             setCurrentScreen(Screen.DASHBOARD);
             setToast({ message: "Termos aceitos com sucesso! Bem-vindo.", type: 'success' });
         } catch (error) {
             console.error("❌ Erro ao aceitar termos:", error);
-            setToast({ message: "Erro ao registrar aceite. Tente novamente.", type: 'error' });
+            // Non-blocking error: allow user to try again
+            setToast({ message: "Erro ao registrar aceite. Por favor, verifique sua conexão e tente novamente.", type: 'error' });
         }
     };
 
@@ -263,15 +274,15 @@ export const useAppActions = (state: AppState) => {
 
     const handleLogout = async () => {
         try {
-            // Force state reset before signout to avoid any race in listener
-            state.setIsAppReady(false);
+            setAuthLoading(true);
             await supabase.auth.signOut();
-            // Note: useAppState.ts listener will catch SIGNED_OUT and handle state reset
-        } catch (error) {
-            console.error("❌ Erro ao deslogar do Supabase:", error);
-            // Fallback: Force screen change if signOut fails
+            setUser(null);
+            setAuthLoading(false);
             setCurrentScreen(Screen.LOGIN);
-            state.setIsAppReady(true);
+        } catch (error) {
+            console.error("❌ Erro ao deslogar:", error);
+            setAuthLoading(false);
+            setCurrentScreen(Screen.LOGIN);
         }
     };
 
@@ -306,6 +317,9 @@ export const useAppActions = (state: AppState) => {
                     joinDate: new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
                     verified: false,
                     isAdmin: false,
+                    // EXPLICIT: New users via registration flux already accepted terms
+                    acceptedTerms: true,
+                    acceptedAt: new Date().toISOString()
                 };
                 setUser(newUser);
                 setToast({ message: "Conta criada com sucesso! Bem-vindo!", type: 'success' });
@@ -987,20 +1001,27 @@ export const useAppActions = (state: AppState) => {
 
     const handleDeleteAccount = async () => {
         try {
+            setAuthLoading(true);
+            
+            // 1. Backend deletion first (Mandatory per refined plan)
             await api.requestAccountDeletion();
-            setToast({ message: "Sua conta foi desativada com sucesso. Sentiremos sua falta!", type: 'success' });
-
-            // Logout Forçado
-            setUser(CURRENT_USER);
+            
+            // 2. Clear session and state only after backend success
+            await supabase.auth.signOut();
+            setUser(null);
             setMyAds([]);
             setFavorites([]);
+            
+            setToast({ message: "Sua conta foi desativada com sucesso. Sentiremos sua falta!", type: 'success' });
+            
+            // 3. Navigation
             setCurrentScreen(Screen.LOGIN);
-
-            // Limpar localStorage para garantir que a sessão foi removida
             localStorage.clear();
-            await supabase.auth.signOut();
+            
+            setAuthLoading(false);
         } catch (error: any) {
             console.error("❌ Erro ao deletar conta:", error);
+            setAuthLoading(false);
             setToast({ message: "Erro ao solicitar exclusão de conta. Tente novamente.", type: 'error' });
         }
     };

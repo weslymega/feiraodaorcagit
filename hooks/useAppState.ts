@@ -41,6 +41,8 @@ export const useAppState = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authInitialized, setAuthInitialized] = useState<boolean>(false);
   const [sessionReady, setSessionReady] = useState<boolean>(false);
+  const [profileLoaded, setProfileLoaded] = useState<boolean>(false);
+  const [authLoading, setAuthLoading] = useState<boolean>(false);
 
   const [myAds, setMyAds] = useState<AdItem[]>([]);
   const [favorites, setFavorites] = useState<AdItem[]>(() => loadFromStorage('orca_favorites', []));
@@ -163,25 +165,30 @@ export const useAppState = () => {
 
   useEffect(() => {
     // 1. Definição do mapeador de usuário (para consistência)
-    const mapUser = (sessionUser: any): User => ({
-      id: sessionUser.id,
-      email: sessionUser.email || '',
-      name: sessionUser.user_metadata?.name || "Usuário",
-      avatarUrl: sessionUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${sessionUser.email}&background=random`,
-      balance: 0,
-      adsCount: 0,
-      activePlan: 'free',
-      isAdmin: false,
-      verified: !!sessionUser.email_confirmed_at,
-      joinDate: new Date(sessionUser.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-      phone: "",
-      location: "Brasília, DF",
-      bio: "",
-      createdAt: sessionUser.created_at,
-      emailConfirmedAt: sessionUser.email_confirmed_at,
-      acceptedTerms: sessionUser.user_metadata?.accepted_terms || false,
-      acceptedAt: sessionUser.user_metadata?.accepted_at
-    });
+    const mapUser = (sessionUser: any): User => {
+      // Prioritize metadata ONLY on first creation/registration
+      // For persistent sessions, the profiles table is our Single Source of Truth
+      return {
+        id: sessionUser.id,
+        email: sessionUser.email || '',
+        name: sessionUser.user_metadata?.name || "Usuário",
+        avatarUrl: sessionUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${sessionUser.email}&background=random`,
+        balance: 0,
+        adsCount: 0,
+        activePlan: 'free',
+        isAdmin: false,
+        verified: !!sessionUser.email_confirmed_at,
+        joinDate: new Date(sessionUser.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+        phone: "",
+        location: "Brasília, DF",
+        bio: "",
+        createdAt: sessionUser.created_at,
+        emailConfirmedAt: sessionUser.email_confirmed_at,
+        // Default to metadata for initial boot state, but will be overridden by profile fetch
+        acceptedTerms: !!sessionUser.user_metadata?.accepted_terms,
+        acceptedAt: sessionUser.user_metadata?.accepted_at
+      };
+    };
 
     // 2. Verificação de sessão inicial (Cold Boot)
     const initSession = async () => {
@@ -234,6 +241,7 @@ export const useAppState = () => {
       if (event === 'SIGNED_OUT') {
         authenticatedUserIdRef.current = null;
         setUser(null);
+        setProfileLoaded(false);
         setCurrentScreen(Screen.LOGIN);
         setIsAppReady(true);
         return;
@@ -320,12 +328,17 @@ export const useAppState = () => {
             }
 
             setUser(prev => prev ? ({ ...prev, ...freshProfile }) : null);
+            setProfileLoaded(true);
             
-            // Mandatory Terms Acceptance Guard
-            if (freshProfile.acceptedTerms === false) {
+            // Mandatory Terms Acceptance Guard (Single Source of Truth: DB Profile)
+            // Normalized check: if not true (handles false and NULL)
+            if (!freshProfile.acceptedTerms) {
               console.log("⚠️ [Auth] Usuário não aceitou os termos. Redirecionando...");
               setCurrentScreen(Screen.ACCEPT_TERMS);
             }
+          } else {
+            // Profile not found yet (race condition with trigger)
+            setProfileLoaded(true); // Treat as loaded to unblock, relying on metadata fallback
           }
 
           const parallelTasks = [
@@ -427,6 +440,8 @@ export const useAppState = () => {
     authInitialized, setAuthInitialized,
     sessionReady, setSessionReady,
     loadingMessage,
+    profileLoaded,
+    authLoading, setAuthLoading,
     user, setUser,
     myAds, setMyAds,
     favorites, setFavorites,

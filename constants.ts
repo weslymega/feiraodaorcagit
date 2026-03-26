@@ -14,7 +14,7 @@ export const APP_LOGOS = {
   ABOUT: "/assets/about_illustration.png"
 };
 
-export const APP_URL = import.meta.env.VITE_APP_URL || 'https://feiraodaorcagit-two.vercel.app';
+export const APP_URL = 'https://feiraodaorca.com';
 export const BASE_URL = 'https://feiraodaorca.com';
 
 export const LOCATION_LABEL = "Localização baseada no CEP informado pelo anunciante.";
@@ -1114,7 +1114,7 @@ export const PROMO_BANNERS: PromoBanner[] = [
     title: 'FEIRÃO DE SEMINOVOS',
     subtitle: 'TAXAS A PARTIR DE 0.99% A.M.',
     image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'VER OFERTAS',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-primary'
   },
   {
@@ -1122,7 +1122,7 @@ export const PROMO_BANNERS: PromoBanner[] = [
     title: 'FINANCIAMENTO FÁCIL',
     subtitle: 'APROVAÇÃO EM ATÉ 24 HORAS',
     image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'SIMULAR AGORA',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-accent'
   }
 ];
@@ -1133,7 +1133,7 @@ export const REAL_ESTATE_PROMO_BANNERS: PromoBanner[] = [
     title: 'LUXO E CONFORTO',
     subtitle: 'VIVA O SEU SONHO',
     image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'VER IMÓVEIS',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-primary'
   },
   {
@@ -1141,7 +1141,7 @@ export const REAL_ESTATE_PROMO_BANNERS: PromoBanner[] = [
     title: 'VALORIZE SEU IMÓVEL',
     subtitle: 'CORRETORES ESPECIALISTAS',
     image: 'https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'FALAR COM CONSULTOR',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-accent'
   },
   {
@@ -1149,7 +1149,7 @@ export const REAL_ESTATE_PROMO_BANNERS: PromoBanner[] = [
     title: 'OPORTUNIDADE ÚNICA',
     subtitle: 'INVESTIMENTO NO NOROESTE',
     image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'SABER MAIS',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-primary'
   },
   {
@@ -1157,7 +1157,7 @@ export const REAL_ESTATE_PROMO_BANNERS: PromoBanner[] = [
     title: 'ENCONTRE SEU LAR',
     subtitle: 'PERFEITO PARA SUA FAMÍLIA',
     image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'BUSCAR AGORA',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-accent'
   }
 ];
@@ -1168,7 +1168,7 @@ export const PARTS_SERVICES_PROMO_BANNERS: PromoBanner[] = [
     title: 'REVISÃO COMPLETA',
     subtitle: 'SEGURANÇA PARA SUA VIAGEM',
     image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'AGENDAR AGORA',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-primary'
   },
   {
@@ -1176,7 +1176,7 @@ export const PARTS_SERVICES_PROMO_BANNERS: PromoBanner[] = [
     title: 'ESTÉTICA AUTOMOTIVA',
     subtitle: 'BRILHO QUE IMPRESSIONA',
     image: 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'VER SERVIÇOS',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-accent'
   },
   {
@@ -1184,7 +1184,7 @@ export const PARTS_SERVICES_PROMO_BANNERS: PromoBanner[] = [
     title: 'PEÇAS ORIGINAIS',
     subtitle: 'O MELHOR PARA SEU CARRO',
     image: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'CONSULTAR ESTOQUE',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-primary'
   },
   {
@@ -1192,7 +1192,7 @@ export const PARTS_SERVICES_PROMO_BANNERS: PromoBanner[] = [
     title: 'SOM E ACESSÓRIOS',
     subtitle: 'TECNOLOGIA E CONFORTO',
     image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'SABER MAIS',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-accent'
   }
 ];
@@ -1203,7 +1203,7 @@ export const VEHICLES_PROMO_BANNERS: PromoBanner[] = [
     title: 'FEIRÃO DE SEMINOVOS',
     subtitle: 'TAXAS A PARTIR DE 0.99% A.M.',
     image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'VER OFERTAS',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-primary'
   },
   {
@@ -1211,7 +1211,7 @@ export const VEHICLES_PROMO_BANNERS: PromoBanner[] = [
     title: 'FINANCIAMENTO FÁCIL',
     subtitle: 'APROVAÇÃO EM ATÉ 24 HORAS',
     image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'SIMULAR AGORA',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-accent'
   },
   {
@@ -1219,7 +1219,7 @@ export const VEHICLES_PROMO_BANNERS: PromoBanner[] = [
     title: 'TROCA COM TROCO',
     subtitle: 'AVALIAÇÃO JUSTA DO SEU USADO',
     image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800',
-    ctaText: 'AVALIAR MEU CARRO',
+    ctaText: 'VER DETALHES',
     backgroundColor: 'bg-primary'
   }
 ];

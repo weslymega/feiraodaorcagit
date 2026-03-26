@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.feiraodaorca.app",
+      "sha256_cert_fingerprints": [
+        "C4:67:83:CD:1A:B2:CE:3F:59:13:08:94:0B:A8:04:01:98:52:EE:31:0F:F9:A5:70:82:C2:FA:D8:72:A3:50:E5"
+      ]
+    }
+  }
+]

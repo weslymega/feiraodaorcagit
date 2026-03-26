@@ -29,7 +29,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         fairActive, selectedAd, previousScreen, selectedChat,
         viewingProfile, notifications, reports,
         dashboardPromotions, realEstatePromotions, partsServicesPromotions, vehiclesPromotions,
-        isAppReady, authInitialized
+        isAppReady, authInitialized, authLoading
     } = state;
 
     const {
@@ -207,13 +207,24 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         }
     };
 
+    if (state.authLoading) {
+        return (
+            <div id="app-main-container" className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-y-auto relative border-x border-gray-100 flex items-center justify-center">
+                <AppLoadingOverlay
+                    isActive={true}
+                    message="Finalizando sessão..."
+                />
+            </div>
+        );
+    }
+
     return (
         <div id="app-main-container" className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-y-auto relative border-x border-gray-100">
             <ScrollToTop currentScreen={currentScreen} />
-            {/* App Loading Overlay - Bloqueia interação até carregamento completo */}
+            {/* App Loading Overlay - Bloqueia interação até carregamento completo e perfil validado */}
             <AppLoadingOverlay
-                isActive={!state.sessionReady}
-                message={state.loadingMessage}
+                isActive={!state.sessionReady || (!!user && !state.profileLoaded) || state.authLoading}
+                message={state.authLoading ? "Finalizando sessão..." : (!state.profileLoaded && user ? "Sincronizando perfil..." : "")}
             />
 
             {state.toast && (

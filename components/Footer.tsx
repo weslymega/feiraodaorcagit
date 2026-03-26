@@ -4,6 +4,7 @@ import athosBg from '../assets/athos_bg_v3.jpg';
 import logoFull from '../assets/logo_full.png';
 
 import { Screen } from '../types';
+import { BASE_URL } from '../constants';
 
 interface FooterProps {
     onNavigate?: (screen: Screen) => void;
@@ -15,6 +16,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     const handleAboutClick = (e: React.MouseEvent) => {
         e.preventDefault();
         onNavigate?.(Screen.ABOUT_US);
+    };
+
+    const openUrl = (url: string) => {
+        window.open(url, '_blank');
     };
 
     return (
@@ -68,14 +73,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                     </button>
                     <span className="text-gray-300 hidden md:inline">|</span>
                     <button
-                        onClick={() => onNavigate?.(Screen.TERMS_OF_USE)}
+                        onClick={() => openUrl(`${BASE_URL}/termos`)}
                         className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wide bg-transparent border-none cursor-pointer"
                     >
                         Termos de uso
                     </button>
                     <span className="text-gray-300 hidden md:inline">|</span>
                     <button
-                        onClick={() => onNavigate?.(Screen.PRIVACY_POLICY)}
+                        onClick={() => openUrl(`${BASE_URL}/privacidade`)}
                         className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wide bg-transparent border-none cursor-pointer"
                     >
                         Política de Privacidade
