@@ -12,7 +12,6 @@ import { SmartImage } from '../components/ui/SmartImage';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getVehiclesWithFallback } from '../utils/adSelector';
 import { getBoostRibbon, getBoostPriority, getBoostBorderClass } from '../utils/boostRibbon';
-import { injectAdsIntoFeed } from '../utils/adInjection';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
 import AdManager from '../services/AdManager';
 
@@ -66,6 +65,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   // Filter Modal State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
   // FIPE API Data States
   const [fipeBrands, setFipeBrands] = useState<FipeItem[]>([]);
@@ -136,6 +136,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     const brandName = e.target.value;
 
     setFilters(prev => ({ ...prev, brand: brandName, baseModel: '', version: '' }));
+    setHasUserInteracted(true);
     setFipeModels([]); // Reset models
 
     if (brandName) {
@@ -180,6 +181,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       maximumFractionDigits: 2
     });
     setFilters(prev => ({ ...prev, [field]: formatted }));
+    setHasUserInteracted(true);
   };
 
   const handleMileageChange = (value: string) => {
@@ -191,6 +193,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     const numberValue = Number(cleanValue);
     const formatted = numberValue.toLocaleString('pt-BR');
     setFilters(prev => ({ ...prev, maxMileage: formatted }));
+    setHasUserInteracted(true);
   };
 
   const parseFormattedNumber = (value: string) => {
@@ -328,10 +331,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   }, [ads, selectedGroup, searchTerm, filters]);
 
-  // Feed Injection logic (Rule #3, #8)
-  const feedItems = useMemo(() => {
-    return injectAdsIntoFeed(filteredAds);
-  }, [filteredAds]);
+  const feedItems = filteredAds;
 
 
   const isPromotionVisible = (promo: VehiclesPromotion) => {
@@ -370,6 +370,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       minPrice: '', maxPrice: '', minYear: '', maxYear: '',
       maxMileage: '', transmission: '', fuel: '', color: ''
     });
+    setHasUserInteracted(false);
     setFipeModels([]);
   };
 
@@ -404,7 +405,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
             type="text"
             placeholder="Buscar por nome..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setHasUserInteracted(true);
+            }}
             className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
           />
         </div>
@@ -462,7 +466,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
           <div className="relative">
             <select
               value={filters.baseModel}
-              onChange={(e) => setFilters(prev => ({ ...prev, baseModel: e.target.value, version: '' }))}
+              onChange={(e) => {
+                setFilters(prev => ({ ...prev, baseModel: e.target.value, version: '' }));
+                setHasUserInteracted(true);
+              }}
               disabled={!filters.brand || uniqueBaseModels.length === 0}
               className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm disabled:opacity-50"
             >
@@ -484,7 +491,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
           <div className="relative animate-in fade-in">
             <select
               value={filters.version}
-              onChange={(e) => setFilters(prev => ({ ...prev, version: e.target.value }))}
+              onChange={(e) => {
+                setFilters(prev => ({ ...prev, version: e.target.value }));
+                setHasUserInteracted(true);
+              }}
               className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm"
             >
               <option value="">Todas as versões</option>
@@ -507,7 +517,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
         {VEHICLE_GROUPS.map((group) => (
           <button
             key={group.id}
-            onClick={() => setSelectedGroup(group.id)}
+            onClick={() => {
+              setSelectedGroup(group.id);
+              setHasUserInteracted(true);
+            }}
             className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${selectedGroup === group.id
               ? 'bg-primary text-white shadow-md shadow-blue-200'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -651,7 +664,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                 <div className="grid grid-cols-2 gap-3">
                   <select
                     value={filters.minYear}
-                    onChange={(e) => setFilters(p => ({ ...p, minYear: e.target.value }))}
+                    onChange={(e) => {
+                      setFilters(p => ({ ...p, minYear: e.target.value }));
+                      setHasUserInteracted(true);
+                    }}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white appearance-none"
                   >
                     <option value="">De (Todos)</option>
@@ -660,7 +676,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
                   <select
                     value={filters.maxYear}
-                    onChange={(e) => setFilters(p => ({ ...p, maxYear: e.target.value }))}
+                    onChange={(e) => {
+                      setFilters(p => ({ ...p, maxYear: e.target.value }));
+                      setHasUserInteracted(true);
+                    }}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white appearance-none"
                   >
                     <option value="">Até (Todos)</option>
@@ -693,7 +712,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                     return (
                       <button
                         key={type}
-                        onClick={() => setFilters(p => ({ ...p, fuel: isSelected ? '' : type }))}
+                        onClick={() => {
+                          setFilters(p => ({ ...p, fuel: isSelected ? '' : type }));
+                          setHasUserInteracted(true);
+                        }}
                         className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all active:scale-95 flex items-center gap-2 ${isSelected
                           ? 'bg-blue-50 border-primary text-primary shadow-sm'
                           : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -716,7 +738,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                     return (
                       <button
                         key={type}
-                        onClick={() => setFilters(p => ({ ...p, transmission: isSelected ? '' : type }))}
+                        onClick={() => {
+                          setFilters(p => ({ ...p, transmission: isSelected ? '' : type }));
+                          setHasUserInteracted(true);
+                        }}
                         className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${isSelected
                           ? 'bg-white text-primary shadow-sm'
                           : 'text-gray-500 hover:text-gray-700'
@@ -740,7 +765,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                     return (
                       <button
                         key={color.name}
-                        onClick={() => setFilters(p => ({ ...p, color: isSelected ? '' : color.name }))}
+                        onClick={() => {
+                          setFilters(p => ({ ...p, color: isSelected ? '' : color.name }));
+                          setHasUserInteracted(true);
+                        }}
                         className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${isSelected
                           ? 'bg-blue-50 border-primary text-primary shadow-sm ring-1 ring-primary/20'
                           : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -774,7 +802,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                 onClick={() => setIsFilterOpen(false)}
                 className="flex-1 py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-transform flex items-center justify-center gap-2"
               >
-                Ver {filteredAds.length} resultados
+                {hasUserInteracted 
+                  ? `Ver resultados (${filteredAds.length})` 
+                  : "Ver resultados"
+                }
               </button>
             </div>
           </div>

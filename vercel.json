@@ -1,7 +1,16 @@
 {
+    "cleanUrls": true,
     "rewrites": [
         {
-            "source": "/(.*)",
+            "source": "/termos",
+            "destination": "/termos/index.html"
+        },
+        {
+            "source": "/privacidade",
+            "destination": "/privacidade/index.html"
+        },
+        {
+            "source": "/((?!termos|privacidade).*)",
             "destination": "/index.html"
         }
     ]

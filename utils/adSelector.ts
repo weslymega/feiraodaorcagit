@@ -26,8 +26,8 @@ export const getVehiclesWithFallback = (allAds: AdItem[], options: FallbackOptio
         (category === 'todos' || ad.category === category || ad.category === 'autos')
     );
 
-    // Se não houver anúncios suficientes no total, retorne tudo o que temos ordenado
-    if (validAds.length <= minItems) {
+    // Se temos anúncios suficientes da própria categoria, retornamos TUDO (sem limite arbitrário)
+    if (validAds.length >= minItems) {
         return sortAdsByPriority(validAds);
     }
 

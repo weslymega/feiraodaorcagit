@@ -8,7 +8,6 @@ import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../utils/boostRibbon';
-import { injectAdsIntoFeed } from '../utils/adInjection';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
 import AdManager from '../services/AdManager';
 
@@ -40,6 +39,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
   const [selectedGroup, setSelectedGroup] = useState('todos'); // Tabs do topo
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isBannerVisible, setIsBannerVisible] = useState(AdManager.isBannerActive());
 
   useEffect(() => {
@@ -80,6 +80,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
         return { ...prev, [field]: [...list, value] };
       }
     });
+    setHasUserInteracted(true);
   };
 
   const handlePriceChange = (value: string, field: 'minPrice' | 'maxPrice') => {
@@ -91,6 +92,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
     const numberValue = Number(cleanValue) / 100;
     const formatted = numberValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     setFilters(prev => ({ ...prev, [field]: formatted }));
+    setHasUserInteracted(true);
   };
 
   const parseFormattedNumber = (value: string) => {
@@ -163,10 +165,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
     });
   }, [ads, selectedGroup, searchTerm, filters]);
 
-  // Feed Injection logic (Rule #3, #8)
-  const feedItems = useMemo(() => {
-    return injectAdsIntoFeed(filteredAds);
-  }, [filteredAds]);
+  const feedItems = filteredAds;
 
   const isPromotionVisible = (promo: PartsServicesPromotion) => {
     const today = new Date();
@@ -210,6 +209,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
       conditions: [],
       categories: []
     });
+    setHasUserInteracted(false);
   };
 
   return (
@@ -243,7 +243,10 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
             type="text"
             placeholder="Buscar peça ou serviço..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setHasUserInteracted(true);
+            }}
             className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all shadow-sm"
           />
         </div>
@@ -278,7 +281,10 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
       </div>
       <div className="flex gap-2 overflow-x-auto px-4 pb-4 no-scrollbar mb-2 relative z-0">
         <button
-          onClick={() => setSelectedGroup('todos')}
+          onClick={() => {
+            setSelectedGroup('todos');
+            setHasUserInteracted(true);
+          }}
           className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${selectedGroup === 'todos'
             ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -289,7 +295,10 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
         {SERVICE_GROUPS.map((group) => (
           <button
             key={group.id}
-            onClick={() => setSelectedGroup(group.id)}
+            onClick={() => {
+              setSelectedGroup(group.id);
+              setHasUserInteracted(true);
+            }}
             className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${selectedGroup === group.id
               ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -405,7 +414,10 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
                     type="text"
                     placeholder="Ex: Gol G5, Honda Civic..."
                     value={filters.vehicleCompatible}
-                    onChange={(e) => setFilters(prev => ({ ...prev, vehicleCompatible: e.target.value }))}
+                    onChange={(e) => {
+                      setFilters(prev => ({ ...prev, vehicleCompatible: e.target.value }));
+                      setHasUserInteracted(true);
+                    }}
                     className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-purple-500 font-medium"
                   />
                 </div>
@@ -467,7 +479,10 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
                     type="text"
                     placeholder="Busque por cidade ou bairro"
                     value={filters.location}
-                    onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
+                    onChange={(e) => {
+                      setFilters(prev => ({ ...prev, location: e.target.value }));
+                      setHasUserInteracted(true);
+                    }}
                     className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-11 pr-4 text-gray-800 focus:outline-none focus:border-purple-500 font-medium"
                   />
                 </div>
@@ -505,8 +520,10 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
                 onClick={() => setIsFilterOpen(false)}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-purple-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                Aplicar Filtros
-                <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-lg">{filteredAds.length}</span>
+                {hasUserInteracted 
+                  ? `Ver resultados (${filteredAds.length})` 
+                  : "Ver resultados"
+                }
               </button>
             </div>
 

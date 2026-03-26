@@ -9,7 +9,6 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
 import AdManager from '../services/AdManager';
 import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../utils/boostRibbon';
-import { injectAdsIntoFeed } from '../utils/adInjection';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
 
 interface RealEstateListProps {
@@ -50,6 +49,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
 
   // Filter Modal State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isBannerVisible, setIsBannerVisible] = useState(AdManager.isBannerActive());
 
   useEffect(() => {
@@ -102,6 +102,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         return { ...prev, [field]: [...list, value] };
       }
     });
+    setHasUserInteracted(true);
   };
 
   // Formatting helpers - Simplified for Real Estate (No decimals usually needed for input)
@@ -196,10 +197,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
     return filtered;
   }, [ads, transactionType, searchTerm, filters, selectedPropertyType, isTrending]);
 
-  // Feed Injection logic (Rule #3, #8)
-  const feedItems = useMemo(() => {
-    return injectAdsIntoFeed(filteredAds);
-  }, [filteredAds]);
+  const feedItems = filteredAds;
 
   const searchSuggestions = useMemo(() => {
     if (searchTerm.length < 2) return [];
@@ -259,6 +257,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       maxArea: '',
       amenities: []
     });
+    setHasUserInteracted(false);
   };
 
   // --- RENDER HELPERS ---
@@ -276,7 +275,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         return (
           <button
             key={num}
-            onClick={() => onChange(isSelected ? null : num)}
+            onClick={() => {
+              onChange(isSelected ? null : num);
+              setHasUserInteracted(true);
+            }}
             className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${isSelected
               ? 'bg-white text-primary shadow-sm border border-gray-100 ring-1 ring-black/5'
               : 'text-gray-500 hover:text-gray-700'
@@ -316,7 +318,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       <div className="bg-white px-4 pt-2 pb-4 border-b border-gray-100 relative z-10">
         <div className="flex bg-gray-100 p-1.5 rounded-2xl">
           <button
-            onClick={() => setTransactionType('sale')}
+            onClick={() => {
+              setTransactionType('sale');
+              setHasUserInteracted(true);
+            }}
             className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${transactionType === 'sale'
               ? 'bg-white shadow-md text-primary'
               : 'text-gray-500 hover:text-gray-700'
@@ -325,7 +330,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
             Comprar
           </button>
           <button
-            onClick={() => setTransactionType('rent')}
+            onClick={() => {
+              setTransactionType('rent');
+              setHasUserInteracted(true);
+            }}
             className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${transactionType === 'rent'
               ? 'bg-white shadow-md text-primary'
               : 'text-gray-500 hover:text-gray-700'
@@ -346,6 +354,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
+              setHasUserInteracted(true);
               setShowSearchSuggestions(true);
             }}
             onFocus={() => setShowSearchSuggestions(true)}
@@ -390,7 +399,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         {PROPERTY_QUICK_FILTERS.map((group) => (
           <button
             key={group.id}
-            onClick={() => setSelectedPropertyType(group.id)}
+            onClick={() => {
+              setSelectedPropertyType(group.id);
+              setHasUserInteracted(true);
+            }}
             className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${selectedPropertyType === group.id
               ? 'bg-primary text-white border-primary shadow-md'
               : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
@@ -527,7 +539,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                       type="text"
                       placeholder="Busque por cidade ou bairro"
                       value={filters.location}
-                      onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
+                      onChange={(e) => {
+                        setFilters(prev => ({ ...prev, location: e.target.value }));
+                        setHasUserInteracted(true);
+                      }}
                       className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-11 pr-4 text-gray-800 focus:outline-none focus:border-primary font-medium"
                     />
                   </div>
@@ -566,7 +581,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                         <input
                           type="text" inputMode="numeric"
                           value={filters.minPrice}
-                          onChange={(e) => setFilters(p => ({ ...p, minPrice: formatNumber(e.target.value) }))}
+                          onChange={(e) => {
+                            setFilters(p => ({ ...p, minPrice: formatNumber(e.target.value) }));
+                            setHasUserInteracted(true);
+                          }}
                           className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-9 pr-3 font-bold text-gray-800 focus:border-primary outline-none"
                           placeholder="0"
                         />
@@ -579,7 +597,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                         <input
                           type="text" inputMode="numeric"
                           value={filters.maxPrice}
-                          onChange={(e) => setFilters(p => ({ ...p, maxPrice: formatNumber(e.target.value) }))}
+                          onChange={(e) => {
+                            setFilters(p => ({ ...p, maxPrice: formatNumber(e.target.value) }));
+                            setHasUserInteracted(true);
+                          }}
                           className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-9 pr-3 font-bold text-gray-800 focus:border-primary outline-none"
                           placeholder="Sem limite"
                         />
@@ -627,7 +648,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                         <input
                           type="text" inputMode="numeric"
                           value={filters.minArea}
-                          onChange={(e) => setFilters(p => ({ ...p, minArea: formatNumber(e.target.value) }))}
+                          onChange={(e) => {
+                            setFilters(p => ({ ...p, minArea: formatNumber(e.target.value) }));
+                            setHasUserInteracted(true);
+                          }}
                           className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-9 pr-3 font-bold text-gray-800 focus:border-primary outline-none"
                           placeholder="0"
                         />
@@ -640,7 +664,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                         <input
                           type="text" inputMode="numeric"
                           value={filters.maxArea}
-                          onChange={(e) => setFilters(p => ({ ...p, maxArea: formatNumber(e.target.value) }))}
+                          onChange={(e) => {
+                            setFilters(p => ({ ...p, maxArea: formatNumber(e.target.value) }));
+                            setHasUserInteracted(true);
+                          }}
                           className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-9 pr-3 font-bold text-gray-800 focus:border-primary outline-none"
                           placeholder="Sem limite"
                         />
@@ -681,8 +708,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                   onClick={() => setIsFilterOpen(false)}
                   className="w-full bg-primary hover:bg-primary-dark text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
-                  Aplicar Filtros
-                  <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-lg">{filteredAds.length}</span>
+                  {hasUserInteracted 
+                    ? `Ver resultados (${filteredAds.length})` 
+                    : "Ver resultados"
+                  }
                 </button>
               </div>
 
