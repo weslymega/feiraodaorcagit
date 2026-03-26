@@ -14,8 +14,8 @@ export const APP_LOGOS = {
   ABOUT: "/assets/about_illustration.png"
 };
 
-// --- CONFIGURAÇÃO DE DOMÍNIO ---
 export const APP_URL = import.meta.env.VITE_APP_URL || 'https://feiraodaorcagit-two.vercel.app';
+export const BASE_URL = 'https://feiraodaorca.com';
 
 export const LOCATION_LABEL = "Localização baseada no CEP informado pelo anunciante.";
 

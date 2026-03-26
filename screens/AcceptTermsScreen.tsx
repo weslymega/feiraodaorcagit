@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, Check, ArrowRight, ExternalLink } from 'lucide-react';
-import { APP_LOGOS } from '../constants';
+import { APP_LOGOS, BASE_URL } from '../constants';
 import { Screen } from '../types';
 
 interface AcceptTermsScreenProps {
@@ -56,7 +56,7 @@ export const AcceptTermsScreen: React.FC<AcceptTermsScreenProps> = ({ onAccept, 
             {accepted && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
           </div>
           <span className="text-sm text-slate-700 leading-snug">
-            Li e aceito os <a href="https://feiraodaorca.com.br/termos" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline inline-flex items-center gap-0.5">Termos de Uso <ExternalLink className="w-3 h-3" /></a> e a <a href="https://feiraodaorca.com.br/politica" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline inline-flex items-center gap-0.5">Política de Privacidade <ExternalLink className="w-3 h-3" /></a>.
+            Li e aceito os <a href={`${BASE_URL}/termos`} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline inline-flex items-center gap-0.5">Termos de Uso <ExternalLink className="w-3 h-3" /></a> e a <a href={`${BASE_URL}/privacidade`} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline inline-flex items-center gap-0.5">Política de Privacidade <ExternalLink className="w-3 h-3" /></a>.
           </span>
         </button>
 

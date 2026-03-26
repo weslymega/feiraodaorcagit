@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, Mail, Lock, User, ChevronLeft, Loader2 } from 'lucide-react';
 import { User as UserType } from '../types';
+import { BASE_URL } from '../constants';
 
 interface RegisterScreenProps {
   onBack: () => void;
@@ -186,7 +187,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
               {acceptedTerms && <ArrowRight className="w-3.5 h-3.5 text-blue-900 rotate-[-45deg]" />}
             </div>
             <p className="text-white/80 text-xs leading-relaxed select-none">
-              Li e aceito os <span onClick={(e) => { e.stopPropagation(); openUrl('https://feiraodaorca.com.br/termos'); }} className="text-accent font-bold hover:underline">Termos de Uso</span> e a <span onClick={(e) => { e.stopPropagation(); openUrl('https://feiraodaorca.com.br/politica'); }} className="text-accent font-bold hover:underline">Política de Privacidade</span>.
+              Li e aceito os <span onClick={(e) => { e.stopPropagation(); openUrl(`${BASE_URL}/termos`); }} className="text-accent font-bold hover:underline">Termos de Uso</span> e a <span onClick={(e) => { e.stopPropagation(); openUrl(`${BASE_URL}/privacidade`); }} className="text-accent font-bold hover:underline">Política de Privacidade</span>.
             </p>
           </div>
 
