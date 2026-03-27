@@ -1,25 +1,11 @@
 {
-  "cleanUrls": true,
-  "rewrites": [
+  "routes": [
     {
-      "source": "/termos",
-      "destination": "/termos/index.html"
+      "handle": "filesystem"
     },
     {
-      "source": "/privacidade",
-      "destination": "/privacidade/index.html"
-    },
-    {
-      "source": "/anuncio/(.*)",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/ad/(.*)",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
