@@ -3,6 +3,8 @@ import { AppRouter } from './components/AppRouter';
 import { useAppState } from './hooks/useAppState';
 import { useAppActions } from './hooks/useAppActions';
 import { AppLoadingOverlay } from './components/AppLoadingOverlay';
+import { PublicRouteHandler } from './components/router/PublicRouteHandler';
+import { Toast } from './components/Shared';
 
 import { App as CapApp } from '@capacitor/app';
 import { api } from './services/api';
@@ -19,7 +21,7 @@ const App: React.FC = () => {
       console.log('🔗 Deep Link Detector:', url);
       
       // Regex robusto para /ad/{id}
-      const adMatch = url.match(/\/ad\/([a-zA-Z0-9-._~]+)/);
+      const adMatch = url.match(/\/anuncio\/([a-zA-Z0-9-._~]+)/);
       const adId = adMatch ? adMatch[1] : null;
 
       if (adId) {
@@ -60,7 +62,26 @@ const App: React.FC = () => {
     return <AppLoadingOverlay isActive message="Iniciando sessão..." />;
   }
 
-  return <AppRouter state={state} actions={actions} />;
+  return (
+    <>
+      {state.toast && (
+        <Toast 
+          message={state.toast.message} 
+          type={state.toast.type} 
+          onClose={() => state.setToast(null)} 
+        />
+      )}
+      
+      {state.sessionReady && (
+        <PublicRouteHandler 
+          onAdFound={actions.handleAdClick}
+          onNavigate={state.setCurrentScreen}
+        />
+      )}
+
+      <AppRouter state={state} actions={actions} />
+    </>
+  );
 };
 
 export default App;

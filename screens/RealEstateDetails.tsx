@@ -1,11 +1,12 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Heart, Share2, MapPin, MessageSquare, User as UserIcon, ChevronRight, Bed, Bath, Maximize, Car, QrCode, Printer, Download, Home, Camera, Flag, UserX } from 'lucide-react';
 import { generateA4PrintTemplate } from '../services/printTemplates';
-import { AdItem, ReportItem } from '../types';
+import { AdItem, ReportItem, User } from '../types';
+import { DeepLinkButton } from '../components/ui/DeepLinkButton';
+import { downloadQR, shareAd } from '../utils/mobileActions';
+import { Toast } from '../components/Shared';
 import { APP_URL } from '../constants';
 import { ReportModal } from '../components/ReportModal';
-import { Toast } from '../components/Shared';
 import { SmartImage } from '../components/ui/SmartImage';
 import { LocationSection } from '../components/LocationSection';
 
@@ -26,7 +27,7 @@ const SpecItem: React.FC<{ icon: React.ReactNode; label: string; value: string |
   </div>
 );
 
-export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack, onStartChat, onViewProfile, onReport, onBlockUser }) => {
+export const RealEstateDetails: React.FC<RealEstateDetailsProps & { user?: User | null }> = ({ ad, onBack, onStartChat, onViewProfile, onReport, onBlockUser, user }) => {
   if (!ad) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-red-50 text-center">
@@ -40,32 +41,30 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
   }
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'informative' | 'error' } | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const images = (ad.images && ad.images.length > 0) ? ad.images : (ad.image ? [ad.image] : ['https://via.placeholder.com/800x600?text=Sem+Imagem']);
   const features = ad.features || [];
 
-  const qrData = `${APP_URL}/ad/${ad.id}`;
+  const qrData = `${APP_URL}/anuncio/${ad.id}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10&ecc=H`;
+
+  useEffect(() => {
+    // Reset index when ad changes
+    setCurrentImageIndex(0);
+
+    // SEO: Update Meta Tags
+    if (ad) {
+      document.title = `${ad.title} | Feirão da Orca`;
+    }
+  }, [ad.id]);
 
   const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % images.length);
   const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
 
-  const handleDownloadQR = async () => {
-    try {
-      const response = await fetch(qrCodeUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `qr-code-${(ad.title || 'anuncio').replace(/\s+/g, '-').toLowerCase()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      alert("Erro ao baixar QR Code");
-    }
+  const handleDownloadQR = () => {
+    downloadQR(qrCodeUrl, `qr-code-${(ad.title || 'anuncio').replace(/\s+/g, '-').toLowerCase()}.png`, (msg, type) => setToast({ message: msg, type }));
   };
 
   const handlePrintQR = () => {
@@ -77,10 +76,12 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
     }
   };
 
-  const handleShareQR = async () => {
-    if (navigator.share) {
-      try { await navigator.share({ title: ad.title || 'Imóvel', text: `Confira este imóvel: ${ad.title || 'Imóvel'}`, url: qrData }); } catch (error) { console.log('Erro ao compartilhar', error); }
-    } else { alert("Compartilhamento não suportado neste dispositivo."); }
+  const handleShareQR = () => {
+    shareAd({ 
+      title: ad.title || 'Imóvel', 
+      text: `Confira este imóvel: ${ad.title || 'Imóvel'}`, 
+      url: qrData 
+    }, (msg, type) => setToast({ message: msg, type }));
   };
 
   const handleReportSubmit = async (reason: string, description: string) => {
@@ -91,26 +92,25 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
         targetName: ad.title || 'Anúncio',
         targetType: 'ad',
         targetImage: ad.image || (ad.images && ad.images[0]) || null,
-        reportedUserId: ad.user_id, // CRITICAL: Link the report to the owner
+        reportedUserId: ad.userId, 
         reason: reason,
         description: description,
-        reporterId: 'user_current',
-        reporterName: 'Usuário (Você)',
+        reporterId: user?.id || 'guest',
+        reporterName: user?.name || 'Convidado',
         severity: 'medium',
         date: new Date().toLocaleDateString('pt-BR'),
         status: 'pending'
       };
       await onReport(newReport);
-      setToastMessage("Denúncia enviada para análise.");
+      setToast({ message: "Denúncia enviada para análise.", type: 'success' });
     } else {
-      console.log('Report submitted:', { adId: ad.id, reason, description });
-      setToastMessage("Denúncia enviada com sucesso.");
+      setToast({ message: "Denúncia enviada com sucesso.", type: 'success' });
     }
+    setIsReportModalOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-white pb-24 relative animate-in slide-in-from-right duration-300">
-      {toastMessage && <Toast message={toastMessage} type="success" onClose={() => setToastMessage(null)} />}
 
       <ReportModal
         isOpen={isReportModalOpen}
@@ -159,6 +159,22 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
       </div>
 
       <div className="p-5">
+        {!user && (
+          <div className="mb-6 bg-blue-600 rounded-3xl p-6 shadow-xl shadow-blue-100 text-white animate-in zoom-in duration-500 border border-blue-400">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                <Download className="w-8 h-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-black text-xl leading-tight">Quer visitar este imóvel?</h3>
+                <p className="text-blue-100 text-xs mt-1 font-bold uppercase tracking-widest">Negocie pelo App!</p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col gap-3">
+              <DeepLinkButton adId={ad.id} className="w-full bg-white text-blue-600 py-4 rounded-2xl shadow-lg" />
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-between items-start mb-2">
           <h1 className="text-xl font-bold text-gray-900 leading-snug flex-1 mr-2">{ad.title || "Sem título"}</h1>
@@ -236,7 +252,7 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
         <LocationSection ad={ad} />
       </div>
 
-      {(!ad.isOwner) && (
+      {(!ad.isOwner) && user && (
         <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-[200] max-w-md mx-auto rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
           <button
             onClick={onStartChat}
@@ -252,6 +268,13 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps> = ({ ad, onBack
             <Share2 className="w-6 h-6" />
           </button>
         </div>
+      )}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type === 'informative' ? 'success' : toast.type} 
+          onClose={() => setToast(null)} 
+        />
       )}
     </div>
   );

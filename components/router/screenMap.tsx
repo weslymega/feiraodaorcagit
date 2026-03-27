@@ -253,6 +253,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         onViewProfile={handleViewProfile}
                         onReport={handleAddReport}
                         onBlockUser={actions.handleBlockUser}
+                        user={user}
                     />
                 </ErrorBoundary>
             );
@@ -267,6 +268,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                             onViewProfile={handleViewProfile}
                             onReport={handleAddReport}
                             onBlockUser={actions.handleBlockUser}
+                            user={user}
                         />
                     ) : (
                         user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />
@@ -284,6 +286,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                             onViewProfile={handleViewProfile}
                             onReport={handleAddReport}
                             onBlockUser={actions.handleBlockUser}
+                            user={user}
                         />
                     ) : (
                         user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} />

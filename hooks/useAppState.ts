@@ -43,6 +43,7 @@ export const useAppState = () => {
   const [sessionReady, setSessionReady] = useState<boolean>(false);
   const [profileLoaded, setProfileLoaded] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [retryProfileCount, setRetryProfileCount] = useState<number>(0);
 
   const [myAds, setMyAds] = useState<AdItem[]>([]);
   const [favorites, setFavorites] = useState<AdItem[]>(() => loadFromStorage('orca_favorites', []));
@@ -329,16 +330,24 @@ export const useAppState = () => {
 
             setUser(prev => prev ? ({ ...prev, ...freshProfile }) : null);
             setProfileLoaded(true);
+            setRetryProfileCount(0); // Reset on success
             
             // Mandatory Terms Acceptance Guard (Single Source of Truth: DB Profile)
-            // Normalized check: if not true (handles false and NULL)
+            // Strict check: No fallback to metadata here.
             if (!freshProfile.acceptedTerms) {
-              console.log("⚠️ [Auth] Usuário não aceitou os termos. Redirecionando...");
+              console.log("⚠️ [Auth] Usuário não aceitou os termos no DB. Redirecionando...");
               setCurrentScreen(Screen.ACCEPT_TERMS);
             }
           } else {
             // Profile not found yet (race condition with trigger)
-            setProfileLoaded(true); // Treat as loaded to unblock, relying on metadata fallback
+            console.log(`⏳ [Data-Flow] Perfil não encontrado. Tentativa de retry ${retryProfileCount + 1}...`);
+            
+            if (retryProfileCount < 5) {
+              setTimeout(() => setRetryProfileCount(prev => prev + 1), 2000);
+            } else {
+              console.error("❌ [Data-Flow] Falha crítica: Perfil não sincronizou após várias tentativas.");
+              setProfileLoaded(true); // Unblock to avoid infinite loading, but state will be inconsistent
+            }
           }
 
           const parallelTasks = [
@@ -391,7 +400,7 @@ export const useAppState = () => {
     };
 
     fetchData();
-  }, [user?.id, sessionReady]);
+  }, [user?.id, sessionReady, retryProfileCount]);
 
   // Dashboard Promotions State
   const [dashboardPromotions, setDashboardPromotions] = useState<DashboardPromotion[]>([]);

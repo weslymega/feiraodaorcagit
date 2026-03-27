@@ -343,6 +343,31 @@ export const api = {
     },
 
     /**
+     * Polling para aguardar a criação e consistência do perfil após registro.
+     * Retorna apenas quando o perfil existe E o flag de termos está ativo.
+     * Lança erro se o limite de tentativas for atingido.
+     */
+    pollForProfile: async (maxRetries = 10): Promise<any> => {
+        console.log(`🔍 [Polling] Iniciando busca por perfil persistido (Máx ${maxRetries} tentativas)...`);
+        
+        for (let i = 0; i < maxRetries; i++) {
+            const profile = await api.getProfile();
+            
+            // Sucesso: Perfil existe e já reflete o aceite de termos
+            if (profile && profile.acceptedTerms) {
+                console.log("✅ [Polling] Perfil validado e consistente no DB.");
+                return profile;
+            }
+            
+            console.log(`⏳ [Polling] Tentativa ${i + 1}/${maxRetries} - Perfil não encontrado ou incompleto...`);
+            await new Promise(res => setTimeout(res, 1500));
+        }
+
+        console.error("❌ [Polling] Limite de tentativas atingido sem sucesso.");
+        throw new Error('PROFILE_NOT_READY');
+    },
+
+    /**
      * Update Terms Acceptance Status
      */
     updateTermsAcceptance: async () => {
@@ -486,51 +511,81 @@ export const api = {
     },
 
     /**
-     * Get Single Ad by ID
+     * Get Single Ad by ID (With Timeout and Cache)
      */
-    getAdById: async (adId: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
-
-        const { data: ad, error } = await supabase
-            .from('anuncios')
-            .select(`
-                *, 
-                profiles:user_id(name, avatar_url),
-                destaques_anuncios(
-                    plano_id,
-                    result_ends_at:fim_em,
-                    status
-                )
-            `)
-            .eq('id', adId)
-            .single();
-
-        if (error) throw error;
-
-        // Check for active highlight
-        const activeHighlight = ad.destaques_anuncios?.find((h: any) =>
-            h.status === 'active' && new Date(h.result_ends_at) > new Date()
-        );
-
-        if (activeHighlight) {
-            ad.detalhes = {
-                ...ad.detalhes,
-                boostConfig: {
-                    expiresAt: activeHighlight.result_ends_at,
-                    startDate: new Date().toISOString(),
-                    totalBumps: 0,
-                    bumpsRemaining: 0
-                }
-            };
-            if (activeHighlight && (!ad.boost_plan || ad.boost_plan === 'gratis')) {
-                // Ao remover 'active_highlight', garantimos que o plano venha do banco.
-                // Se houver um destaque ativo mas o campo boost_plan estiver vazio, 
-                // poderíamos tentar inferir aqui, mas o plano pede para vir direto.
-                // Para manter a Ribbon ativa, o boostPlan não pode ser 'gratis'.
+    getAdById: async (adId: string, timeoutMs: number = 8000) => {
+        // 1. Check Session Cache
+        const cacheKey = `orca_ad_cache_${adId}`;
+        try {
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) {
+                console.log("🚀 [API] Returning cached ad for ID:", adId);
+                return JSON.parse(cached);
             }
-        }
+        } catch (e) { /* Ignore cache errors */ }
 
-        return mapAdData(ad, ad.user_id === user?.id);
+        // 2. Fetch with Timeout
+        const fetchPromise = (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+
+            const { data: ad, error } = await supabase
+                .from('anuncios')
+                .select(`
+                    *, 
+                    profiles:user_id(id, name, avatar_url),
+                    destaques_anuncios(
+                        plano_id,
+                        result_ends_at:fim_em,
+                        status
+                    )
+                `)
+                .eq('id', adId)
+                .single();
+
+            if (error) throw error;
+            if (!ad) throw new Error('AD_NOT_FOUND');
+
+            // Security: If not owner and not active, hide it
+            const isPublicAccess = ad.user_id !== user?.id;
+            const status = String(ad.status).toLowerCase();
+            const isActive = status === 'active' || status === 'ativo';
+
+            if (isPublicAccess && !isActive) {
+                throw new Error('AD_INACTIVE');
+            }
+
+            // Check for active highlight
+            const activeHighlight = ad.destaques_anuncios?.find((h: any) =>
+                h.status === 'active' && new Date(h.result_ends_at) > new Date()
+            );
+
+            if (activeHighlight) {
+                ad.detalhes = {
+                    ...ad.detalhes,
+                    boostConfig: {
+                        expiresAt: activeHighlight.result_ends_at,
+                        startDate: new Date().toISOString(),
+                        totalBumps: 0,
+                        bumpsRemaining: 0
+                    }
+                };
+            }
+
+            const mappedAd = mapAdData(ad, ad.user_id === user?.id);
+
+            // 3. Save to Session Cache (10 min expiry logic simplified)
+            try {
+                sessionStorage.setItem(cacheKey, JSON.stringify(mappedAd));
+            } catch (e) { /* Ignore cache errors */ }
+
+            return mappedAd;
+        })();
+
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('TIMEOUT_ERROR')), timeoutMs);
+        });
+
+        return Promise.race([fetchPromise, timeoutPromise]) as Promise<any>;
     },
 
     /**

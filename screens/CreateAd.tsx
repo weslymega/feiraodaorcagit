@@ -285,10 +285,15 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
   useEffect(() => {
     if (step === CreateStep.SUCCESS) {
-      const adTitle = formData.category === 'veiculos' ? formData.vehicleType : (formData.realEstateType || 'Anúncio');
-      setAdTitle(adTitle);
-      const dataString = `${APP_URL}/ad/view?title=${encodeURIComponent(adTitle)}&price=${formData.price}&cat=${formData.category}`;
-      const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(dataString)}&color=004AAD&bgcolor=ffffff&margin=10`;
+      const adName = formData.category === 'veiculos' ? formData.vehicleType : (formData.realEstateType || 'Anúncio');
+      setAdTitle(adName);
+      
+      // Use the actual ad ID if available, otherwise fallback to the preview URL
+      const finalUrl = createdAd?.id 
+        ? `${APP_URL}/anuncio/${createdAd.id}`
+        : `${APP_URL}/anuncio/view?title=${encodeURIComponent(adName)}&price=${formData.price}&cat=${formData.category}`;
+
+      const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(finalUrl)}&color=004AAD&bgcolor=ffffff&margin=10`;
       setQrCodeUrl(url);
     }
   }, [step, formData]);

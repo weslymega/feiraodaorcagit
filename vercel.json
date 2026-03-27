@@ -10,6 +10,14 @@
       "destination": "/privacidade/index.html"
     },
     {
+      "source": "/anuncio/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ad/(.*)",
+      "destination": "/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

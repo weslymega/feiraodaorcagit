@@ -288,6 +288,9 @@ export const useAppActions = (state: AppState) => {
 
     const handleRegister = async (newUserData: any) => {
         try {
+            setAuthLoading(true);
+            setToast({ message: "Criando sua conta...", type: 'info' });
+
             const { data, error } = await supabase.auth.signUp({
                 email: newUserData.email,
                 password: newUserData.password,
@@ -304,30 +307,38 @@ export const useAppActions = (state: AppState) => {
             if (error) throw error;
 
             if (data.user) {
-                const newUser: User = {
-                    id: data.user.id,
-                    name: newUserData.name || 'Novo Usuário',
-                    email: newUserData.email || '',
-                    avatarUrl: "https://i.pravatar.cc/150?u=" + data.user.id,
-                    balance: 0,
-                    adsCount: 0,
-                    phone: "",
-                    location: "",
-                    bio: "Novo no Feirão da Orca",
-                    joinDate: new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-                    verified: false,
-                    isAdmin: false,
-                    // EXPLICIT: New users via registration flux already accepted terms
-                    acceptedTerms: true,
-                    acceptedAt: new Date().toISOString()
-                };
-                setUser(newUser);
-                setToast({ message: "Conta criada com sucesso! Bem-vindo!", type: 'success' });
-                setCurrentScreen(Screen.DASHBOARD);
+                // EXPLICIT SYNC: Aguarda o trigger do banco persistir o perfil com o aceite
+                setToast({ message: "Sincronizando conta com o servidor...", type: 'info' });
+                
+                try {
+                    const confirmedProfile = await api.pollForProfile();
+                    
+                    // Sucesso: Perfil confirmado no banco
+                    setUser(confirmedProfile);
+                    setToast({ message: "Conta criada com sucesso! Bem-vindo!", type: 'success' });
+                    setCurrentScreen(Screen.DASHBOARD);
+                } catch (pollError: any) {
+                    console.error("❌ Erro de sincronização após registro:", pollError);
+                    
+                    if (pollError.message === 'PROFILE_NOT_READY') {
+                        setToast({ 
+                            message: "Sua conta foi criada, mas o perfil está demorando a sincronizar. Por favor, tente entrar novamente em instantes.", 
+                            type: 'error' 
+                        });
+                    } else {
+                        setToast({ message: "Erro ao sincronizar perfil. Tente fazer login.", type: 'error' });
+                    }
+                    
+                    // Fallback de segurança: Desloga e volta pro login para evitar estado inconsistente
+                    await handleLogout();
+                }
             }
         } catch (error: any) {
             console.error("Erro registro:", error);
             setToast({ message: "Erro ao criar conta: " + error.message, type: 'error' });
+            setAuthLoading(false);
+        } finally {
+            setAuthLoading(false);
         }
     };
 

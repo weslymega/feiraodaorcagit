@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Heart, Share2, Calculator, MapPin, MessageSquare, Phone, User as UserIcon, ChevronRight, QrCode, Printer, Download, Map, Clock, Camera, Flag, AlertTriangle, CheckCircle, UserX } from 'lucide-react';
+import { ChevronLeft, Heart, Share2, Calculator, MapPin, MessageSquare, Phone, User as UserIcon, ChevronRight, QrCode, Printer, Download, Map, Clock, Camera, Flag, AlertTriangle, CheckCircle, UserX, Loader2 } from 'lucide-react';
 import { generateA4PrintTemplate } from '../services/printTemplates';
-import { AdItem, ReportItem } from '../types';
+import { AdItem, ReportItem, User } from '../types';
 import { APP_URL } from '../constants';
 import { ReportModal } from '../components/ReportModal';
 import { Toast } from '../components/Shared';
 import { SmartImage } from '../components/ui/SmartImage';
 import { api } from '../services/api';
-import { Loader2 } from 'lucide-react';
 import { LocationSection } from '../components/LocationSection';
+import { DeepLinkButton } from '../components/ui/DeepLinkButton';
+import { downloadQR, shareAd } from '../utils/mobileActions';
 
 interface VehicleDetailsProps {
   ad: AdItem;
@@ -32,11 +33,11 @@ const SpecItem: React.FC<{ label: string; value: string | number }> = ({ label, 
 );
 
 
-export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onStartChat, isFavorite, onToggleFavorite, onToggleFairPresence, onViewProfile, onReport, onBlockUser }) => {
+export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null }> = ({ ad, onBack, onStartChat, isFavorite, onToggleFavorite, onToggleFairPresence, onViewProfile, onReport, onBlockUser, user }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'informative' | 'error' } | null>(null);
 
   // Robust Image Handling
   const safeImages = (ad.images && ad.images.length > 0)
@@ -46,12 +47,17 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
   const images = safeImages;
   const features = ad.features || ["Air bag", "Alarme", "Ar condicionado", "Trava elétrica", "Som", "Vidro elétrico"];
 
-  const qrData = `${APP_URL}/ad/${ad.id}`;
+  const qrData = `${APP_URL}/anuncio/${ad.id}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}&color=004AAD&bgcolor=ffffff&margin=10&ecc=H`;
 
   useEffect(() => {
     // Reset index when ad changes
     setCurrentImageIndex(0);
+
+    // SEO: Update Meta Tags
+    if (ad) {
+      document.title = `${ad.title} | Feirão da Orca`;
+    }
   }, [ad.id]);
 
   useEffect(() => {
@@ -87,20 +93,8 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
     return title;
   };
 
-  const handleDownloadQR = async () => {
-    try {
-      const response = await fetch(qrCodeUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `qr-code-${(ad?.title || 'anuncio').replace(/\s+/g, '-').toLowerCase()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      alert("Erro ao baixar QR Code");
-    }
+  const handleDownloadQR = () => {
+    downloadQR(qrCodeUrl, `qr-code-${(ad?.title || 'anuncio').replace(/\s+/g, '-').toLowerCase()}.png`, (msg, type) => setToast({ message: msg, type }));
   };
 
   const handlePrintQR = () => {
@@ -112,14 +106,12 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
     }
   };
 
-  const handleShareQR = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: ad.title, text: `Confira este veículo: ${ad.title}`, url: qrData });
-      } catch (error) { console.log('Erro ao compartilhar', error); }
-    } else {
-      alert("Compartilhamento não suportado neste dispositivo.");
-    }
+  const handleShareQR = () => {
+    shareAd({ 
+      title: ad.title || 'Anúncio', 
+      text: `Confira este veículo: ${ad.title}`, 
+      url: qrData 
+    }, (msg, type) => setToast({ message: msg, type }));
   };
 
   const handleReportSubmit = async (reason: string, description: string) => {
@@ -130,21 +122,21 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
         targetName: ad.title || 'Anúncio',
         targetType: 'ad',
         targetImage: ad.image || (ad.images && ad.images[0]) || null,
-        reportedUserId: ad.user_id, // CRITICAL: Link the report to the owner
+        reportedUserId: ad.userId, 
         reason: reason,
         description: description,
-        reporterId: 'user_current',
-        reporterName: 'Usuário (Você)',
+        reporterId: user?.id || 'guest',
+        reporterName: user?.name || 'Convidado',
         severity: 'medium',
         date: new Date().toLocaleDateString('pt-BR'),
         status: 'pending'
       };
       await onReport(newReport);
-      setToastMessage("Denúncia enviada para análise.");
+      setToast({ message: "Denúncia enviada para análise.", type: 'success' });
     } else {
-      console.log('Report submitted:', { adId: ad.id, reason, description });
-      setToastMessage("Denúncia enviada com sucesso.");
+      setToast({ message: "Denúncia enviada com sucesso.", type: 'success' });
     }
+    setIsReportModalOpen(false);
   };
 
   const getFipeComparison = () => {
@@ -165,7 +157,6 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
 
   const comparison = getFipeComparison();
 
-  // --- SAFETY CHECK FOR RENDER ---
   if (!ad) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-red-50 text-center">
@@ -178,12 +169,9 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
     );
   }
 
-  // Debugging Render
   try {
     return (
       <div className="min-h-screen bg-white pb-24 relative animate-in slide-in-from-right duration-300">
-        {toastMessage && <Toast message={toastMessage} type="success" onClose={() => setToastMessage(null)} />}
-
         <ReportModal
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
@@ -242,6 +230,24 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
         <div className="p-6 -mt-6 relative z-20 bg-white rounded-t-[30px]">
 
           <div className="flex justify-center -mt-2 mb-4"><div className="w-12 h-1 bg-gray-200 rounded-full"></div></div>
+
+          {!user && (
+            <div className="mb-6 bg-blue-600 rounded-3xl p-6 shadow-xl shadow-blue-100 text-white animate-in zoom-in duration-500 border border-blue-400">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                  <Download className="w-8 h-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-black text-xl leading-tight">Gostou deste veículo?</h3>
+                  <p className="text-blue-100 text-xs mt-1 font-bold uppercase tracking-widest">Negocie agora pelo App!</p>
+                </div>
+              </div>
+              <div className="mt-6 flex flex-col gap-3">
+                <DeepLinkButton adId={ad.id} className="w-full bg-white text-blue-600 py-4 rounded-2xl shadow-lg" />
+                <p className="text-[10px] text-blue-200 text-center font-medium">Baixe o app oficial na Play Store para falar com o vendedor.</p>
+              </div>
+            </div>
+          )}
 
           {(ad.isInFair || ad.fairPresence?.active) && !ad.isOwner && (
             <div className="mb-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-4 shadow-lg shadow-green-200 text-white flex items-center justify-between animate-in zoom-in duration-300">
@@ -400,7 +406,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
           <LocationSection ad={ad} />
         </div>
 
-        {(!ad.isOwner) && (
+        {(!ad.isOwner) && user && (
           <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-[200] max-w-md mx-auto rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
             <button
               onClick={onStartChat}
@@ -416,6 +422,14 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ ad, onBack, onSt
               <Share2 className="w-6 h-6" />
             </button>
           </div>
+        )}
+        
+        {toast && (
+          <Toast 
+            message={toast.message} 
+            type={toast.type === 'informative' ? 'success' : toast.type} 
+            onClose={() => setToast(null)} 
+          />
         )}
       </div>
     );

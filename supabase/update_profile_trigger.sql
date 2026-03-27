@@ -47,12 +47,7 @@ BEGIN
     'user',
     0.00
   )
-  ON CONFLICT (id) DO UPDATE SET
-    email = EXCLUDED.email,
-    name = COALESCE(profiles.name, EXCLUDED.name),
-    avatar_url = COALESCE(profiles.avatar_url, EXCLUDED.avatar_url),
-    accepted_terms = COALESCE(profiles.accepted_terms, EXCLUDED.accepted_terms),
-    accepted_at = COALESCE(profiles.accepted_at, EXCLUDED.accepted_at);
+  ON CONFLICT (id) DO NOTHING;
 
   RETURN new;
 END;

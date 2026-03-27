@@ -39,6 +39,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="feiraodaorca.com" android:pathPrefix="/anuncio" />
                 <data android:scheme="https" android:host="feiraodaorca.com" android:pathPrefix="/ad" />
             </intent-filter>
 
@@ -58,4 +59,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 </manifest>
