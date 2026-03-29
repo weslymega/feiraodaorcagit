@@ -9,10 +9,10 @@ interface TermsOfUseProps {
 
 export const TermsOfUse: React.FC<TermsOfUseProps> = ({ onBack }) => {
     return (
-        <div className="min-h-screen bg-gray-50 pb-12">
+        <div className="min-h-screen h-screen overflow-y-auto bg-gray-50 flex flex-col">
             <Header title="Termos de Uso" onBack={onBack} />
 
-            <div className="max-w-4xl mx-auto px-4 pt-6">
+            <div className="flex-1 px-4 pt-6 pb-12">
 
                 {/* Intro */}
                 <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 mb-6">
@@ -161,24 +161,26 @@ export const TermsOfUse: React.FC<TermsOfUseProps> = ({ onBack }) => {
 
                     {/* 11. Contato */}
                     <section className="bg-gray-900 rounded-3xl p-8 text-center text-white">
-                        <h3 className="text-xl font-bold mb-4">Contato</h3>
-                        <p className="text-gray-400 text-sm mb-6">Dúvidas sobre estes Termos de Uso?</p>
-                        <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                        <h3 className="text-xl font-bold mb-2">Canal de Contato</h3>
+                        <p className="text-gray-400 text-[13px] mb-8">Dúvidas sobre estes Termos de Uso?</p>
+                        
+                        <div className="flex flex-col gap-4">
                             <a 
                                 href="mailto:feiraodaorcadf@gmail.com" 
-                                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-2xl font-bold transition-colors border border-white/10"
+                                className="w-full flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 px-6 py-4 rounded-2xl font-bold transition-all border border-white/10 active:scale-[0.98]"
                             >
-                                <Mail className="w-5 h-5" />
-                                feiraodaorcadf@gmail.com
+                                <Mail className="w-5 h-5 text-accent" />
+                                <span className="text-[14px]">feiraodaorcadf@gmail.com</span>
                             </a>
+                            
                             <a 
                                 href="https://wa.me/5561983227344"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20ba59] px-6 py-3 rounded-2xl font-bold transition-colors shadow-lg shadow-green-500/20"
+                                className="w-full flex items-center justify-center gap-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 px-6 py-4 rounded-2xl font-bold transition-all border border-[#25D366]/20 active:scale-[0.98] text-[#25D366]"
                             >
                                 <MessageCircle className="w-5 h-5" />
-                                (61) 98322-7344
+                                <span className="text-[14px]">(61) 98322-7344</span>
                             </a>
                         </div>
                     </section>

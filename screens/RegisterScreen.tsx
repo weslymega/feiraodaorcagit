@@ -1,15 +1,21 @@
-
 import React, { useState } from 'react';
-import { ArrowRight, Mail, Lock, User, ChevronLeft, Loader2 } from 'lucide-react';
+import { ArrowRight, Mail, Lock, User, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 import { User as UserType } from '../types';
-import { BASE_URL } from '../constants';
+import { LegalConsent } from '../components/LegalConsent';
 
 interface RegisterScreenProps {
   onBack: () => void;
   onRegister: (user: any) => void;
+  onViewTerms: () => void;
+  onViewPrivacy: () => void;
 }
 
-export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegister }) => {
+export const RegisterScreen: React.FC<RegisterScreenProps> = ({ 
+  onBack, 
+  onRegister,
+  onViewTerms,
+  onViewPrivacy
+}) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,7 +24,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -31,8 +36,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
       return;
     }
 
+    // Validação de segurança no submit (Conforme requisitado)
     if (!acceptedTerms) {
-      setError('Você precisa aceitar os Termos de Uso e a Política de Privacidade.');
+      setError('Você precisa aceitar os Termos de Uso e a Política de Privacidade para cadastrar.');
       return;
     }
 
@@ -48,37 +54,25 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
 
     setIsLoading(true);
 
-    // Call registration immediately (Supabase handles async)
+    // Call registration
     onRegister({
       name: formData.name,
       email: formData.email,
       password: formData.password
     });
 
-    // Reset loading state is handled by effect or parent, but for now we keep it true until unmount or rely on parent
-    // actually, parent calls navigate, so this component will unmount.
-    // But if error, parent should probably stop loading?
-    // Since onRegister is async in parent but here it returns void, we can't await it easily unless we change props.
-    // For now, let's just set timeout to false after a bit or hope for unmount.
-    // Better: make onRegister async in props?
-    // Let's keep it simple: fire and forget, parent handles toast/nav.
-    // If we want to stop loading on error, we need a way to know.
-    // But for this task, let's just remove the timeout and call it.
-    setTimeout(() => setIsLoading(false), 2000); // Failsafe to stop spinner if something hangs
+    // Failsafe to stop spinner if something hangs
+    setTimeout(() => setIsLoading(false), 5000);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const openUrl = (url: string) => {
-    window.open(url, '_blank');
-  };
-
   return (
-    <div className="min-h-screen relative flex flex-col overflow-hidden">
+    <div className="min-h-screen relative flex flex-col overflow-hidden bg-primary-950">
 
-      {/* --- BACKGROUND IMAGE SECTION (Igual ao Login para consistência) --- */}
+      {/* --- BACKGROUND IMAGE SECTION --- */}
       <div className="absolute inset-0 z-0">
         <img
           src="https://revistacontinente.com.br/image/view/news/image/544"
@@ -93,7 +87,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
       <div className="absolute top-0 left-0 right-0 z-[100] p-6">
         <button
           onClick={onBack}
-          className="p-2 -ml-2 rounded-full bg-black/20 text-white backdrop-blur-md hover:bg-black/30 transition-colors w-fit border border-white/10"
+          className="p-3 -ml-2 rounded-2xl bg-black/20 text-white backdrop-blur-md hover:bg-black/30 transition-all w-fit border border-white/10 active:scale-95"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -103,98 +97,104 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
       <div className="flex-1"></div>
 
       {/* Bottom Section: Form */}
-      <div className="relative bg-white/10 backdrop-blur-xl pt-10 pb-8 px-8 rounded-t-[3.5rem] shadow-[0_-20px_60px_rgba(0,0,0,0.4)] z-20 animate-slide-in-from-bottom duration-500 border-t border-white/20">
+      <div className="relative bg-white/10 backdrop-blur-3xl pt-12 pb-10 px-8 rounded-t-[3.5rem] shadow-[0_-20px_60px_rgba(0,0,0,0.4)] z-20 animate-slide-in-from-bottom duration-500 border-t border-white/20">
 
         <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-1.5 bg-white/30 rounded-full"></div>
 
-        <h2 className="text-2xl font-bold text-white mb-6 text-center tracking-tight text-shadow-sm">Crie sua conta</h2>
+        <h2 className="text-2xl font-bold text-white mb-8 text-center tracking-tight text-shadow-sm">Crie sua conta</h2>
 
         {error && (
-          <div className="bg-red-500/80 backdrop-blur-md text-white text-xs font-bold p-3 rounded-xl mb-4 text-center border border-red-400">
-            {error}
+          <div className="bg-red-500/90 backdrop-blur-md text-white p-4 rounded-2xl mb-6 shadow-lg animate-in shake duration-500 border border-red-400/50 flex gap-3">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-[13px] font-medium leading-tight">{error}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
-          {/* Nome */}
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <User className="h-5 w-5 text-white/80 group-focus-within:text-white transition-colors" />
+          <div className="space-y-4">
+            {/* Nome */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <User className={`h-5 w-5 transition-colors ${formData.name ? 'text-accent' : 'text-white/70'} group-focus-within:text-accent`} />
+              </div>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="w-full pl-11 pr-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/40 backdrop-blur-md transition-all outline-none font-medium"
+                placeholder="Nome completo"
+                maxLength={100}
+              />
             </div>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full pl-11 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
-              placeholder="Nome completo"
-              maxLength={100}
-            />
+
+            {/* Email */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Mail className={`h-5 w-5 transition-colors ${formData.email ? 'text-accent' : 'text-white/70'} group-focus-within:text-accent`} />
+              </div>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full pl-11 pr-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/40 backdrop-blur-md transition-all outline-none font-medium"
+                placeholder="Seu e-mail"
+                maxLength={254}
+              />
+            </div>
+
+            {/* Password */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Lock className={`h-5 w-5 transition-colors ${formData.password ? 'text-accent' : 'text-white/70'} group-focus-within:text-accent`} />
+              </div>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full pl-11 pr-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/40 backdrop-blur-md transition-all outline-none font-medium"
+                placeholder="Senha (min. 6 caracteres)"
+                maxLength={100}
+              />
+            </div>
+
+            {/* Confirm Password */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Lock className={`h-5 w-5 transition-colors ${formData.confirmPassword ? 'text-accent' : 'text-white/70'} group-focus-within:text-accent`} />
+              </div>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="w-full pl-11 pr-5 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/40 backdrop-blur-md transition-all outline-none font-medium"
+                placeholder="Confirme a senha"
+                maxLength={100}
+              />
+            </div>
           </div>
 
-          {/* Email */}
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Mail className="h-5 w-5 text-white/80 group-focus-within:text-white transition-colors" />
-            </div>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full pl-11 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
-              placeholder="Seu e-mail"
-              maxLength={254}
+          <div className="pt-2">
+            <LegalConsent 
+               onCheckedChange={setAcceptedTerms}
+               onViewPrivacy={onViewPrivacy}
+               onViewTerms={onViewTerms}
+               initialValue={acceptedTerms}
             />
-          </div>
-
-          {/* Password */}
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Lock className="h-5 w-5 text-white/80 group-focus-within:text-white transition-colors" />
-            </div>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full pl-11 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
-              placeholder="Senha (min. 6 caracteres)"
-              maxLength={100}
-            />
-          </div>
-
-          {/* Confirm Password */}
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Lock className="h-5 w-5 text-white/80 group-focus-within:text-white transition-colors" />
-            </div>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full pl-11 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-accent focus:bg-black/60 focus:border-transparent text-white placeholder-white/60 backdrop-blur-md transition-all outline-none font-medium"
-              placeholder="Confirme a senha"
-              maxLength={100}
-            />
-          </div>
-
-          {/* Checkbox de Termos */}
-          <div className="flex items-start gap-3 mt-1 px-1 group cursor-pointer" onClick={() => setAcceptedTerms(!acceptedTerms)}>
-            <div className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center transition-all ${acceptedTerms ? 'bg-accent border-accent' : 'bg-black/40 border-white/20'}`}>
-              {acceptedTerms && <ArrowRight className="w-3.5 h-3.5 text-blue-900 rotate-[-45deg]" />}
-            </div>
-            <p className="text-white/80 text-xs leading-relaxed select-none">
-              Li e aceito os <span onClick={(e) => { e.stopPropagation(); openUrl(`${BASE_URL}/termos`); }} className="text-accent font-bold hover:underline">Termos de Uso</span> e a <span onClick={(e) => { e.stopPropagation(); openUrl(`${BASE_URL}/privacidade`); }} className="text-accent font-bold hover:underline">Política de Privacidade</span>.
-            </p>
           </div>
 
           <button
             type="submit"
             disabled={isLoading || !acceptedTerms}
-            className={`w-full py-4 bg-accent hover:bg-yellow-400 text-blue-900 rounded-2xl font-bold text-lg shadow-lg shadow-black/20 mt-2 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group ${isLoading || !acceptedTerms ? 'opacity-50 grayscale cursor-not-allowed shadow-none' : ''}`}
+            className={`w-full py-4.5 rounded-2xl font-bold text-lg shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-2 ${
+              isLoading || !acceptedTerms
+              ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
+              : 'bg-accent hover:bg-yellow-400 text-primary-950 shadow-accent/10'
+            }`}
           >
             {isLoading ? (
               <Loader2 className="w-6 h-6 animate-spin" />
@@ -207,10 +207,20 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onRegist
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold">
-            Feirão da Orca © 2026
-          </p>
+        <div className="mt-8 text-center">
+            <button
+              onClick={onBack}
+              className="text-white/60 text-[14px] hover:text-white transition-all underline-offset-4 hover:underline"
+            >
+              Já possui uma conta? <span className="font-bold text-white">Fazer login</span>
+            </button>
+        </div>
+
+        {/* --- RODAPÉ DISCRETO --- */}
+        <div className="mt-8 flex justify-center gap-6 border-t border-white/5 pt-8 opacity-40">
+           <button onClick={onViewPrivacy} className="text-[11px] text-white font-bold uppercase tracking-widest hover:opacity-80 transition-opacity">Privacidade</button>
+           <div className="w-[1px] h-3 bg-white/20"></div>
+           <button onClick={onViewTerms} className="text-[11px] text-white font-bold uppercase tracking-widest hover:opacity-80 transition-opacity">Termos</button>
         </div>
       </div>
     </div>
