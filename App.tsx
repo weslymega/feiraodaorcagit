@@ -76,6 +76,7 @@ const App: React.FC = () => {
         <PublicRouteHandler 
           onAdFound={actions.handleAdClick}
           onNavigate={state.setCurrentScreen}
+          currentScreen={state.currentScreen}
         />
       )}
 

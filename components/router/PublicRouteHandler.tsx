@@ -6,13 +6,14 @@ import { Loader2, AlertCircle, Home } from 'lucide-react';
 interface PublicRouteHandlerProps {
   onAdFound: (ad: AdItem) => void;
   onNavigate: (screen: Screen) => void;
+  currentScreen?: Screen; // New prop for URL Sync
 }
 
 /**
  * PublicRouteHandler (v3)
  * Decoupled logic for handling direct URLs like /anuncio/:id
  */
-export const PublicRouteHandler: React.FC<PublicRouteHandlerProps> = ({ onAdFound, onNavigate }) => {
+export const PublicRouteHandler: React.FC<PublicRouteHandlerProps> = ({ onAdFound, onNavigate, currentScreen }) => {
   const [error, setError] = useState<string | null>(null);
   const [loadingAd, setLoadingAd] = useState<boolean>(false);
 
@@ -76,6 +77,20 @@ export const PublicRouteHandler: React.FC<PublicRouteHandlerProps> = ({ onAdFoun
 
     handleUrl();
   }, []);
+
+  // --- URL SYNCHRONIZER (OAuth Compliance) ---
+  useEffect(() => {
+    if (!currentScreen) return;
+
+    if (currentScreen === Screen.PRIVACY_POLICY && window.location.pathname !== '/privacidade') {
+      console.log("🔗 [URL Sync] Updating URL to /privacidade");
+      window.history.pushState({}, '', '/privacidade');
+    } 
+    else if (currentScreen === Screen.TERMS_OF_USE && window.location.pathname !== '/termos') {
+      console.log("🔗 [URL Sync] Updating URL to /termos");
+      window.history.pushState({}, '', '/termos');
+    }
+  }, [currentScreen]);
 
   if (loadingAd) {
     return (
