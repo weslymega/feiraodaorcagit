@@ -17,9 +17,19 @@ export const PublicRouteHandler: React.FC<PublicRouteHandlerProps> = ({ onAdFoun
   const [loadingAd, setLoadingAd] = useState<boolean>(false);
 
   useEffect(() => {
+    const path = window.location.pathname;
+
+    // Detect immediate path for legal routes (OAuth Compliance)
+    if (path === "/privacidade") {
+      onNavigate(Screen.PRIVACY_POLICY);
+      return;
+    }
+    if (path === "/termos") {
+      onNavigate(Screen.TERMS_OF_USE);
+      return;
+    }
+
     const handleUrl = async () => {
-      const path = window.location.pathname;
-      
       // Suppport legacy /ad/ and new /anuncio/
       const match = path.match(/\/(anuncio|ad)\/([a-zA-Z0-9-._~]+)/);
       if (!match) return;

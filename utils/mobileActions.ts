@@ -29,9 +29,14 @@ export const shareAd = async (options: ShareOptions, onToast?: (msg: string, typ
       else alert("Compartilhamento não suportado neste dispositivo.");
     }
   } catch (error: any) {
+    // Não logar como erro se for apenas cancelamento pelo usuário
     if (error.message !== 'Share canceled' && error.name !== 'AbortError') {
-      console.error('Erro ao compartilhar:', error);
-      if (onToast) onToast("Erro ao compartilhar conteúdo.", 'error');
+      console.error('[Share Error]: Falha ao tentar compartilhar conteúdo.', {
+        error: error.message || error,
+        stack: error.stack,
+        options
+      });
+      if (onToast) onToast("Erro ao compartilhar conteúdo. Verifique as permissões.", 'error');
     }
   }
 };
@@ -79,8 +84,12 @@ export const downloadQR = async (url: string, fileName: string, onToast?: (msg: 
           
           if (onToast) onToast("Opções de salvamento abertas!", 'success');
         } catch (fsError: any) {
-          console.error('Filesystem/Share Error:', fsError);
-          if (onToast) onToast("Erro ao processar arquivo nativo.", 'error');
+          console.error('[Native File Error]: Falha ao gravar ou compartilhar arquivo.', {
+            error: fsError.message || fsError,
+            fileName: uniqueFileName,
+            directory: 'Cache'
+          });
+          if (onToast) onToast("Erro ao processar arquivo nativo. Verifique o espaço disponível.", 'error');
         } finally {
           // Limpeza de Cache: Remover o arquivo temporário após o compartilhamento
           if (tempUri) {
@@ -89,9 +98,12 @@ export const downloadQR = async (url: string, fileName: string, onToast?: (msg: 
                 path: uniqueFileName,
                 directory: Directory.Cache
               });
-              console.log('Cache cleanup: File removed', uniqueFileName);
-            } catch (cleanupError) {
-              console.warn('Cache cleanup failed:', cleanupError);
+              console.log('[Cache Cleanup]: Arquivo removido com sucesso:', uniqueFileName);
+            } catch (cleanupError: any) {
+              console.warn('[Cache Cleanup Failed]: Falha ao remover arquivo temporário.', {
+                error: cleanupError.message || cleanupError,
+                fileName: uniqueFileName
+              });
             }
           }
         }
