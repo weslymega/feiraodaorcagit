@@ -38,52 +38,78 @@ export const shareAd = async (options: ShareOptions, onToast?: (msg: string, typ
 
 export const downloadQR = async (url: string, fileName: string, onToast?: (msg: string, type: 'success' | 'informative' | 'error') => void) => {
   try {
-    if (onToast) onToast("Preparando download...", 'informative');
+    if (onToast) onToast("Preparando QR Code...", 'informative');
     
+    // Garantir que a extensão seja .png para compatibilidade total
+    const fileNameWithPng = fileName.toLowerCase().endsWith('.png') ? fileName : `${fileName}.png`;
+
     const response = await fetch(url);
     const blob = await response.blob();
+
+    // Gerar um nome de arquivo único para o cache
+    const baseName = fileNameWithPng.substring(0, fileNameWithPng.lastIndexOf('.'));
+    const uniqueFileName = `${baseName}-${Date.now()}.png`;
 
     if (Capacitor.isNativePlatform()) {
       const reader = new FileReader();
       reader.readAsDataURL(blob);
       reader.onloadend = async () => {
         const base64data = reader.result as string;
-        // Extrair apenas o conteúdo base64 (sem o cabeçalho data:image/png;base64,...)
         const base64 = base64data.split(',')[1];
         
+        let tempUri = '';
         try {
-          await Filesystem.writeFile({
-            path: `feiraodaorca/${fileName}`,
-            data: base64,
-            directory: Directory.Documents,
-            recursive: true
-          });
-          
-          if (onToast) onToast("QR Code salvo em Documentos/feiraodaorca", 'success');
-        } catch (fsError: any) {
-          console.error('Filesystem Error:', fsError);
-          // Fallback para Cache se Documents falhar (ex: permissões)
-          await Filesystem.writeFile({
-            path: fileName,
+          // Gravar no Cache Temporário
+          const fileResult = await Filesystem.writeFile({
+            path: uniqueFileName,
             data: base64,
             directory: Directory.Cache,
           });
-          if (onToast) onToast("Salvo temporariamente (Cache).", 'informative');
+          
+          tempUri = fileResult.uri;
+
+          // Compartilhar como ARQUIVO (files) e não como URL string
+          // Isso ativa as opções de "Salvar Imagem" e compartilhamento em apps
+          await Share.share({
+            title: 'QR Code do Anúncio',
+            text: 'Confira o QR Code para este anúncio.',
+            files: [tempUri],
+            dialogTitle: 'Salvar ou Compartilhar QR Code',
+          });
+          
+          if (onToast) onToast("Opções de salvamento abertas!", 'success');
+        } catch (fsError: any) {
+          console.error('Filesystem/Share Error:', fsError);
+          if (onToast) onToast("Erro ao processar arquivo nativo.", 'error');
+        } finally {
+          // Limpeza de Cache: Remover o arquivo temporário após o compartilhamento
+          if (tempUri) {
+            try {
+              await Filesystem.deleteFile({
+                path: uniqueFileName,
+                directory: Directory.Cache
+              });
+              console.log('Cache cleanup: File removed', uniqueFileName);
+            } catch (cleanupError) {
+              console.warn('Cache cleanup failed:', cleanupError);
+            }
+          }
         }
       };
     } else {
+      // Fallback Web robusto via Blob
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = fileName;
+      link.download = uniqueFileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
-      if (onToast) onToast("QR Code baixado com sucesso!", 'success');
+      if (onToast) onToast("Download iniciado com sucesso!", 'success');
     }
   } catch (error) {
-    console.error('Erro no download:', error);
-    if (onToast) onToast("Falha ao baixar o QR Code.", 'error');
+    console.error('Erro no processamento do QR:', error);
+    if (onToast) onToast("Falha ao preparar o QR Code.", 'error');
   }
 };

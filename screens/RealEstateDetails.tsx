@@ -17,6 +17,7 @@ interface RealEstateDetailsProps {
   onViewProfile?: () => void;
   onReport?: (report: ReportItem) => void;
   onBlockUser?: (userId: string) => void;
+  onPrint?: () => void;
 }
 
 const SpecItem: React.FC<{ icon: React.ReactNode; label: string; value: string | number }> = ({ icon, label, value }) => (
@@ -27,7 +28,7 @@ const SpecItem: React.FC<{ icon: React.ReactNode; label: string; value: string |
   </div>
 );
 
-export const RealEstateDetails: React.FC<RealEstateDetailsProps & { user?: User | null }> = ({ ad, onBack, onStartChat, onViewProfile, onReport, onBlockUser, user }) => {
+export const RealEstateDetails: React.FC<RealEstateDetailsProps & { user?: User | null }> = ({ ad, onBack, onStartChat, onViewProfile, onReport, onBlockUser, onPrint, user }) => {
   if (!ad) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-red-50 text-center">
@@ -68,6 +69,10 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps & { user?: User 
   };
 
   const handlePrintQR = () => {
+    if (onPrint) {
+      onPrint();
+      return;
+    }
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       const html = generateA4PrintTemplate(ad, qrCodeUrl);
@@ -225,7 +230,7 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps & { user?: User 
             <div className="flex items-center gap-6">
               <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex-shrink-0"><img src={qrCodeUrl} alt="QR Code" className="w-24 h-24 object-contain" /></div>
               <div className="flex flex-col gap-2 flex-1">
-                <button onClick={handleDownloadQR} className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"><Download className="w-4 h-4" /> Baixar</button>
+                <button onClick={handleDownloadQR} className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"><Download className="w-4 h-4" /> Baixar / Salvar</button>
                 <button onClick={handleShareQR} className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"><Share2 className="w-4 h-4" /> Compartilhar</button>
                 <button onClick={handlePrintQR} className="flex items-center gap-2 px-3 py-2 bg-primary text-white rounded-lg shadow-sm text-xs font-bold hover:bg-primary-dark transition-colors"><Printer className="w-4 h-4" /> Imprimir</button>
               </div>

@@ -244,14 +244,6 @@ export const generateA4PrintTemplate = (ad: AdItem, qrCodeUrl: string) => {
           <div class="site-url">feiraodaorca.com</div>
         </div>
       </div>
-      <script>
-        window.onload = function() {
-          setTimeout(function() {
-            window.print();
-            // window.close(); // Optional: close window after print
-          }, 1000);
-        };
-      </script>
     </body>
     </html>
   `;

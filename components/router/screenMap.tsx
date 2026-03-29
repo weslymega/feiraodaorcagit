@@ -41,6 +41,7 @@ import { RealEstateList } from '../../screens/RealEstateList';
 import { PartsServicesList } from '../../screens/PartsServicesList';
 import { FeaturedVehiclesScreen } from '../../screens/FeaturedVehiclesScreen';
 import { FairList } from '../../screens/FairList';
+import { PrintPreview } from '../../screens/PrintPreview';
 import { PublicProfile } from '../../screens/PublicProfile';
 import { AdminPanel } from '../../screens/AdminPanel';
 import { AdminUsers } from '../../screens/AdminUsers';
@@ -253,9 +254,18 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         onViewProfile={handleViewProfile}
                         onReport={handleAddReport}
                         onBlockUser={actions.handleBlockUser}
+                        onPrint={() => navigateTo(Screen.PRINT_PREVIEW)}
                         user={user}
                     />
                 </ErrorBoundary>
+            );
+        case Screen.PRINT_PREVIEW:
+            if (!selectedAd) return <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} />;
+            return (
+                <PrintPreview
+                    ad={selectedAd}
+                    onBack={handleBackFromDetails}
+                />
             );
         case Screen.REAL_ESTATE_DETAILS:
             return (
@@ -268,6 +278,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                             onViewProfile={handleViewProfile}
                             onReport={handleAddReport}
                             onBlockUser={actions.handleBlockUser}
+                            onPrint={() => navigateTo(Screen.PRINT_PREVIEW)}
                             user={user}
                         />
                     ) : (
@@ -286,6 +297,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                             onViewProfile={handleViewProfile}
                             onReport={handleAddReport}
                             onBlockUser={actions.handleBlockUser}
+                            onPrint={() => navigateTo(Screen.PRINT_PREVIEW)}
                             user={user}
                         />
                     ) : (

@@ -27,7 +27,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ title, onBack, rightElement }) => {
   return (
-    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
+    <div className="sticky top-0 z-[1000] bg-white/95 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
       <div className="flex items-center gap-3">
         {onBack && (
           <button onClick={onBack} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-primary">
@@ -67,7 +67,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate,
 
   return (
     <div 
-      className="fixed left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-[150] max-w-md mx-auto shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-[20px] transition-all duration-300"
+      className="fixed left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-[1100] max-w-md mx-auto shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-[20px] transition-all duration-300"
       style={{ bottom: isBannerVisible ? '50px' : '0px' }}
     >
       <button
@@ -154,7 +154,7 @@ export const PriceTag: React.FC<{ value: number }> = ({ value }) => {
 // --- TOAST COMPONENT ---
 export interface ToastProps {
   message: string;
-  type: 'success' | 'info' | 'error';
+  type: 'success' | 'info' | 'error' | 'warning';
   onClose: () => void;
 }
 
@@ -169,18 +169,20 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   const styles = {
     success: 'bg-green-600 text-white shadow-green-200',
     info: 'bg-gray-800 text-white shadow-gray-200',
-    error: 'bg-red-500 text-white shadow-red-200'
+    error: 'bg-red-500 text-white shadow-red-200',
+    warning: 'bg-amber-500 text-white shadow-amber-200'
   };
 
   const icon = {
     success: <CheckCircle className="w-5 h-5" />,
     info: <Info className="w-5 h-5" />,
-    error: <Info className="w-5 h-5" />
+    error: <Info className="w-5 h-5" />,
+    warning: <Info className="w-5 h-5" />
   };
 
   const toastContent = (
-    <div className={`fixed top-[70px] left-4 right-4 z-[9999] flex items-center justify-center pointer-events-none animate-in slide-in-from-top duration-300`}>
-      <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl ${styles[type]} max-w-sm w-full`}>
+    <div className={`fixed bottom-24 left-4 right-4 z-[9999] flex items-center justify-center pointer-events-none animate-in slide-in-from-bottom duration-300`}>
+      <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl ${styles[type]} max-w-sm w-full pointer-events-auto`}>
         {icon[type]}
         <span className="font-bold text-sm">{message}</span>
       </div>

@@ -15,12 +15,12 @@ interface MyAdsProps {
   onBoostAd?: (ad: AdItem) => void;
   onAdClick?: (ad: AdItem) => void;
   onShowToast?: (toast: { message: string, type: 'success' | 'info' | 'error' | 'warning' }) => void;
-  initialTab?: 'ativos' | 'inativos' | 'pendentes';
+  initialTab?: 'ativos' | 'pendentes';
 }
 
 export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onCreateNew, onBoostAd, onAdClick, onShowToast, initialTab }) => {
 
-  const [activeTab, setActiveTab] = useState<'ativos' | 'inativos' | 'pendentes'>(initialTab || 'ativos');
+  const [activeTab, setActiveTab] = useState<'ativos' | 'pendentes'>(initialTab || 'ativos');
 
   React.useEffect(() => {
     if (initialTab) {
@@ -37,7 +37,6 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
   const filteredAds = ads.filter(ad => {
     if (activeTab === 'ativos') return ad.status === AdStatus.ACTIVE;
     if (activeTab === 'pendentes') return ad.status === AdStatus.PENDING || ad.status === AdStatus.REJECTED;
-    if (activeTab === 'inativos') return ad.status === AdStatus.INACTIVE || ad.status === AdStatus.SOLD;
     return false;
   });
 
@@ -121,7 +120,7 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
     <div className="min-h-screen bg-gray-50 pb-24" onClick={() => setActiveMenuId(null)}>
       <Header title="Meus Anúncios" onBack={onBack} />
 
-      <div className="flex border-b border-gray-200 bg-white">
+      <div className="sticky top-[63px] z-[900] bg-white flex border-b border-gray-200">
         <button
           onClick={() => setActiveTab('ativos')}
           className={`flex-1 py-4 text-xs font-bold uppercase tracking-wide border-b-2 transition-colors ${activeTab === 'ativos' ? 'border-primary text-primary' : 'border-transparent text-gray-400'
@@ -136,13 +135,6 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
         >
           Pendentes
           {pendingCount > 0 && <span className="bg-orange-500 text-white text-[9px] px-1.5 rounded-full">{pendingCount}</span>}
-        </button>
-        <button
-          onClick={() => setActiveTab('inativos')}
-          className={`flex-1 py-4 text-xs font-bold uppercase tracking-wide border-b-2 transition-colors ${activeTab === 'inativos' ? 'border-gray-500 text-gray-600' : 'border-transparent text-gray-400'
-            }`}
-        >
-          Histórico
         </button>
       </div>
 
