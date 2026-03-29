@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppRouter } from './components/AppRouter';
 import { useAppState } from './hooks/useAppState';
 import { useAppActions } from './hooks/useAppActions';
@@ -58,8 +58,33 @@ const App: React.FC = () => {
     };
   }, [state.isAppReady, state.sessionReady, actions]);
 
-  if (!state.sessionReady) {
-    return <AppLoadingOverlay isActive message="Iniciando sessão..." />;
+  // --- CONTROLE DE LOADING GLOBAL EXPLÍCITO (FULLSCREEN & EXCLUSIVO) ---
+  const isAppLoading = !state.sessionReady || (!!state.user && !state.profileLoaded) || state.authLoading;
+  const [showExclusiveLoading, setShowExclusiveLoading] = useState(isAppLoading);
+
+  useEffect(() => {
+    if (isAppLoading) {
+      setShowExclusiveLoading(true);
+    } else {
+      // Debounce de 300ms para evitar flicker
+      const timer = setTimeout(() => setShowExclusiveLoading(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isAppLoading]);
+
+  // Se estiver em loading, NADA da árvore principal (AppRouter, BottomNav) é construído.
+  if (showExclusiveLoading) {
+    const loadingMsg = state.authLoading 
+      ? "Finalizando sessão..." 
+      : (!state.profileLoaded && state.user 
+          ? "Sincronizando perfil..." 
+          : "Iniciando sessão...");
+
+    return (
+      <div id="app-main-container" className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl relative border-x border-gray-100 flex items-center justify-center">
+        <AppLoadingOverlay isActive={true} message={loadingMsg} />
+      </div>
+    );
   }
 
   return (
