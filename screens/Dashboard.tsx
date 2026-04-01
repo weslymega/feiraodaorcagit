@@ -26,6 +26,8 @@ interface DashboardProps {
   serviceAds?: AdItem[]; // Lista unificada de serviços
   dashboardPromotions?: DashboardPromotion[]; // Nova prop
   hasNotifications?: boolean;
+  setFilterContext?: (context: any) => void;
+  favorites?: AdItem[];
 }
 
 const isPromotionVisible = (promo: DashboardPromotion): boolean => {
@@ -162,8 +164,11 @@ const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, 
 import { PersonalizedFeedSection } from '../components/HomeSections/PersonalizedFeedSection';
 import { AutomotiveServicesSection } from '../components/HomeSections/AutomotiveServicesSection';
 import { TrendingRealEstateSection } from '../components/HomeSections/TrendingRealEstateSection';
+import { MarketPriceSection } from '../components/HomeSections/MarketPriceSection';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
+import { marketPriceService } from '../services/marketPriceService';
+import { MarketPriceItem } from '../types';
 
 // ... (HorizontalAdCard and CategoryItem definitions remain unchanged) ...
 
@@ -181,9 +186,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenTrending,
   serviceAds,
   dashboardPromotions = [],
-  hasNotifications
+  hasNotifications,
+  setFilterContext,
+  favorites = []
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [marketPrices, setMarketPrices] = useState<MarketPriceItem[]>([]);
+  const [loadingPrices, setLoadingPrices] = useState(true);
+
+  useEffect(() => {
+    const loadPrices = async () => {
+      setLoadingPrices(true);
+      // Passar favoritos reais para personalização inteligente (Etapa 5)
+      const prices = await marketPriceService.getMarketPrices(favorites);
+      setMarketPrices(prices);
+      setLoadingPrices(false);
+    };
+    loadPrices();
+  }, []);
+
+  const handleMarketPriceClick = (item: MarketPriceItem) => {
+    if (setFilterContext) {
+      setFilterContext({
+        mode: 'category',
+        category: 'veiculos',
+        brand: item.brand,
+        model: item.model,
+        searchTerm: `${item.brand} ${item.model}`
+      });
+    }
+    onNavigate(Screen.VEHICLES_LIST);
+  };
 
 
   // --- LÓGICA DE BUSCA GLOBAL ---
@@ -477,6 +510,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
         onAdClick={handleAdClickWrapper}
         onNavigate={onNavigate}
         onViewAll={onOpenTrending}
+      />
+
+      {/* 8. Market Price Section (FIPE) */}
+      <MarketPriceSection 
+        items={marketPrices} 
+        isLoading={loadingPrices} 
+        onItemClick={handleMarketPriceClick} 
       />
 
       {/* Footer */}

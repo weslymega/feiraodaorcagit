@@ -122,13 +122,39 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   // Handle Filter Context
   useEffect(() => {
-    if (filterContext?.mode === 'recent') {
+    if (!filterContext) return;
+
+    if (filterContext.mode === 'recent') {
       setIsRecentFilterActive(true);
-      // Reset other filters just in case
       setSelectedGroup('todos');
       if (onClearFilter) onClearFilter();
+    } else if (filterContext.mode === 'category' && filterContext.category === 'veiculos') {
+      // Aplicar filtros inteligentes vindos do Dashboard (ex: FIPE Hub)
+      if (filterContext.searchTerm) {
+        setSearchTerm(filterContext.searchTerm);
+      }
+      if (filterContext.brand) {
+        setFilters(prev => ({ ...prev, brand: filterContext.brand || '' }));
+      }
+      if (filterContext.model) {
+        setFilters(prev => ({ ...prev, baseModel: filterContext.model || '' }));
+      }
+      
+      // Se houver uma marca, precisamos carregar os modelos para o dropdown para manter a consistência visual
+      const syncFipeModels = async () => {
+        if (filterContext.brand && fipeBrands.length > 0) {
+          const selectedBrandObj = fipeBrands.find(b => b.nome === filterContext.brand);
+          if (selectedBrandObj) {
+            setIsLoadingModels(true);
+            const models = await fipeApi.getModels(getFipeType(), selectedBrandObj.codigo);
+            setFipeModels(models);
+            setIsLoadingModels(false);
+          }
+        }
+      };
+      syncFipeModels();
     }
-  }, [filterContext]);
+  }, [filterContext, fipeBrands]);
 
 
   // Handle Brand Change & Load Models
@@ -171,6 +197,9 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   const handlePriceChange = (value: string, field: 'minPrice' | 'maxPrice') => {
     const cleanValue = value.replace(/\D/g, '');
+    // Limite de 12 dígitos para o valor (Ex: 9.999.999.999,99)
+    if (cleanValue.length > 12) return;
+
     if (!cleanValue) {
       setFilters(prev => ({ ...prev, [field]: '' }));
       return;
@@ -186,6 +215,9 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   const handleMileageChange = (value: string) => {
     const cleanValue = value.replace(/\D/g, '');
+    // Limite de 8 dígitos para KM (Ex: 99.999.999)
+    if (cleanValue.length > 8) return;
+
     if (!cleanValue) {
       setFilters(prev => ({ ...prev, maxMileage: '' }));
       return;
@@ -605,7 +637,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
       {/* FILTER MODAL (Bottom Sheet) - Reduced Content */}
       {isFilterOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-end justify-center">
+        <div className="fixed inset-0 z-[2000] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 
           <div 
@@ -641,6 +673,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                       type="text" inputMode="numeric" placeholder="0,00"
                       value={filters.minPrice}
                       onChange={(e) => handlePriceChange(e.target.value, 'minPrice')}
+                      maxLength={16}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium"
                     />
                   </div>
@@ -650,6 +683,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                       type="text" inputMode="numeric" placeholder="Sem limite"
                       value={filters.maxPrice}
                       onChange={(e) => handlePriceChange(e.target.value, 'maxPrice')}
+                      maxLength={16}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium"
                     />
                   </div>
@@ -697,6 +731,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                   type="text" inputMode="numeric" placeholder="Ex: 80.000"
                   value={filters.maxMileage}
                   onChange={(e) => handleMileageChange(e.target.value)}
+                  maxLength={11}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium"
                 />
               </section>

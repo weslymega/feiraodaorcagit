@@ -85,6 +85,9 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
   const handlePriceChange = (value: string, field: 'minPrice' | 'maxPrice') => {
     const cleanValue = value.replace(/\D/g, '');
+    // Limite de 12 dígitos para o valor (Ex: 9.999.999.999,99)
+    if (cleanValue.length > 12) return;
+
     if (!cleanValue) {
       setFilters(prev => ({ ...prev, [field]: '' }));
       return;
@@ -382,7 +385,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
       {/* --- FILTER MODAL --- */}
       {isFilterOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-end justify-center">
+        <div className="fixed inset-0 z-[2000] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 
           <div 
@@ -455,6 +458,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
                       type="text" inputMode="numeric" placeholder="0,00"
                       value={filters.minPrice}
                       onChange={(e) => handlePriceChange(e.target.value, 'minPrice')}
+                      maxLength={16}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-3 focus:outline-none focus:border-purple-500 font-medium"
                     />
                   </div>
@@ -464,6 +468,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
                       type="text" inputMode="numeric" placeholder="Sem limite"
                       value={filters.maxPrice}
                       onChange={(e) => handlePriceChange(e.target.value, 'maxPrice')}
+                      maxLength={16}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-3 focus:outline-none focus:border-purple-500 font-medium"
                     />
                   </div>

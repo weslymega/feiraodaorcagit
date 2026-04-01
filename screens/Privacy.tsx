@@ -64,13 +64,15 @@ export const Privacy: React.FC<PrivacyProps> = ({ user, onBack, onUpdateSettings
             readOnly
           />
 
+{/* 
           <ToggleRow
             icon={<div className="w-5 h-5 flex items-center justify-center"><div className="w-3 h-3 bg-green-500 rounded-full"></div></div>}
             label="Mostrar Status Online"
             description="Exibir quando você estiver ativo no aplicativo."
             checked={!!user.showOnlineStatus}
             onChange={() => onUpdateSettings({ showOnlineStatus: !user.showOnlineStatus })}
-          />
+          /> 
+          */}
         </div>
 
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">

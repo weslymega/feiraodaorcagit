@@ -506,7 +506,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       {/* --- FILTER MODAL (FIXED PROPORTIONS) --- */}
       {
         isFilterOpen && (
-          <div className="fixed inset-0 z-[1000] flex items-end justify-center">
+          <div className="fixed inset-0 z-[2000] flex items-end justify-center">
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 
@@ -582,9 +582,12 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                           type="text" inputMode="numeric"
                           value={filters.minPrice}
                           onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            if (val.length > 12) return;
                             setFilters(p => ({ ...p, minPrice: formatNumber(e.target.value) }));
                             setHasUserInteracted(true);
                           }}
+                          maxLength={16}
                           className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-9 pr-3 font-bold text-gray-800 focus:border-primary outline-none"
                           placeholder="0"
                         />
@@ -598,9 +601,12 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                           type="text" inputMode="numeric"
                           value={filters.maxPrice}
                           onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            if (val.length > 12) return;
                             setFilters(p => ({ ...p, maxPrice: formatNumber(e.target.value) }));
                             setHasUserInteracted(true);
                           }}
+                          maxLength={16}
                           className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-9 pr-3 font-bold text-gray-800 focus:border-primary outline-none"
                           placeholder="Sem limite"
                         />
@@ -649,9 +655,12 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                           type="text" inputMode="numeric"
                           value={filters.minArea}
                           onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            if (val.length > 8) return;
                             setFilters(p => ({ ...p, minArea: formatNumber(e.target.value) }));
                             setHasUserInteracted(true);
                           }}
+                          maxLength={10}
                           className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-9 pr-3 font-bold text-gray-800 focus:border-primary outline-none"
                           placeholder="0"
                         />
@@ -665,9 +674,12 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                           type="text" inputMode="numeric"
                           value={filters.maxArea}
                           onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            if (val.length > 8) return;
                             setFilters(p => ({ ...p, maxArea: formatNumber(e.target.value) }));
                             setHasUserInteracted(true);
                           }}
+                          maxLength={10}
                           className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-9 pr-3 font-bold text-gray-800 focus:border-primary outline-none"
                           placeholder="Sem limite"
                         />

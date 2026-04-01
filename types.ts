@@ -250,6 +250,9 @@ export interface FilterContext {
   category?: string;
   partTypes?: string[];
   sort?: 'recent' | 'price_asc' | 'price_desc' | 'trending';
+  searchTerm?: string;
+  brand?: string;
+  model?: string;
 }
 
 export interface DashboardPromotion {
@@ -295,4 +298,14 @@ export interface BlockedUser {
   id: string;
   name: string;
   avatarUrl: string;
+}
+
+export interface MarketPriceItem {
+  id: string;
+  brand: string;
+  model: string;
+  year: string;
+  price: string;
+  brandId?: string;
+  modelId?: string;
 }

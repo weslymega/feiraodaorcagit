@@ -145,6 +145,8 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                     onOpenTrending={openTrendingRealEstate}
                     dashboardPromotions={dashboardPromotions}
                     hasNotifications={hasUnreadNotifications}
+                    setFilterContext={state.setFilterContext}
+                    favorites={favorites}
                 />
             );
 
