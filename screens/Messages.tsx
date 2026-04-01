@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { MoreVertical, Search } from 'lucide-react';
 import { MessageItem } from '../types';
 
 interface MessagesProps {
@@ -15,10 +14,6 @@ export const Messages: React.FC<MessagesProps> = ({ messages, onBack, onSelectCh
       <div className="sticky top-0 z-[100] bg-white px-4 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-gray-900 ml-2">Mensagens</h1>
-        </div>
-        <div className="flex gap-2">
-          <button className="p-2 hover:bg-gray-100 rounded-full"><Search className="w-6 h-6 text-gray-800" /></button>
-          <button className="p-2 hover:bg-gray-100 rounded-full"><MoreVertical className="w-6 h-6 text-gray-600" /></button>
         </div>
       </div>
 

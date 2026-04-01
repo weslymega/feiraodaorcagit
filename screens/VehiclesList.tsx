@@ -104,6 +104,15 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     });
   }, []);
 
+  // Limpeza de filtros ao sair da tela (Equivalente ao useFocusEffect)
+  useEffect(() => {
+    return () => {
+      if (onClearFilter) {
+        onClearFilter();
+      }
+    };
+  }, [onClearFilter]);
+
   // Load Brands when vehicle type (selectedGroup) changes
   useEffect(() => {
     const loadBrands = async () => {
@@ -297,12 +306,34 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
         if (!ad.vehicleType?.includes(selectedGroup)) return false;
       }
 
-      // Busca Texto
+      // Busca Texto Inteligente e Flexível (Tolerante)
       if (searchTerm) {
-        const lowerSearch = searchTerm.toLowerCase();
-        const matchesTitle = ad.title.toLowerCase().includes(lowerSearch);
-        const matchesLocation = ad.location.toLowerCase().includes(lowerSearch);
-        if (!matchesTitle && !matchesLocation) return false;
+        const terms = searchTerm
+          .toLowerCase()
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+
+        const text = [
+          ad.brand,
+          ad.model,
+          ad.title,
+          ad.description,
+          ad.location,
+          ad.vehicleType,
+          ad.category
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        const adTitleLower = ad.title.toLowerCase();
+
+        // 1. Busca estrita: o anúncio tem todos os termos da busca em algum lugar?
+        const matchesAll = terms.every(term => text.includes(term));
+        
+        // 2. Busca amigável (Fallback): o título do anúncio possui pelo menos UM dos termos principais?
+        // Garante que pesquisar "Toyota Corolla" encontre um anúncio intitulado apenas "Corolla" ou vice-versa.
+        const matchesAnyTitle = terms.some(term => term.length >= 3 && adTitleLower.includes(term));
+
+        if (!matchesAll && !matchesAnyTitle) return false;
       }
 
       // Filtros Avançados
@@ -402,8 +433,11 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       minPrice: '', maxPrice: '', minYear: '', maxYear: '',
       maxMileage: '', transmission: '', fuel: '', color: ''
     });
+    setSearchTerm('');
+    setIsRecentFilterActive(false);
     setHasUserInteracted(false);
     setFipeModels([]);
+    if (onClearFilter) onClearFilter();
   };
 
   return (
@@ -623,14 +657,21 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
             );
           })
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <Car className="w-12 h-12 mb-2 text-gray-300" />
-            <p>Nenhum veículo encontrado.</p>
-            {activeFiltersCount > 0 && (
-              <button onClick={clearFilters} className="mt-4 text-primary font-bold text-sm underline">
-                Limpar Filtros
-              </button>
-            )}
+          <div className="flex flex-col items-center justify-center py-24 text-center px-6 animate-in fade-in zoom-in duration-300">
+            <div className="bg-gray-100 p-4 rounded-full mb-6 text-gray-400">
+              <Car className="w-12 h-12" />
+            </div>
+            <h3 className="text-xl font-black text-gray-800 mb-2">Nenhum resultado encontrado</h3>
+            <p className="text-gray-500 font-medium mb-8 max-w-[280px]">
+              Não encontramos veículos com a busca ou filtros atuais.
+            </p>
+            
+            <button 
+              onClick={clearFilters} 
+              className="bg-primary hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-2xl transition-all shadow-md active:scale-95 text-sm"
+            >
+              Ver todos os veículos
+            </button>
           </div>
         )}
       </div>

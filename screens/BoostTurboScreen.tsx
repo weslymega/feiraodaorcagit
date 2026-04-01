@@ -555,8 +555,10 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                     <Rocket className="w-12 h-12 text-green-500" />
                                 </div>
                                 <h2 className="text-3xl font-black text-gray-900 mb-3">Turbo ativado!</h2>
-                                <p className="text-gray-600 mb-8 max-w-[280px] font-medium">
+                                <p className="text-gray-600 mb-8 max-w-[280px] font-medium text-center">
                                     Seu anúncio agora está em destaque e será visto por mais compradores.
+                                    <br /><br />
+                                    <span className="text-blue-600 font-bold">Em breve estará visível!</span>
                                 </p>
                             </div>
                         ) : isFinalizing ? (
