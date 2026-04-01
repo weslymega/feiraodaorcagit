@@ -165,6 +165,8 @@ import { PersonalizedFeedSection } from '../components/HomeSections/Personalized
 import { AutomotiveServicesSection } from '../components/HomeSections/AutomotiveServicesSection';
 import { TrendingRealEstateSection } from '../components/HomeSections/TrendingRealEstateSection';
 import { MarketPriceSection } from '../components/HomeSections/MarketPriceSection';
+import { HowBoostWorksSection } from '../components/HomeSections/HowBoostWorksSection';
+import { HowAppWorksSection } from '../components/HomeSections/HowAppWorksSection';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { marketPriceService } from '../services/marketPriceService';
@@ -351,16 +353,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             const activePromos = dashboardPromotions
               .filter(isPromotionVisible)
               .sort((a, b) => a.order - b.order);
-            
+
             return activePromos.length > 0
               ? activePromos.map(p => ({
-                  id: p.id,
-                  title: p.title || '',
-                  subtitle: p.subtitle,
-                  image: p.image,
-                  ctaText: 'VER MAIS',
-                  link: p.link
-                }))
+                id: p.id,
+                title: p.title || '',
+                subtitle: p.subtitle,
+                image: p.image,
+                ctaText: 'VER MAIS',
+                link: p.link
+              }))
               : PROMO_BANNERS.map(p => ({ ...p, ctaText: p.ctaText || 'VER MAIS' }));
           })()}
         />
@@ -513,11 +515,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
       />
 
       {/* 8. Market Price Section (FIPE) */}
-      <MarketPriceSection 
-        items={marketPrices} 
-        isLoading={loadingPrices} 
-        onItemClick={handleMarketPriceClick} 
+      <MarketPriceSection
+        items={marketPrices}
+        isLoading={loadingPrices}
+        onItemClick={handleMarketPriceClick}
       />
+
+      {/* 9. Educational Boost Section */}
+      <HowBoostWorksSection />
+
+      {/* 10. Educational App Flow Section */}
+      <HowAppWorksSection />
 
       {/* Footer */}
       <Footer onNavigate={onNavigate} />

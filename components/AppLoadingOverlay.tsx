@@ -26,16 +26,15 @@ export const AppLoadingOverlay: React.FC<AppLoadingOverlayProps> = ({ isActive, 
                 {/* 3. Spinner Maestro - Concentric Integrated Design */}
                 <div className="w-24 h-24 border-[3px] border-white/5 border-t-primary rounded-full animate-spin relative z-10" />
 
-                {/* 4. Ícone Centralizado (OFFICIAL CORRECT ASSET) */}
+                {/* 4. Ícone Centralizado (OFFICIAL CORRECT ASSET) COM CONTRASTE */}
                 <div className="absolute inset-0 flex items-center justify-center z-20">
-                    <img
-                        src={APP_LOGOS.ICON}
-                        alt="Orca Logo"
-                        className="w-12 h-12 object-contain"
-                        style={{
-                            filter: 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.2))'
-                        }}
-                    />
+                    <div className="bg-white rounded-[24px] p-2 shadow-[0_0_20px_rgba(255,255,255,0.4)] flex items-center justify-center">
+                        <img
+                            src={APP_LOGOS.ICON}
+                            alt="Orca Logo"
+                            className="w-10 h-10 object-contain"
+                        />
+                    </div>
                 </div>
             </div>
 
