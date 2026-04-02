@@ -26,64 +26,73 @@ export const marketPriceService = {
       // For now, to keep it fast and reliable, we'll fetch details for the hardcoded popular items
       // This ensures "FIPE REAL" data without complex discovery on every dashboard load.
       
-      const results: MarketPriceItem[] = [];
+      const results: any[] = [];
       const itemsToFetch = [...POPULAR_MODELS];
 
-      // Fetch in parallel for speed
-      const details = await Promise.all(
-        itemsToFetch.map(async (item) => {
-          try {
-            const detail = await fipeApi.getDetail('carros', item.brandId, item.modelId, item.yearId);
-            if (detail) {
-              return {
-                id: `fipe-${detail.CodigoFipe}-${item.year}`,
-                brand: detail.Marca,
-                model: detail.Modelo,
-                year: item.year,
-                price: detail.Valor,
-                brandId: item.brandId,
-                modelId: item.modelId
-              } as MarketPriceItem;
-            }
-          } catch (e) {
-            console.error(`Error fetching FIPE for ${item.model}:`, e);
+      // Fetch sequencial para evitar bloqueio por limitação de taxa (anti-flood)
+      for (const item of itemsToFetch) {
+        try {
+          const detail = await fipeApi.getDetail('carros', item.brandId, item.modelId, item.yearId);
+          if (detail) {
+            results.push({
+              id: `fipe-${detail.CodigoFipe}-${item.year}`,
+              brand: detail.Marca,
+              model: detail.Modelo,
+              year: item.year,
+              price: detail.Valor,
+              brandId: item.brandId,
+              modelId: item.modelId
+            });
+          } else {
+            // Em caso de retorno nulo (falha blindada da API FIPE)
+            results.push({
+              id: `err-mock-${item.modelId}-${item.year}`,
+              brand: item.brand,
+              model: item.model,
+              year: item.year,
+              price: '—',
+              label: 'Preço indisponível',
+              fallback: true,
+              brandId: item.brandId,
+              modelId: item.modelId
+            });
           }
-          return null;
-        })
-      );
+        } catch (e) {
+          // Fallback de segurança extremo
+          results.push({
+            id: `err-mock-${item.modelId}-${item.year}`,
+            brand: item.brand,
+            model: item.model,
+            year: item.year,
+            price: '—',
+            label: 'Preço indisponível',
+            fallback: true,
+            brandId: item.brandId,
+            modelId: item.modelId
+          });
+        }
 
-      const filteredDetails = details.filter((d): d is MarketPriceItem => d !== null);
-
-      // --- FALLBACK MOCK DATA (Se a API FIPE estiver fora do ar) ---
-      if (filteredDetails.length === 0) {
-        console.warn("⚠️ FIPE API down or returning empty. Using smart fallback mocks.");
-        return POPULAR_MODELS.map(m => ({
-          id: `mock-${m.modelId}-${m.year}`,
-          brand: m.brand,
-          model: m.model,
-          year: m.year,
-          price: m.model === 'Corolla' ? 'R$ 115.400' : 
-                 m.model === 'Civic' ? 'R$ 72.800' :
-                 m.model === 'Gol' ? 'R$ 42.500' :
-                 m.model === 'Onix' ? 'R$ 58.900' : 'R$ 51.200', // Estimativas reais
-          brandId: m.brandId,
-          modelId: m.modelId
-        }));
+        // Delay inteligente de ~200ms entre as requisições (rate limiting)
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
-      return filteredDetails;
+      return results;
     } catch (error) {
-      console.error("MarketPriceService Error:", error);
-      // Fallback radical em caso de erro total no catch
+      if (process.env.NODE_ENV === 'development') {
+        console.warn("[FIPE] Falha inesperada no MarketPriceService", error);
+      }
+      // Fallback radical em caso de erro total na orquestração
       return POPULAR_MODELS.map(m => ({
         id: `err-mock-${m.modelId}`,
         brand: m.brand,
         model: m.model,
         year: m.year,
-        price: "Sob consulta",
+        price: '—',
+        label: 'Preço indisponível',
+        fallback: true,
         brandId: m.brandId,
         modelId: m.modelId
-      }));
+      } as any));
     }
   }
 };

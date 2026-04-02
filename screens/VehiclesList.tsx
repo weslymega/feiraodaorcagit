@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Filter, Search, Heart, Car, ChevronRight, X, Check, Gauge, Calendar, DollarSign, Fuel, Palette, Zap, Tag, Loader2, Edit3, ListFilter, Trophy, Star } from 'lucide-react';
 import { Header, PriceTag, HighlightRibbon } from '../components/Shared';
 import { AdItem, FilterContext, AdStatus, VehiclesPromotion, Screen } from '../types';
-import { fipeApi, FipeItem, FipeVehicleType } from '../services/fipeApi';
+import { fipeApi, Brand, Model, FipeVehicleType } from '../services/fipeApi';
 import { VEHICLES_PROMO_BANNERS } from '../constants';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
@@ -61,15 +61,25 @@ const YEARS = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => 2026 - i);
 export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate, user, currentScreen }) => {
   const [selectedGroup, setSelectedGroup] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
   const [isRecentFilterActive, setIsRecentFilterActive] = useState(false);
+
+  // Efeito Debounce para evitar recalculo a cada letra digitada
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
 
   // Filter Modal State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
   // FIPE API Data States
-  const [fipeBrands, setFipeBrands] = useState<FipeItem[]>([]);
-  const [fipeModels, setFipeModels] = useState<FipeItem[]>([]);
+  const [fipeBrands, setFipeBrands] = useState<Brand[]>([]);
+  const [fipeModels, setFipeModels] = useState<Model[]>([]);
   const [isLoadingBrands, setIsLoadingBrands] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
 
@@ -254,9 +264,11 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
 
   const filteredAds = useMemo(() => {
+    const activeSearchContent = debouncedSearch || searchTerm;
+
     // Verificamos se há algum filtro específico ativo (exceto "todos" no grupo)
     const hasSpecificFilters =
-      searchTerm ||
+      activeSearchContent ||
       filters.brand ||
       filters.baseModel ||
       filters.version ||
@@ -307,8 +319,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       }
 
       // Busca Texto Inteligente e Flexível (Tolerante)
-      if (searchTerm) {
-        const terms = searchTerm
+      if (activeSearchContent) {
+        const terms = activeSearchContent
           .toLowerCase()
           .trim()
           .split(/\s+/)
@@ -385,24 +397,24 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       return true;
     });
 
-    // 2. Ordenação (Destaques Primeiro)
-    return filtered.sort((a, b) => {
+    // 2. Ordenação (Destaques Primeiro) - com Spread p/ Garantir array limpa referenciada p/ evitar mutação silenciosa
+    return [...filtered].sort((a, b) => {
       const weightA = getBoostPriority(a.boostPlan);
       const weightB = getBoostPriority(b.boostPlan);
       return weightB - weightA;
     });
 
-  }, [ads, selectedGroup, searchTerm, filters]);
+  }, [ads, selectedGroup, debouncedSearch, searchTerm, filters, isRecentFilterActive]);
 
   const feedItems = filteredAds;
 
 
-  const isPromotionVisible = (promo: VehiclesPromotion) => {
+  const isPromotionVisible = React.useCallback((promo: VehiclesPromotion) => {
     const today = new Date();
     return promo.active &&
       today >= new Date(promo.startDate) &&
       today <= new Date(promo.endDate);
-  };
+  }, []);
 
   const carouselBanners = useMemo(() => {
     const activePromos = promotions
@@ -419,26 +431,28 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       }));
 
     return activePromos.length > 0 ? activePromos : VEHICLES_PROMO_BANNERS;
-  }, [promotions]);
+  }, [promotions, isPromotionVisible]);
 
   // Filters that are counted for the badge (excluding Brand/Model since they are visible)
-  const activeFiltersCount = [
+  const activeFiltersCount = useMemo(() => [
     filters.minPrice, filters.maxPrice, filters.minYear, filters.maxYear,
     filters.maxMileage, filters.transmission, filters.fuel, filters.color
-  ].filter(Boolean).length;
+  ].filter(Boolean).length, [filters]);
 
-  const clearFilters = () => {
+  const clearFilters = React.useCallback(() => {
     setFilters({
       brand: '', baseModel: '', version: '',
       minPrice: '', maxPrice: '', minYear: '', maxYear: '',
       maxMileage: '', transmission: '', fuel: '', color: ''
     });
     setSearchTerm('');
+    // Reseta debounce p/ limpar tela
+    setDebouncedSearch('');
     setIsRecentFilterActive(false);
     setHasUserInteracted(false);
     setFipeModels([]);
     if (onClearFilter) onClearFilter();
-  };
+  }, [onClearFilter]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-[110px]">

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { AdItem, AdStatus, User } from '../types';
 import { imageService } from '../services/imageService';
-import { fipeApi, FipeItem, FipeDetail, FipeVehicleType } from '../services/fipeApi';
+import { fipeApi, Brand, Model, Year, FipeDetail, FipeVehicleType } from '../services/fipeApi';
 import { api } from '../services/api';
 import { APP_URL } from '../constants';
 
@@ -131,9 +131,9 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   }, [user.location, editingAd?.location]);
 
   const [addressDetails, setAddressDetails] = useState(initialAddressDetails);
-  const [fipeBrands, setFipeBrands] = useState<FipeItem[]>([]);
-  const [fipeModels, setFipeModels] = useState<FipeItem[]>([]);
-  const [fipeYears, setFipeYears] = useState<FipeItem[]>([]);
+  const [fipeBrands, setFipeBrands] = useState<Brand[]>([]);
+  const [fipeModels, setFipeModels] = useState<Model[]>([]);
+  const [fipeYears, setFipeYears] = useState<Year[]>([]);
   const [selectedBrandId, setSelectedBrandId] = useState('');
   const [selectedBaseModel, setSelectedBaseModel] = useState('');
   const [selectedModelId, setSelectedModelId] = useState('');
@@ -142,6 +142,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isLoadingYears, setIsLoadingYears] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [isManualEntry, setIsManualEntry] = useState(false);
 
   const [createdAd, setCreatedAd] = useState<AdItem | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -206,6 +207,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     const brands = await fipeApi.getBrands(getFipeType());
     setFipeBrands(brands);
     setIsLoadingBrands(false);
+    if (brands.length === 0) setIsManualEntry(true);
   };
 
   const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -223,6 +225,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       const models = await fipeApi.getModels(getFipeType(), brandId);
       setFipeModels(models);
       setIsLoadingModels(false);
+      if (models.length === 0) setIsManualEntry(true);
     }
   };
 
@@ -247,6 +250,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       const years = await fipeApi.getYears(getFipeType(), selectedBrandId, modelId);
       setFipeYears(years);
       setIsLoadingYears(false);
+      if (years.length === 0) setIsManualEntry(true);
     }
   };
 
@@ -354,7 +358,8 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       boostPlan: 'gratis',
       isFeatured: false,
       boostConfig: null,
-      contactPhone: formData.phone
+      contactPhone: formData.phone,
+      isManualEntry: isManualEntry || false
     };
 
     if (editingAd) {
@@ -706,16 +711,63 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   );
 
   const renderSpecs = () => {
-    const isFipeSelected = (!!selectedYearId || !!editingAd);
+    const isManualComplete = !!formData.brandName && !!formData.modelName && !!formData.year && formData.year.length === 4;
     const areDetailsSelected = !!formData.color && !!formData.gearbox;
+    const isFipeComplete = formData.fipePrice > 0 || editingAd;
+
+    // Se estiver no modo manual, exige todos os campos manuais + cor/câmbio.
+    // Se estiver no modo FIPE, e a pessoa *completou* a FIPE, exige cor/câmbio.
+    // Se a pessoa não completou a FIPE (quer pular), não bloqueia (UX first).
+    const isFipeNextDisabled = isFipeComplete ? !areDetailsSelected : false;
+
+    if (isManualEntry) {
+      return (
+        <StepContainer title="Dados (Preenchimento Manual)" progress={0.5} onNext={nextStep} nextDisabled={!isManualComplete || !areDetailsSelected} onBack={goBack}>
+          <div className="space-y-6 animate-in fade-in">
+            <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-start gap-3 mb-2">
+              <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-orange-800 font-medium">Tabela FIPE indisponível no momento. Você pode preencher manualmente e continuar.</p>
+            </div>
+            
+            <div><label className="block text-sm font-bold text-gray-700 mb-2">Marca do Veículo *</label><input type="text" value={formData.brandName} onChange={(e) => setFormData(p => ({ ...p, brandName: e.target.value }))} placeholder="Ex: Chevrolet" className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all" /></div>
+            
+            <div><label className="block text-sm font-bold text-gray-700 mb-2">Modelo *</label><input type="text" value={formData.modelName} onChange={(e) => setFormData(p => ({ ...p, modelName: e.target.value }))} placeholder="Ex: Onix 1.0 Flex" className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all" /></div>
+            
+            <div><label className="block text-sm font-bold text-gray-700 mb-2">Ano *</label><input type="text" inputMode="numeric" maxLength={4} value={formData.year} onChange={(e) => setFormData(p => ({ ...p, year: e.target.value.replace(/\D/g, '') }))} placeholder="Ex: 2020" className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all" /></div>
+            
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+              <div className="col-span-1"><label className="block text-sm font-bold text-gray-700 mb-2">Cor *</label><select value={formData.color} onChange={(e) => setFormData(p => ({ ...p, color: e.target.value }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"><option value="">Selecione</option><option value="Branco">Branco</option><option value="Preto">Preto</option><option value="Prata">Prata</option><option value="Cinza">Cinza</option><option value="Vermelho">Vermelho</option><option value="Azul">Azul</option><option value="Verde">Verde</option><option value="Amarelo">Amarelo</option><option value="Marrom">Marrom</option><option value="Bege">Bege</option><option value="Outros">Outros</option></select></div>
+              <div className="col-span-1"><label className="block text-sm font-bold text-gray-700 mb-2">Câmbio *</label><select value={formData.gearbox} onChange={(e) => setFormData(p => ({ ...p, gearbox: e.target.value }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all"><option value="">Selecione</option><option value="Manual">Manual</option><option value="Automático">Automático</option></select></div>
+            </div>
+          </div>
+        </StepContainer>
+      );
+    }
+
     return (
-      <StepContainer title="Dados do Veículo" progress={0.5} onNext={nextStep} nextDisabled={!isFipeSelected || !areDetailsSelected} onBack={goBack}>
+      <StepContainer title="Dados do Veículo" progress={0.5} onNext={nextStep} nextDisabled={isFipeNextDisabled} onBack={goBack}>
         <div className="space-y-6">
-          <div><label className="block text-sm font-bold text-gray-700 mb-2">Marca</label><div className="relative"><select value={selectedBrandId} onChange={handleBrandChange} disabled={isLoadingBrands} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none disabled:opacity-50"><option value="">{editingAd ? formData.brandName || "Marca Original" : "Selecione a marca"}</option>{fipeBrands.map(b => (<option key={b.codigo} value={b.codigo}>{b.nome}</option>))}</select></div></div>
-          <div><label className="block text-sm font-bold text-gray-700 mb-2">Família do Carro</label><div className="relative"><select value={selectedBaseModel} onChange={handleBaseModelChange} disabled={!selectedBrandId || isLoadingModels} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none disabled:opacity-50"><option value="">{editingAd ? "Modelo Original" : "Selecione a família"}</option>{uniqueBaseModels.map(name => (<option key={name} value={name}>{name}</option>))}</select></div></div>
-          {selectedBaseModel && (<div><label className="block text-sm font-bold text-gray-700 mb-2">Versão Específica</label><div className="relative"><select value={selectedModelId} onChange={handleVersionChange} disabled={!selectedBaseModel} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none disabled:opacity-50"><option value="">Selecione a versão</option>{availableVersions.map(m => (<option key={m.codigo} value={m.codigo}>{m.nome}</option>))}</select></div></div>)}
-          {selectedModelId && (<div><label className="block text-sm font-bold text-gray-700 mb-2">Ano</label><div className="relative"><select value={selectedYearId} onChange={handleYearChange} disabled={!selectedModelId || isLoadingYears} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none disabled:opacity-50"><option value="">Selecione o ano</option>{fipeYears.map(y => (<option key={y.codigo} value={y.codigo}>{y.nome}</option>))}</select></div></div>)}
-          {(formData.fipePrice > 0 || editingAd) && (
+          {((fipeBrands.length === 0 && !isLoadingBrands) || (selectedBrandId && fipeModels.length === 0 && !isLoadingModels)) && !editingAd ? (
+            <div className="bg-red-50 p-6 rounded-3xl mb-6 border border-red-100 animate-in fade-in">
+              <div className="flex flex-col items-center text-center">
+                <AlertCircle className="w-12 h-12 text-red-500 mb-3" />
+                <h3 className="text-xl font-bold text-red-800 mb-2 leading-tight">⚠️ Tabela FIPE indisponível</h3>
+                <p className="text-red-700 font-medium mb-6 text-sm">O serviço de consulta da FIPE está sofrendo instabilidades. Preencha os dados manualmente e anuncie sem depender da FIPE.</p>
+                <button onClick={() => setIsManualEntry(true)} className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-2xl w-full transition-all active:scale-95 shadow-lg shadow-red-200 flex items-center justify-center gap-2">
+                  👉 Preencher veículo manualmente
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div><label className="block text-sm font-bold text-gray-700 mb-2">Marca</label><div className="relative"><select value={selectedBrandId} onChange={handleBrandChange} disabled={isLoadingBrands} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none disabled:opacity-50"><option value="">{editingAd ? formData.brandName || "Marca Original" : "Selecione a marca"}</option>{fipeBrands.map(b => (<option key={b.codigo} value={b.codigo}>{b.nome}</option>))}</select></div></div>
+              <div><label className="block text-sm font-bold text-gray-700 mb-2">Família do Carro</label><div className="relative"><select value={selectedBaseModel} onChange={handleBaseModelChange} disabled={!selectedBrandId || isLoadingModels} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none disabled:opacity-50"><option value="">{editingAd ? "Modelo Original" : "Selecione a família"}</option>{uniqueBaseModels.map(name => (<option key={name} value={name}>{name}</option>))}</select></div></div>
+              {selectedBaseModel && (<div><label className="block text-sm font-bold text-gray-700 mb-2">Versão Específica</label><div className="relative"><select value={selectedModelId} onChange={handleVersionChange} disabled={!selectedBaseModel} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none disabled:opacity-50"><option value="">Selecione a versão</option>{availableVersions.map(m => (<option key={m.codigo} value={m.codigo}>{m.nome}</option>))}</select></div></div>)}
+              {selectedModelId && (<div><label className="block text-sm font-bold text-gray-700 mb-2">Ano</label><div className="relative"><select value={selectedYearId} onChange={handleYearChange} disabled={!selectedModelId || isLoadingYears} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none disabled:opacity-50"><option value="">Selecione o ano</option>{fipeYears.map(y => (<option key={y.codigo} value={y.codigo}>{y.nome}</option>))}</select></div></div>)}
+            </>
+          )}
+          
+          {(formData.fipePrice > 0 || editingAd) && !isManualEntry && (
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100 animate-in fade-in">
               <div className="col-span-1"><label className="block text-sm font-bold text-gray-700 mb-2">Cor *</label><select value={formData.color} onChange={(e) => setFormData(p => ({ ...p, color: e.target.value }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"><option value="">Selecione</option><option value="Branco">Branco</option><option value="Preto">Preto</option><option value="Prata">Prata</option><option value="Cinza">Cinza</option><option value="Vermelho">Vermelho</option><option value="Azul">Azul</option><option value="Verde">Verde</option><option value="Amarelo">Amarelo</option><option value="Marrom">Marrom</option><option value="Bege">Bege</option><option value="Outros">Outros</option></select></div>
               <div className="col-span-1"><label className="block text-sm font-bold text-gray-700 mb-2">Câmbio *</label><select value={formData.gearbox} onChange={(e) => setFormData(p => ({ ...p, gearbox: e.target.value }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all"><option value="">Selecione</option><option value="Manual">Manual</option><option value="Automático">Automático</option></select></div>
@@ -825,11 +877,11 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          {formData.fipePrice > 0 && (
+          {formData.fipePrice > 0 ? (
             <div className="p-5 bg-blue-50 border border-blue-100 rounded-3xl flex flex-col gap-4 animate-in fade-in">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] text-blue-800 font-bold uppercase mb-1 tracking-wider flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Tabela FIPE</p>
+                  <p className="text-[10px] text-blue-800 font-bold uppercase mb-1 tracking-wider flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Preço médio FIPE (referência)</p>
                   <p className="font-black text-xl text-gray-900">R$ {formData.fipePrice.toLocaleString('pt-BR')}</p>
                 </div>
                 {formData.price > 0 && (
@@ -846,6 +898,12 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
                   />
                 </div>
               </div>
+            </div>
+          ) : formData.category === 'veiculos' && (
+            <div className="p-5 bg-gray-50 border border-gray-200 rounded-3xl flex flex-col items-center justify-center text-center gap-2 animate-in fade-in">
+              <Info className="w-6 h-6 text-gray-400" />
+              <p className="font-bold text-gray-700">Preço médio indisponível no momento</p>
+              <p className="text-xs text-gray-500 font-medium">Você optou pelo preenchimento manual ou a base de dados falhou, portanto a referência FIPE não pôde ser calculada.</p>
             </div>
           )}
         </div>

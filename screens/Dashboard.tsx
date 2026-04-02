@@ -44,13 +44,13 @@ const isPromotionVisible = (promo: DashboardPromotion): boolean => {
 };
 
 // Category Button Component
-const CategoryItem: React.FC<{
+const CategoryItem = React.memo<{
   icon?: React.ReactNode,
   imageUrl?: string,
   label: string,
   badge?: string,
   onClick?: () => void
-}> = ({ icon, imageUrl, label, badge, onClick }) => {
+}>(({ icon, imageUrl, label, badge, onClick }) => {
   // Define color schemes based on label to respect "no props change" rule
   // Using high-contrast icon colors on soft pastel backgrounds for AA accessibility
   const getScheme = (l: string) => {
@@ -114,14 +114,12 @@ const CategoryItem: React.FC<{
       <span className={`text-[10px] font-black text-center leading-tight px-1 uppercase tracking-tighter transition-colors ${badge ? 'text-gray-400' : 'text-gray-600 group-hover:text-gray-900'}`}>{label}</span>
     </button>
   );
-};
+});
 
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 
-// ... (CategoryItem remains unchanged) ...
-
 // Horizontal Ad Card with logic for different boost plans
-const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, onClick }) => {
+const HorizontalAdCard = React.memo<{ ad: AdItem, onClick?: (ad: AdItem) => void }>(({ ad, onClick }) => {
   const isTurboActive = ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date();
   const borderClass = getBoostBorderClass(ad.boostPlan, !!isTurboActive);
 
@@ -130,7 +128,7 @@ const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, 
 
   return (
     <div
-      onClick={onClick}
+      onClick={() => onClick && onClick(ad)}
       className={`min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] relative border ${borderClass} animate-fadeIn`}
     >
       <div className="h-28 w-full relative">
@@ -159,7 +157,7 @@ const HorizontalAdCard: React.FC<{ ad: AdItem, onClick?: () => void }> = ({ ad, 
       </div>
     </div>
   );
-};
+});
 
 import { PersonalizedFeedSection } from '../components/HomeSections/PersonalizedFeedSection';
 import { AutomotiveServicesSection } from '../components/HomeSections/AutomotiveServicesSection';
@@ -195,8 +193,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [marketPrices, setMarketPrices] = useState<MarketPriceItem[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(true);
+  
+  // Controle estrito para não estourar Request Fipe (evita mount duplo do StrictMode)
+  const hasLoaded = React.useRef(false);
 
   useEffect(() => {
+    if (hasLoaded.current) return;
+    hasLoaded.current = true;
+
     const loadPrices = async () => {
       setLoadingPrices(true);
       // Passar favoritos reais para personalização inteligente (Etapa 5)
@@ -222,25 +226,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
 
   // --- LÓGICA DE BUSCA GLOBAL ---
-  // --- LÓGICA DE BUSCA GLOBAL ---
-  const allSearchableData = [...(featuredAds || []), ...(recentVehicles || []), ...(trendingRealEstate || []), ...POPULAR_SERVICES];
+  const allSearchableData = React.useMemo(() => {
+    return [...(featuredAds || []), ...(recentVehicles || []), ...(trendingRealEstate || []), ...POPULAR_SERVICES];
+  }, [featuredAds, recentVehicles, trendingRealEstate]);
 
-  const searchSuggestions = searchTerm.length >= 3
-    ? allSearchableData.filter(ad =>
+  const searchSuggestions = React.useMemo(() => {
+    if (searchTerm.length < 3) return [];
+    return allSearchableData.filter(ad =>
       ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ad.category?.toLowerCase().includes(searchTerm.toLowerCase())
-    ).slice(0, 6)
-    : [];
+    ).slice(0, 6);
+  }, [allSearchableData, searchTerm]);
   // ------------------------------
 
-  const sortedFeaturedVehicles = [...(featuredAds || [])].sort((a, b) => {
-    return getBoostPriority(b.boostPlan) - getBoostPriority(a.boostPlan);
-  });
+  const sortedFeaturedVehicles = React.useMemo(() => {
+    return [...(featuredAds || [])].sort((a, b) => {
+      return getBoostPriority(b.boostPlan) - getBoostPriority(a.boostPlan);
+    });
+  }, [featuredAds]);
 
   // --- DATASET COMBINADO PARA O FEED PERSONALIZADO ---
-  const allDiscoveryAds = [...(recentVehicles || []), ...(trendingRealEstate || []), ...(serviceAds || [])];
+  const allDiscoveryAds = React.useMemo(() => {
+    return [...(recentVehicles || []), ...(trendingRealEstate || []), ...(serviceAds || [])];
+  }, [recentVehicles, trendingRealEstate, serviceAds]);
 
-  const handleAdClickWrapper = (ad: AdItem) => {
+  const handleAdClickWrapper = React.useCallback((ad: AdItem) => {
     // Logic to save viewed ad ID to localStorage for Personalized Feed
     try {
       const viewedAdsRaw = localStorage.getItem('viewed_ads');
@@ -254,7 +264,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
 
     if (onAdClick) onAdClick(ad);
-  };
+  }, [onAdClick]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 animate-in fade-in duration-300">
@@ -397,7 +407,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <HorizontalAdCard
                 key={car.id}
                 ad={car}
-                onClick={() => onAdClick && onAdClick(car)}
+                onClick={handleAdClickWrapper}
               />
             ))}
             <button

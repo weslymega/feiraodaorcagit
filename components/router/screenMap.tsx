@@ -3,16 +3,30 @@ import { User as UserIcon } from 'lucide-react';
 import { Screen, AdItem } from '../../types';
 import { AppState } from '../../types/AppState';
 import { AppActions } from '../../types/AppActions';
-import {
-    APP_LOGOS
-} from '../../constants';
+import { APP_LOGOS } from '../../constants';
+import { ErrorBoundary } from '../ErrorBoundary';
+
+const LoadingScreen = () => (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <div className="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin"></div>
+        <p className="mt-4 text-sm text-gray-500 font-medium">Carregando...</p>
+    </div>
+);
+
+const withLazy = <P extends object>(LazyComponent: React.ComponentType<P>) => (props: P) => (
+    <ErrorBoundary>
+        <React.Suspense fallback={<LoadingScreen />}>
+            <LazyComponent {...props} />
+        </React.Suspense>
+    </ErrorBoundary>
+);
 
 // Screens
 import { LoginScreen } from '../../screens/LoginScreen';
 import { RegisterScreen } from '../../screens/RegisterScreen';
 import { AcceptTermsScreen } from '../../screens/AcceptTermsScreen';
 import { ForgotPassword } from '../../screens/ForgotPassword';
-import { Dashboard } from '../../screens/Dashboard';
+const Dashboard = withLazy(React.lazy(() => import('../../screens/Dashboard').then(m => ({ default: m.Dashboard }))));
 import { UserPanel } from '../../screens/UserPanel';
 import { MyAds } from '../../screens/MyAds';
 import { Favorites } from '../../screens/Favorites';
@@ -35,10 +49,10 @@ import { HelpSupport } from '../../screens/HelpSupport';
 import { AboutUs } from '../../screens/AboutUs';
 import { TermsOfUse } from '../../screens/TermsOfUse';
 import { PrivacyPolicy } from '../../screens/PrivacyPolicy';
-import { ChatDetail } from '../../screens/ChatDetail';
-import { VehiclesList } from '../../screens/VehiclesList';
-import { RealEstateList } from '../../screens/RealEstateList';
-import { PartsServicesList } from '../../screens/PartsServicesList';
+const ChatDetail = withLazy(React.lazy(() => import('../../screens/ChatDetail').then(m => ({ default: m.ChatDetail }))));
+const VehiclesList = withLazy(React.lazy(() => import('../../screens/VehiclesList').then(m => ({ default: m.VehiclesList }))));
+const RealEstateList = withLazy(React.lazy(() => import('../../screens/RealEstateList').then(m => ({ default: m.RealEstateList }))));
+const PartsServicesList = withLazy(React.lazy(() => import('../../screens/PartsServicesList').then(m => ({ default: m.PartsServicesList }))));
 import { FeaturedVehiclesScreen } from '../../screens/FeaturedVehiclesScreen';
 import { FairList } from '../../screens/FairList';
 import { PrintPreview } from '../../screens/PrintPreview';
@@ -55,7 +69,7 @@ import { AdminDashboardPromotions } from '../../screens/AdminDashboardPromotions
 import { AdminRealEstatePromotions } from '../../screens/AdminRealEstatePromotions';
 import { AdminPartsServicesPromotions } from '../../screens/AdminPartsServicesPromotions';
 import { AdminVehiclesPromotions } from '../../screens/AdminVehiclesPromotions';
-import { ErrorBoundary } from '../ErrorBoundary';
+// ErrorBoundary importado acima
 
 export interface RouterContextProps {
     state: AppState;

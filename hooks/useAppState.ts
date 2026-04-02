@@ -350,44 +350,59 @@ export const useAppState = () => {
             }
           }
 
-          const parallelTasks = [
+          // 🚀 FASE 1: OTIMIZAÇÃO DO LOADING PÓS-LOGIN (NÃO-BLOQUEANTE)
+          
+          // 1. CARREGAMENTO ESSENCIAL (Bloqueante para o Dashboard básico)
+          const essentialTasks = [
             api.getMyAds().then(res => res && setMyAds(res)),
-            api.getUserConversations().then(res => res && setConversations(res)),
-            api.getFavorites().then(res => res && setFavorites(res)),
             api.getPromotions('dashboard').then(res => res.length > 0 && setDashboardPromotions(res)),
-            api.getPromotions('veiculos').then(res => res.length > 0 && setVehiclesPromotions(res)),
-            api.getPromotions('imoveis').then(res => res.length > 0 && setRealEstatePromotions(res)),
-            api.getPromotions('pecas_servicos').then(res => res.length > 0 && setPartsServicesPromotions(res)),
+            api.getFavorites().then(res => res && setFavorites(res)),
+            api.getUserConversations().then(res => res && setConversations(res)),
             api.getBlockedUserIds().then(res => res && setBlockedByMe(res)),
             api.getWhoBlockedMeIds().then(res => res && setBlockedByOthers(res))
           ];
 
-          const isAdminInDB = freshProfile?.isAdmin || user.isAdmin;
-          if (isAdminInDB) {
-            parallelTasks.push(api.getAllAdsForAdmin().then(res => res && setAdminAds(res)));
-            parallelTasks.push(api.getReports().then(reportsData => {
-              if (reportsData) {
-                const mappedReports = reportsData.map((r: any) => ({
-                  id: r.id,
-                  targetId: r.target_id || r.ad_id,
-                  targetName: r.target_name || (r.ads?.title) || 'Alvo desconhecido',
-                  targetType: r.target_type || (r.ad_id ? 'ad' : 'user'),
-                  targetImage: r.target_image || (r.ads?.image) || null,
-                  reportedUserId: r.reported_user_id || (r.ads?.user_id) || null,
-                  reason: r.reason,
-                  description: r.description,
-                  reporterId: r.reporter_id,
-                  reporterName: r.reporter?.name || 'Anon',
-                  severity: r.severity || 'medium',
-                  status: r.status,
-                  date: new Date(r.created_at).toLocaleDateString('pt-BR')
-                } as ReportItem));
-                setReports(mappedReports);
-              }
-            }));
-          }
+          await Promise.allSettled(essentialTasks);
 
-          await Promise.allSettled(parallelTasks);
+          // 2. CARREGAMENTO SECUNDÁRIO (Background / Sem travar a UI)
+          const loadSecondaryData = () => {
+             Promise.allSettled([
+                api.getPromotions('veiculos').then(res => res.length > 0 && setVehiclesPromotions(res)),
+                api.getPromotions('imoveis').then(res => res.length > 0 && setRealEstatePromotions(res)),
+                api.getPromotions('pecas_servicos').then(res => res.length > 0 && setPartsServicesPromotions(res))
+             ]);
+
+             // Carrega dados de ADMIN APENAS se o usuário for administrador
+             const isAdminInDB = freshProfile?.isAdmin || user.isAdmin || freshProfile?.role === 'admin';
+             if (isAdminInDB) {
+                Promise.allSettled([
+                   api.getAllAdsForAdmin().then(res => res && setAdminAds(res)),
+                   api.getReports().then(reportsData => {
+                     if (reportsData) {
+                       const mappedReports = reportsData.map((r: any) => ({
+                         id: r.id,
+                         targetId: r.target_id || r.ad_id,
+                         targetName: r.target_name || (r.ads?.title) || 'Alvo desconhecido',
+                         targetType: r.target_type || (r.ad_id ? 'ad' : 'user'),
+                         targetImage: r.target_image || (r.ads?.image) || null,
+                         reportedUserId: r.reported_user_id || (r.ads?.user_id) || null,
+                         reason: r.reason,
+                         description: r.description,
+                         reporterId: r.reporter_id,
+                         reporterName: r.reporter?.name || 'Anon',
+                         severity: r.severity || 'medium',
+                         status: r.status,
+                         date: new Date(r.created_at).toLocaleDateString('pt-BR')
+                       } as ReportItem));
+                       setReports(mappedReports);
+                     }
+                   })
+                ]);
+             }
+          };
+
+          // Dispara carregamento secundário sem aguardar (`await`)
+          loadSecondaryData();
         }
       } catch (error) {
         console.error("[Data-Flow] ❌ Erro ao buscar dados:", error);
