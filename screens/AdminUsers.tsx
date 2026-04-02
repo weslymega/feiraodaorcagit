@@ -202,7 +202,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ onBack }) => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-10 h-10 text-primary animate-spin mb-3" />
-            <p className="text-gray-500 font-medium">Buscando usuários reais...</p>
+            <p className="text-gray-500 font-medium">Buscando usuários...</p>
           </div>
         ) : filteredUsers.map((user) => (
           <div

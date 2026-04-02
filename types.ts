@@ -80,6 +80,7 @@ export interface User {
   isBlocked?: boolean; // Status de bloqueio
   showOnlineStatus?: boolean;
   readReceipts?: boolean;
+  lastActiveAt?: string;
   createdAt?: string;
   emailConfirmedAt?: string;
   acceptedTerms?: boolean;

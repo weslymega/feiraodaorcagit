@@ -131,7 +131,7 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
             <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
             <div className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
-              Desde {user.joinDate || "Membro Recente"}
+              Desde {user.joinDate || "conosco"}
             </div>
           </div>
 
@@ -210,7 +210,7 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
                     <PriceTag value={ad.price} />
                     <div className="flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">
                       <Clock className="w-3 h-3" />
-                      <span>{ad.date || (ad.createdAt ? new Date(ad.createdAt).toLocaleDateString('pt-BR') : "Recente")}</span>
+                      <span>{ad.date || (ad.createdAt ? new Date(ad.createdAt).toLocaleDateString('pt-BR') : "Novo")}</span>
                     </div>
                   </div>
                 </div>

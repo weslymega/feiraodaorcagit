@@ -335,6 +335,7 @@ export const api = {
             joinDate: data.created_at ? new Date(data.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : '',
             showOnlineStatus: data.show_online_status ?? true,
             readReceipts: data.read_receipts ?? true,
+            lastActiveAt: data.last_active_at,
             acceptedTerms: data.accepted_terms || false,
             acceptedAt: data.accepted_at,
             cep: data.cep || '',
@@ -683,7 +684,8 @@ export const api = {
             phone: p.phone || '',
             location: p.location || '',
             bio: p.bio || '',
-            joinDate: p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : 'Recente'
+            joinDate: p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : '',
+            lastActiveAt: p.last_active_at
         }));
     },
 
@@ -951,7 +953,8 @@ export const api = {
                 avatarUrl: data.avatar_url || null,
                 location: data.location || 'Brasil',
                 bio: data.bio || 'Usuário do Feirão da Orca',
-                joinDate: data.created_at ? new Date(data.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : 'Recente',
+                joinDate: data.created_at ? new Date(data.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : '',
+                lastActiveAt: data.last_active_at,
                 verified: true,
                 email: '', // Don't expose email publicly
                 balance: 0,
@@ -1219,7 +1222,8 @@ export const api = {
                     adId: m.ad_id,
                     adImage: m.ads?.imagens?.[0] || 'https://placehold.co/100x100?text=Orca',
                     adPrice: m.ads?.preco || 0,
-                    readReceipts: otherUser?.read_receipts ?? true
+                    readReceipts: otherUser?.read_receipts ?? true,
+                    online: otherUser?.show_online_status ? (otherUser.last_active_at ? new Date(otherUser.last_active_at) > new Date(Date.now() - 5 * 60 * 1000) : false) : false
                 });
             }
         });

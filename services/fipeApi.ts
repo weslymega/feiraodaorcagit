@@ -159,15 +159,26 @@ const fetchListWithCache = async (
     // 6. Save results to cache (Fire and forget, don't block return)
     if (freshData) {
       listMemoryCache.set(key, { data: freshData, timestamp: Date.now() });
-      supabase.from('fipe_lists_cache').upsert({
-        key,
-        type,
-        data: freshData,
-        updated_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + DB_CACHE_DAYS * 24 * 60 * 60 * 1000).toISOString()
-      }, { onConflict: 'key' }).then(({ error }) => {
-        if (error && isDev) console.warn(`[FIPE] Failed to save DB cache for ${key}`, error);
-      });
+      
+      const saveData = async () => {
+        try {
+          const { error } = await supabase.from('fipe_lists_cache').upsert({
+            key,
+            type,
+            data: freshData,
+            updated_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + DB_CACHE_DAYS * 24 * 60 * 60 * 1000).toISOString()
+          }, { onConflict: 'key' });
+          
+          if (error) {
+             console.error(`[FIPE] Cache Save Error for ${key}:`, error.message);
+          }
+        } catch (e) {
+          console.error(`[FIPE] Critical Cache Save Error for ${key}`, e);
+        }
+      };
+      
+      saveData();
     }
 
     return finalResult;
