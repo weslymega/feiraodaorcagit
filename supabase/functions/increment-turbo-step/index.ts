@@ -38,7 +38,12 @@ serve(async (req) => {
 
         const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
         if (userError || !user) {
-            return jsonResponse({ success: false, error: 'Token inválido ou expirado' }, 401);
+            console.error(`[increment-turbo-step] JWT FAIL: ${userError?.message}`);
+            return jsonResponse({ 
+                success: false, 
+                error: 'JWT_EXPIRED',
+                message: 'Token expirado. A sessão será renovada automaticamente.'
+            }, 401);
         }
 
         // 3. Extrair Inputs

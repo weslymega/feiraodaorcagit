@@ -45,7 +45,11 @@ serve(async (req) => {
         const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
         if (userError || !user) {
             console.error(`[activate-turbo] Falha na validação do JWT: ${userError?.message}`);
-            return jsonResponse({ success: false, error: 'Token inválido ou expirado' }, 401);
+            return jsonResponse({ 
+                success: false, 
+                error: 'JWT_EXPIRED',
+                message: 'Token inválido ou expirado. Tente novamente.' 
+            }, 401);
         }
 
         // 2. Extrair e validar inputs do body

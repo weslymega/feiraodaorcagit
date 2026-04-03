@@ -173,6 +173,64 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
 export const api = {
 
     /**
+     * Get validated access token, refreshing if needed.
+     */
+    getAuthToken: async (): Promise<string | null> => {
+        let { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error || !session) {
+            console.log("[api.getAuthToken] No active session, attempting refresh...");
+            const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError || !refreshed.session) return null;
+            session = refreshed.session;
+        }
+
+        console.log("[api.getAuthToken] Returning valid access token");
+        return session.access_token;
+    },
+
+    /**
+     * Refresh the current session manually.
+     */
+    refreshSession: async () => {
+        console.log("[api.refreshSession] Manually refreshing session...");
+        return await supabase.auth.refreshSession();
+    },
+
+    /**
+     * Generic wrapper to handle JWT/401 errors and retry once.
+     */
+    safeRequest: async <T>(fn: (token: string) => Promise<T>): Promise<T> => {
+        const token = await api.getAuthToken();
+        if (!token) throw new Error('NOT_AUTHENTICATED');
+
+        try {
+            console.log("[api.safeRequest] Executing initial request...");
+            return await fn(token);
+        } catch (error: any) {
+            const errorStr = String(error?.message || error);
+            const isAuthError = error?.status === 401 || 
+                               errorStr.includes('JWT') || 
+                               errorStr.includes('invalid_token') ||
+                               errorStr.includes('JWT_EXPIRED');
+
+            if (isAuthError) {
+                console.warn("[api.safeRequest] Auth error detected, refreshing and retrying once...");
+                const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+                
+                if (refreshError || !refreshed.session) {
+                   console.error("[api.safeRequest] Refresh failed:", refreshError);
+                   throw error;
+                }
+                
+                console.log("[api.safeRequest] Retrying with fresh token...");
+                return await fn(refreshed.session.access_token);
+            }
+            throw error;
+        }
+    },
+
+    /**
      * Create Ad via Edge Function (Secured Limit Check)
      * Falls back to direct insert if Edge Function is not deployed
      */

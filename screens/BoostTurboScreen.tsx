@@ -146,43 +146,26 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             console.log(`[BoostTurboScreen] [STEP 12] Optimistic UI Update: ${localProgress} -> ${localProgress + 1}`);
             setLocalProgress(prev => prev + 1);
 
-            // 2. Chamada ao Servidor
-            const { data: sessionData } = await supabase.auth.getSession();
-            const user = sessionData?.session?.user;
-            const token = sessionData?.session?.access_token;
-
-            if (!user || !token) {
-                console.error("[SYNC DEBUG] AUTH ERROR: User not authenticated or token missing");
-                throw new Error("Sessão expirada. Refaça o login.");
-            }
-
-            const funcName = 'increment-turbo-step';
-            const payload = { sessionId: currentSession.id };
-
-            console.log("[SYNC DEBUG] invoking edge function");
-            console.log("[SYNC DEBUG] function name:", funcName);
-            console.log("[SYNC DEBUG] payload:", JSON.stringify(payload));
-            console.log("[SYNC DEBUG] token present:", !!token);
-
-            // 🚨 TRAVA 1.5: Verificação final pré-rede caso outra promessa concorrente tenha finalizado o processo
-            if (finalizingRef.current) {
-                console.log("[BoostTurboScreen] [TRAVA] Requisição abortada no último instante: Turbo já foi ativado previamente.");
-                return;
-            }
-
+            // 2. Chamada ao Servidor Blindada (safeRequest com Retry Automático)
             const startTime = Date.now();
-            const { data, error: invokeError } = await supabase.functions.invoke(funcName, {
-                body: payload,
-                headers: { Authorization: `Bearer ${token}` }
+            
+            const data = await api.safeRequest(async (token) => {
+                const funcName = 'increment-turbo-step';
+                const payload = { sessionId: currentSession.id };
+                
+                console.log(`[BoostTurboScreen] [SYNC] Invoking ${funcName} with token`);
+                
+                const { data, error: invokeError } = await supabase.functions.invoke(funcName, {
+                    body: payload,
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (invokeError) throw invokeError;
+                return data;
             });
+
             const duration = Date.now() - startTime;
-
-            if (invokeError) {
-                console.error(`[SYNC DEBUG] error (${duration}ms):`, JSON.stringify(invokeError));
-                throw invokeError;
-            }
-
-            console.log(`[SYNC DEBUG] response (${duration}ms):`, JSON.stringify(data));
+            console.log(`[BoostTurboScreen] [SYNC SUCCESS] Response received in ${duration}ms:`, JSON.stringify(data));
 
             if (!data?.success) {
                 console.warn("[BoostTurboScreen] [STEP 17] SERVER REJECTION:", data?.error || "Unknown Error");
@@ -275,9 +258,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     // Ref com handlers atualizados para evitar closures presas em listeners de 1x
     handlersRef.current = {
         handleRewarded: handleAdRewardedInternal,
-        handleDismissed: () => {
+        handleDismissed: async () => {
             console.log("[BoostTurboScreen] [EVENT] Native Dismiss received -> setWatchingAd(false)");
             setWatchingAd(false);
+            
+            // 🎯 Reidratação de Sessão ao voltar do AdMob
+            try {
+                console.log("[BoostTurboScreen] [AUTH] Rehydrating session after ad dismissal...");
+                await supabase.auth.getSession();
+            } catch (e) {
+                console.error("[BoostTurboScreen] [AUTH] Rehydration failed:", e);
+            }
+            
             setAdReady(AdManager.isAdReady());
         },
         handleCompleted: () => {
@@ -351,6 +343,14 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         setWatchingAd(true);
         setSyncError(null);
         
+        // 🎯 BLINDAGEM PRÉ-ADMOB: Refresh proativo antes de abrir o vídeo
+        try {
+            console.log("[BoostTurboScreen] [AUTH] Proactive session refresh before AdMob...");
+            await api.refreshSession();
+        } catch (e) {
+            console.warn("[BoostTurboScreen] [AUTH] Proactive refresh failed, proceeding anyway:", e);
+        }
+
         // Garante que a contagem passada para o AdManager use o nosso otimismo 
         // caso o sync do servidor ainda esteja em andamento.
         const effectiveStep = Math.max(localProgress, currentSession.currentStep);
@@ -390,30 +390,16 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         setLoading(true);
         setError(null);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error('Sessão expirada. Faça login novamente.');
-
-            const { data, error: invokeError } = await supabase.functions.invoke('activate-turbo', {
-                body: { adId: ad.id, turboType: planId },
-                headers: { Authorization: `Bearer ${session.access_token}` }
+            // 🎯 Blindagem Inicial do Plano
+            const data = await api.safeRequest(async (token) => {
+                console.log("[BoostTurboScreen] [INIT-PLAN] Invoking activate-turbo");
+                const { data, error: invokeError } = await supabase.functions.invoke('activate-turbo', {
+                    body: { adId: ad.id, turboType: planId },
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (invokeError) throw invokeError;
+                return data;
             });
-
-            if (invokeError) {
-                // Tenta extrair a mensagem detalhada enviada pelo backend
-                let errorMessage = 'Não foi possível iniciar o Turbo. Tente novamente em instantes.';
-                try {
-                    if (invokeError.context?.json) {
-                        const body = await invokeError.context.json();
-                        errorMessage = body.message || body.error || errorMessage;
-                    } else if (invokeError.message?.includes('{')) {
-                        const parsed = JSON.parse(invokeError.message);
-                        errorMessage = parsed.message || parsed.error || errorMessage;
-                    }
-                } catch (e) {
-                    console.error("Erro ao parsear erro do servidor:", e);
-                }
-                throw new Error(errorMessage);
-            }
 
             if (data?.error) throw new Error(data.error);
 
