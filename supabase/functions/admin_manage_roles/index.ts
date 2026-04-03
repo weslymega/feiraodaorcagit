@@ -1,4 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin, logAdminAction } from "../_shared/requireAdmin.ts";
+
+const FUNCTION_NAME = "admin_manage_roles";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -7,7 +10,6 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-    // 1. Handle CORS Preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -17,57 +19,45 @@ Deno.serve(async (req) => {
         const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
         if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-            throw new Error("Missing critical environment variables in roles function");
+            throw new Error("Missing critical environment variables");
         }
 
-        const authHeader = req.headers.get("Authorization");
-        if (!authHeader) {
-            return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
-                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-        }
+        // ── STEP 1: Admin Auth Guard ─────────────────────────────────────────────
+        const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        const auth = await requireAdmin(req, adminClient, corsHeaders, FUNCTION_NAME);
+        if (auth.error) return auth.response;
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-        const token = authHeader.replace("Bearer ", "");
-        const { data: { user: requester }, error: authError } = await supabase.auth.getUser(token);
+        const { adminId } = auth;
 
-        if (authError || !requester) {
-            console.error("[AUTH_FAILED_ROLES]", authError);
-            return new Response(JSON.stringify({
-                error: "Unauthorized: Invalid JWT",
-                message: authError?.message || "Failed to identify requester"
-            }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-
-        // --- STEP 2: Verify Admin Status ---
-        const { data: requesterProfile, error: profileError } = await supabase
-            .from("profiles")
-            .select("is_admin")
-            .eq("id", requester.id)
-            .single();
-
-        if (profileError || !requesterProfile?.is_admin) {
-            return new Response(JSON.stringify({ error: "FORBIDDEN: Administrative privileges required" }), {
-                status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-        }
-
-        // --- STEP 3: Process Role change ---
-        const { targetUserId, newAdminStatus } = await req.json();
-
-        if (!targetUserId || typeof newAdminStatus !== 'boolean') {
-            return new Response(JSON.stringify({ error: "Missing parameters" }), {
+        // ── STEP 2: Parse and Validate Body ─────────────────────────────────────
+        let body: { targetUserId?: string; newAdminStatus?: unknown };
+        try {
+            body = await req.json();
+        } catch {
+            return new Response(JSON.stringify({ error: "INVALID_BODY" }), {
                 status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
 
-        if (requester.id === targetUserId && newAdminStatus === false) {
-            return new Response(JSON.stringify({ error: "Self-demotion not allowed" }), {
-                status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+        const { targetUserId, newAdminStatus } = body;
+
+        if (!targetUserId || typeof newAdminStatus !== 'boolean') {
+            return new Response(JSON.stringify({
+                error: "MISSING_PARAMS",
+                message: "targetUserId (string) e newAdminStatus (boolean) são obrigatórios."
+            }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
-        const { data: updatedProfile, error: updateError } = await supabase
+        // Prevent self-demotion to avoid admin lockout
+        if (adminId === targetUserId && newAdminStatus === false) {
+            return new Response(JSON.stringify({
+                error: "FORBIDDEN",
+                message: "Auto-rebaixamento de admin não é permitido."
+            }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        // ── STEP 3: Execute Role Change ──────────────────────────────────────────
+        const { data: updatedProfile, error: updateError } = await adminClient
             .from("profiles")
             .update({ is_admin: newAdminStatus })
             .eq("id", targetUserId)
@@ -76,18 +66,21 @@ Deno.serve(async (req) => {
 
         if (updateError) throw updateError;
 
+        logAdminAction(FUNCTION_NAME, 'change_role', adminId, targetUserId, true, {
+            newAdminStatus,
+        });
+
         return new Response(JSON.stringify({ success: true, user: updatedProfile }), {
             status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
 
     } catch (err) {
-        console.error("Critical Roles Exception:", err);
-        const errorDetail = err instanceof Error ? {
-            message: err.message, stack: err.stack, name: err.name
-        } : err;
-
-        return new Response(JSON.stringify({
-            error: "INTERNAL_ERROR", detail: errorDetail
-        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        console.error(`[${FUNCTION_NAME}] Unhandled exception:`, err);
+        const detail = err instanceof Error
+            ? { message: err.message, name: err.name }
+            : String(err);
+        return new Response(JSON.stringify({ error: "INTERNAL_ERROR", detail }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
     }
 });

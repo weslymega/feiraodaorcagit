@@ -447,33 +447,78 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     if (files && files.length > 0) {
       const currentCount = formData.images.length;
       const remainingSlots = 20 - currentCount;
-      if (remainingSlots <= 0) { alert("Limite máximo de fotos atingido."); return; }
-      
+      if (remainingSlots <= 0) {
+        alert("Limite máximo de fotos atingido.");
+        return;
+      }
+
       setIsUploading(true);
-      const filesToProcess = [...files]
-        .filter(file => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
-        .slice(0, remainingSlots);
+
+      // --- 1. VALIDAÇÃO IMEDIATA (Performance/Security) ---
+      const filesToProcess: File[] = [];
+      const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+      const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+      for (let i = 0; i < Math.min(files.length, remainingSlots); i++) {
+        const file = files[i];
+
+        // Validar tipo antes de qualquer processamento
+        if (!ALLOWED_TYPES.includes(file.type)) {
+          alert(`O arquivo "${file.name}" não é uma imagem permitida (Use JPG, PNG ou WebP).`);
+          continue;
+        }
+
+        // Validar tamanho original (Proteger contra arquivos gigantes que travam o canvas)
+        if (file.size > MAX_SIZE) {
+          alert(`A imagem "${file.name}" é muito grande. O limite máximo permitido é 5MB.`);
+          continue;
+        }
+
+        filesToProcess.push(file);
+      }
+
+      if (filesToProcess.length === 0) {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
 
       try {
-        const uploadPromises = filesToProcess.map(async (file) => {
-          // 1. Comprimir
-          const compressed = await imageService.compress(file, 'ad');
-          // 2. Upload para Storage (organizado por userId)
-          return await imageService.upload(compressed, 'ads-images', user.id);
-        });
+        const uploadedUrls: string[] = [];
 
-        const uploadedUrls = await Promise.all(uploadPromises);
-        setFormData(prev => ({ 
-          ...prev, 
-          images: [...prev.images, ...uploadedUrls] 
-        }));
-      } catch (error) { 
-        console.error("Error uploading images", error); 
-        alert("Erro ao enviar imagens para o servidor."); 
-      }
-      finally { 
-        setIsUploading(false); 
-        if (fileInputRef.current) fileInputRef.current.value = ''; 
+        // --- 2. PROCESSAMENTO SEQUENCIAL (Safe for Low-End Devices) ---
+        // Ao invés de Promise.all, processamos um por um para não estourar a memória RAM
+        for (const file of filesToProcess) {
+          try {
+            // A. Comprimir (Redimensionar para 1280px via imageService)
+            const compressed = await imageService.compress(file, 'ad');
+
+            // B. Upload para Storage (organizado por userId no bucket ads-images)
+            const url = await imageService.upload(compressed, 'ads-images', user.id);
+            uploadedUrls.push(url);
+
+          } catch (itemError: any) {
+            console.error(`Erro ao processar "${file.name}":`, itemError);
+            if (itemError.message?.includes('413') || itemError.message?.includes('too large')) {
+              alert(`Erro: O servidor rejeitou "${file.name}" por ser muito grande.`);
+            } else {
+              alert(`Não foi possível enviar a foto "${file.name}".`);
+            }
+          }
+        }
+
+        if (uploadedUrls.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            images: [...prev.images, ...uploadedUrls]
+          }));
+        }
+      } catch (error) {
+        console.error("Erro crítico no upload:", error);
+        alert("Ocorreu um erro ao processar as fotos. Tente novamente.");
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
     }
   };
@@ -671,7 +716,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   );
 
   const renderPhotos = () => (
-    <StepContainer title="Fotos" progress={0.3} onNext={nextStep} nextDisabled={formData.images.length === 0} onBack={goBack}>
+    <StepContainer title="Fotos" progress={0.3} onNext={nextStep} nextDisabled={formData.images.length === 0 || isUploading} onBack={goBack}>
       {formData.images.length === 0 ? (
         <div onClick={() => !isUploading && fileInputRef.current?.click()} className={`border-2 border-dashed border-gray-300 bg-gray-50 rounded-3xl h-64 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-primary transition-all group ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
           {isUploading ? (<div className="flex flex-col items-center animate-in zoom-in"><Loader2 className="w-12 h-12 text-primary animate-spin mb-4" /><p className="text-gray-500 font-bold">Processando imagens...</p></div>) : (<><div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Camera className="w-8 h-8 text-primary" /></div><h3 className="font-bold text-gray-900 text-lg mb-1">Adicionar Fotos</h3><p className="text-gray-500 text-sm">Toque para enviar</p></>)}

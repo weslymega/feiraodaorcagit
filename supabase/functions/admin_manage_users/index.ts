@@ -1,4 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin, logAdminAction } from "../_shared/requireAdmin.ts";
+
+const FUNCTION_NAME = "admin_manage_users";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -7,7 +10,6 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-    // 1. Handle CORS Preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -20,64 +22,42 @@ Deno.serve(async (req) => {
             throw new Error("Missing critical environment variables");
         }
 
-        const authHeader = req.headers.get("Authorization");
-        if (!authHeader) {
-            return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
-                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-        }
+        // ── STEP 1: Admin Auth Guard (backend is the ONLY source of truth) ──────
+        const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        const auth = await requireAdmin(req, adminClient, corsHeaders, FUNCTION_NAME);
+        if (auth.error) return auth.response; // 401 or 403 returned immediately
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-        const token = authHeader.replace("Bearer ", "");
+        const { adminId } = auth;
 
-        const { data: { user: requester }, error: authError } = await supabase.auth.getUser(token);
-
-        if (authError || !requester) {
-            console.error("[AUTH_FAILED]", authError);
-            return new Response(JSON.stringify({
-                error: "Unauthorized: Invalid JWT",
-                message: authError?.message || "Failed to identify requester",
-                detail: authError
-            }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-
-        // --- STEP 2: Verify Admin Status ---
-        const { data: requesterProfile, error: profileError } = await supabase
-            .from("profiles")
-            .select("is_admin")
-            .eq("id", requester.id)
-            .single();
-
-        if (profileError || !requesterProfile?.is_admin) {
-            console.error("[ADMIN_CHECK_FAILED]", profileError);
-            return new Response(JSON.stringify({
-                error: "FORBIDDEN: Admin privileges required",
-                detail: profileError
-            }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-
-        // --- STEP 3: Process Action ---
-        const body = await req.json();
-        const { action, userId, status } = body;
-
-        console.log(`[ACTION_V5] ${action} on user ${userId}`);
-
-        if (!action || !userId) {
-            return new Response(JSON.stringify({ error: "Missing parameters" }), {
+        // ── STEP 2: Parse and Validate Body ────────────────────────────────────
+        let body: { action?: string; userId?: string; status?: boolean };
+        try {
+            body = await req.json();
+        } catch {
+            return new Response(JSON.stringify({ error: "INVALID_BODY", message: "JSON inválido." }), {
                 status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
 
-        if (requester.id === userId) {
-            return new Response(JSON.stringify({ error: "Self-management not allowed" }), {
+        const { action, userId, status } = body;
+
+        if (!action || !userId) {
+            return new Response(JSON.stringify({ error: "MISSING_PARAMS", message: "action e userId são obrigatórios." }), {
+                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        if (adminId === userId) {
+            return new Response(JSON.stringify({ error: "FORBIDDEN", message: "Auto-gerenciamento não é permitido." }), {
                 status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
 
+        // ── STEP 3: Execute Action ──────────────────────────────────────────────
         let result = null;
 
         if (action === 'toggle_block') {
-            const { data, error } = await supabase
+            const { data, error } = await adminClient
                 .from("profiles")
                 .update({ is_blocked: status })
                 .eq("id", userId)
@@ -85,11 +65,19 @@ Deno.serve(async (req) => {
                 .single();
             if (error) throw error;
             result = data;
+            logAdminAction(FUNCTION_NAME, 'toggle_block', adminId, userId, true, { newStatus: status });
+
         } else if (action === 'delete') {
-            const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
+            const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId);
             if (deleteAuthError) throw deleteAuthError;
-            await supabase.from("profiles").delete().eq("id", userId);
+            await adminClient.from("profiles").delete().eq("id", userId);
             result = { deleted: true };
+            logAdminAction(FUNCTION_NAME, 'delete_user', adminId, userId, true);
+
+        } else {
+            return new Response(JSON.stringify({ error: "INVALID_ACTION", message: `Ação desconhecida: ${action}` }), {
+                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
         }
 
         return new Response(JSON.stringify({ success: true, data: result }), {
@@ -97,14 +85,14 @@ Deno.serve(async (req) => {
         });
 
     } catch (err) {
-        console.error("Critical Exception V5:", err);
-        // Better error serialization for DB errors
-        const errorDetail = (err && typeof err === 'object') ? JSON.parse(JSON.stringify(err, Object.getOwnPropertyNames(err))) : String(err);
-
+        console.error(`[${FUNCTION_NAME}] Unhandled exception:`, err);
+        const detail = (err && typeof err === 'object')
+            ? JSON.parse(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            : String(err);
         return new Response(JSON.stringify({
             error: "INTERNAL_ERROR",
-            message: "Erro interno: verifique se as colunas is_admin e is_blocked existem no banco.",
-            detail: errorDetail
+            message: "Erro interno do servidor.",
+            detail,
         }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 });

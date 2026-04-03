@@ -398,7 +398,23 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 headers: { Authorization: `Bearer ${session.access_token}` }
             });
 
-            if (invokeError) throw new Error('🚀 Você já possui um Turbo em andamento para este anúncio.\nAtualize a página.');
+            if (invokeError) {
+                // Tenta extrair a mensagem detalhada enviada pelo backend
+                let errorMessage = 'Não foi possível iniciar o Turbo. Tente novamente em instantes.';
+                try {
+                    if (invokeError.context?.json) {
+                        const body = await invokeError.context.json();
+                        errorMessage = body.message || body.error || errorMessage;
+                    } else if (invokeError.message?.includes('{')) {
+                        const parsed = JSON.parse(invokeError.message);
+                        errorMessage = parsed.message || parsed.error || errorMessage;
+                    }
+                } catch (e) {
+                    console.error("Erro ao parsear erro do servidor:", e);
+                }
+                throw new Error(errorMessage);
+            }
+
             if (data?.error) throw new Error(data.error);
 
             if (data?.success && data?.sessionId) {
@@ -409,7 +425,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     currentStep: 0
                 });
             } else {
-                throw new Error('Falha ao iniciar a sessão do Turbo.')
+                throw new Error(data?.message || 'Falha ao iniciar a sessão do Turbo.')
             }
         } catch (err: any) {
             console.error('Error activating turbo:', err);

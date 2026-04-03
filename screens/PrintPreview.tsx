@@ -15,7 +15,26 @@ interface PrintPreviewProps {
 export const PrintPreview: React.FC<PrintPreviewProps> = ({ ad, onBack }) => {
   const [isPreparing, setIsPreparing] = useState(false);
   const [showAndroidFallback, setShowAndroidFallback] = useState(false);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const printAreaRef = useRef<HTMLDivElement>(null);
+
+  // Pré-carregar o logo em Base64 para garantir que ele apareça no Download/Impressão
+  useEffect(() => {
+    const loadLogoAsBase64 = async () => {
+      try {
+        const response = await fetch(APP_LOGOS.ICON);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setLogoBase64(reader.result as string);
+        };
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error("Erro ao carregar logo para QR:", error);
+      }
+    };
+    loadLogoAsBase64();
+  }, []);
 
   const isNative = Capacitor.isNativePlatform();
 
@@ -56,22 +75,45 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ ad, onBack }) => {
   };
 
   const handleSaveImage = () => {
-    // Usar a utilidade existente para baixar o QR
-    // Como queremos o anúncio inteiro em imagem no futuro, por enquanto garantimos o QR funcional
-    const qrSvg = document.querySelector('.print-qr-wrapper svg');
+    const qrSvg = document.querySelector('.print-qr-wrapper svg') as SVGElement;
     if (qrSvg) {
+      setIsPreparing(true);
+      
       const svgData = new XMLSerializer().serializeToString(qrSvg);
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       const img = new Image();
+      
+      // Aumentar a escala para garantir alta resolução na impressão (4x)
+      const scale = 4;
+      const svgSize = 340;
+      canvas.width = svgSize * scale;
+      canvas.height = svgSize * scale;
+      
       img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx?.drawImage(img, 0, 0);
-        const pngUrl = canvas.toDataURL("image/png");
-        downloadQR(pngUrl, `anuncio-${ad.id}.png`);
+        if (ctx) {
+          // Fundo branco explícito
+          ctx.fillStyle = "white";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Desenhar o QR Code escalonado
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          const pngUrl = canvas.toDataURL("image/png", 1.0);
+          downloadQR(pngUrl, `anuncio-${ad.id}.png`);
+          setIsPreparing(false);
+        }
       };
-      img.src = "data:image/svg+xml;base64," + btoa(svgData);
+
+      img.onerror = () => {
+        console.error("Erro ao processar imagem do QR Code");
+        setIsPreparing(false);
+      };
+
+      // Usar unescape/encodeURIComponent para evitar problemas com caracteres especiais no SVG
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      img.src = url;
     }
   };
 
@@ -275,14 +317,14 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ ad, onBack }) => {
                 size={340} 
                 level="H"
                 includeMargin={false}
-                imageSettings={{
-                  src: APP_LOGOS.ICON,
+                imageSettings={logoBase64 ? {
+                  src: logoBase64,
                   x: undefined,
                   y: undefined,
                   height: 70,
                   width: 70,
                   excavate: true,
-                }}
+                } : undefined}
               />
             </div>
           </div>

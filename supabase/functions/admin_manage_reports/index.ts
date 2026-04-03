@@ -1,4 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin, logAdminAction } from "../_shared/requireAdmin.ts";
+
+const FUNCTION_NAME = "admin_manage_reports";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -12,96 +15,128 @@ Deno.serve(async (req) => {
     try {
         const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
         const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-        const authHeader = req.headers.get("Authorization");
 
-        if (!authHeader) return new Response("Não autorizado", { status: 401 });
+        if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+            throw new Error("Missing critical environment variables");
+        }
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-        const token = authHeader.replace("Bearer ", "");
-        const { data: { user: requester }, error: authError } = await supabase.auth.getUser(token);
+        // ── STEP 1: Admin Auth Guard ─────────────────────────────────────────────
+        // FIXED: was returning plain text "Não autorizado" / "Acesso Proibido" before.
+        // Now returns consistent JSON with proper HTTP status codes.
+        const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        const auth = await requireAdmin(req, adminClient, corsHeaders, FUNCTION_NAME);
+        if (auth.error) return auth.response;
 
-        if (authError || !requester) throw new Error("Usuário não identificado");
+        const { adminId } = auth;
 
-        // VALIDAR SE É ADMIN PARA AS DEMAIS AÇÕES
-        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', requester.id).single();
-        if (!profile?.is_admin) return new Response("Acesso Proibido", { status: 403, headers: corsHeaders });
+        // ── STEP 2: Parse Body ───────────────────────────────────────────────────
+        let body: { action?: string; reportId?: string; status?: string; adId?: string };
+        try {
+            body = await req.json();
+        } catch {
+            return new Response(JSON.stringify({ error: "INVALID_BODY" }), {
+                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
 
-        const body = await req.json();
-        const { action, reportId, status } = body;
+        const { action, reportId, status, adId } = body;
 
-        // 1. LISTAR REPORTS
+        // ── STEP 3: Execute Action ───────────────────────────────────────────────
+
+        // 1. List reports
         if (action === 'list') {
-            const { data, error } = await supabase
+            const { data, error } = await adminClient
                 .from('reports')
-                .select(`
-                    *,
-                    reporter:profiles!reporter_id(id, name)
-                `)
+                .select(`*, reporter:profiles!reporter_id(id, name)`)
                 .order('created_at', { ascending: false });
             if (error) throw error;
-            return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            logAdminAction(FUNCTION_NAME, 'list_reports', adminId, null, true);
+            return new Response(JSON.stringify(data), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
         }
 
-        // 2. ATUALIZAR STATUS
+        // 2. Update report status
         if (action === 'update_status') {
             if (status !== 'resolved' && status !== 'dismissed') {
-                return new Response(JSON.stringify({ error: "Status inválido. Use 'resolved' ou 'dismissed'." }), { status: 400, headers: corsHeaders });
+                return new Response(JSON.stringify({
+                    error: "INVALID_VALUE",
+                    message: "Status inválido. Use 'resolved' ou 'dismissed'."
+                }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
             }
-            const { error } = await supabase.from('reports').update({ status }).eq('id', reportId);
+            if (!reportId) {
+                return new Response(JSON.stringify({ error: "MISSING_PARAMS", message: "reportId é obrigatório." }), {
+                    status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            const { error } = await adminClient.from('reports').update({ status }).eq('id', reportId);
             if (error) throw error;
-            return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            logAdminAction(FUNCTION_NAME, 'update_report_status', adminId, reportId, true, { newStatus: status });
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
         }
 
-        // 3. DELETAR REPORT
+        // 3. Delete a report record
         if (action === 'delete') {
-            const { error } = await supabase.from('reports').delete().eq('id', reportId);
+            if (!reportId) {
+                return new Response(JSON.stringify({ error: "MISSING_PARAMS", message: "reportId é obrigatório." }), {
+                    status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            const { error } = await adminClient.from('reports').delete().eq('id', reportId);
             if (error) throw error;
-            return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            logAdminAction(FUNCTION_NAME, 'delete_report', adminId, reportId, true);
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
         }
 
-        // 4. DELETAR ANÚNCIO (E RESOLVER REPORT)
+        // 4. Delete an ad (and optionally resolve report)
         if (action === 'delete_ad') {
-            const { adId, reportId } = body; // reportId is optional
-            if (!adId) return new Response(JSON.stringify({ error: "adId obrigatório" }), { status: 400, headers: corsHeaders });
+            if (!adId) {
+                return new Response(JSON.stringify({ error: "MISSING_PARAMS", message: "adId é obrigatório." }), {
+                    status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
 
-            console.log(`[Edge] Tentando deletar anúncio ID: ${adId}`);
-
-            // 1. Deletar o anúncio e retornar o registro deletado
-            const { data: deletedAd, error: deleteError } = await supabase
+            const { data: deletedAd, error: deleteError } = await adminClient
                 .from('anuncios')
                 .delete()
                 .eq('id', adId)
-                .select(); // Retorna os dados deletados
+                .select();
 
-            if (deleteError) {
-                console.error(`[Edge] Erro ao deletar: ${deleteError.message}`);
-                throw deleteError;
-            }
+            if (deleteError) throw deleteError;
 
-            // Checa se algo foi realmente deletado
             if (!deletedAd || deletedAd.length === 0) {
-                console.warn(`[Edge] Anúncio não encontrado ou já deletado. ID: ${adId}`);
-                // Não retorna erro 400/500 para não travar a UI, mas avisa
-                // Opcional: retornar { success: false, reason: 'not_found' }
-            } else {
-                console.log(`[Edge] Anúncio deletado com sucesso: ${deletedAd[0].titulo}`);
+                console.warn(`[${FUNCTION_NAME}] Anúncio ${adId} não encontrado ou já deletado.`);
             }
 
-            // 2. Se houver reportId, marcar como resolvido
             if (reportId) {
-                await supabase.from('reports').update({ status: 'resolved' }).eq('id', reportId);
+                await adminClient.from('reports').update({ status: 'resolved' }).eq('id', reportId);
             }
+
+            logAdminAction(FUNCTION_NAME, 'delete_ad', adminId, adId, true, {
+                relatedReportId: reportId ?? null,
+                deletedCount: deletedAd?.length ?? 0,
+            });
 
             return new Response(JSON.stringify({
                 success: true,
-                deletedCount: deletedAd ? deletedAd.length : 0
+                deletedCount: deletedAd?.length ?? 0,
             }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
-        return new Response("Ação inválida", { status: 400, headers: corsHeaders });
+        return new Response(JSON.stringify({
+            error: "INVALID_ACTION",
+            message: `Ação desconhecida: ${action}`
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     } catch (err) {
-        console.error("ERRO NA EDGE FUNCTION:", err);
-        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+        console.error(`[${FUNCTION_NAME}] Unhandled exception:`, err);
+        return new Response(JSON.stringify({
+            error: "INTERNAL_ERROR",
+            message: err instanceof Error ? err.message : String(err),
+        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 });

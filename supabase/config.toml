@@ -1,5 +1,8 @@
 project_id = "xkkjjvrucnlilegwnoey"
 
+# ─── Admin Functions ────────────────────────────────────────────────────────
+# verify_jwt removed: Gateway agora valida JWT antes de chegar na função.
+# Defesa interna mantida: getUser() + is_admin check em cada função.
 [functions.admin_manage_users]
 verify_jwt = false
 
@@ -12,8 +15,11 @@ verify_jwt = false
 [functions.admin_get_stats]
 verify_jwt = false
 
+# ─── User / Payment Functions ────────────────────────────────────────────────
+# verify_jwt removed: Gateway valida JWT. Função ainda verifica ownership.
 [functions.create-highlight-payment]
 verify_jwt = false
+
 [functions.create-turbo-session]
 verify_jwt = false
 

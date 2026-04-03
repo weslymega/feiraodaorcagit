@@ -108,14 +108,14 @@ serve(async (req) => {
             }, 400);
         }
 
-        // 1️⃣ Bloquear múltiplas sessões ativas
+        // 1️⃣ Bloquear múltiplas sessões ativas com política de auto-expiração (10 min)
         // 🎯 Verificar se já existe uma sessão status = 'active' para o mesmo ad_id
         const { data: existingSession, error: existingSessionError } = await supabaseAdmin
             .from('ad_turbo_sessions')
-            .select('id')
+            .select('id, created_at')
             .eq('ad_id', adId)
             .eq('status', 'active')
-            .maybeSingle(); // maybeSingle para não estourar erro 406 caso não exista
+            .maybeSingle();
 
         if (existingSessionError) {
             console.error(`[activate-turbo] DB Error ao checar sessões ativas: ${existingSessionError.message}`);
@@ -123,9 +123,30 @@ serve(async (req) => {
         }
 
         if (existingSession) {
-            console.warn(`[activate-turbo] Criação negada. Já existe sessão ATIVA (${existingSession.id}) para o anúncio ${adId}`);
-            // Se existir → retornar erro 409 (Conflict) conforme regra
-            return jsonResponse({ success: false, error: 'Já existe uma sessão de visualização ativa para este anúncio.' }, 409);
+            const createdAt = new Date(existingSession.created_at);
+            const now = new Date();
+            const diffInMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+
+            console.log(`[activate-turbo] [DEBUG] Sessão existente encontrada: ${existingSession.id}, Criada em: ${existingSession.created_at}, Idade: ${diffInMinutes.toFixed(1)} min`);
+
+            if (diffInMinutes < 10) {
+                console.warn(`[activate-turbo] Criação negada. Sessão RECENTE (< 10min) ativa (${existingSession.id}) para o anúncio ${adId}`);
+                return jsonResponse({ 
+                    success: false, 
+                    error: 'SESSION_ALREADY_ACTIVE',
+                    message: 'Você já possui uma sessão iniciada nos últimos 10 minutos. Se o anúncio não abriu, aguarde um momento ou reinicie o app.' 
+                }, 409);
+            } else {
+                console.log(`[activate-turbo] Sessão antiga (> 10min) detectada. Invalidando ID ${existingSession.id} para permitir nova tentativa.`);
+                const { error: updateError } = await supabaseAdmin
+                    .from('ad_turbo_sessions')
+                    .update({ status: 'expired' })
+                    .eq('id', existingSession.id);
+                
+                if (updateError) {
+                    console.error(`[activate-turbo] Falha ao expirar sessão antiga: ${updateError.message}`);
+                }
+            }
         }
 
         // 5️⃣ Estrutura recomendada da sessão (Persistência Segura)
