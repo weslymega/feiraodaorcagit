@@ -757,17 +757,17 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
   const renderSpecs = () => {
     const isManualComplete = !!formData.brandName && !!formData.modelName && !!formData.year && formData.year.length === 4;
+    const isFipeComplete = (!!selectedBrandId && !!selectedModelId && !!selectedYearId && formData.fipePrice > 0) || !!editingAd;
     const areDetailsSelected = !!formData.color && !!formData.gearbox;
-    const isFipeComplete = formData.fipePrice > 0 || editingAd;
 
-    // Se estiver no modo manual, exige todos os campos manuais + cor/câmbio.
-    // Se estiver no modo FIPE, e a pessoa *completou* a FIPE, exige cor/câmbio.
-    // Se a pessoa não completou a FIPE (quer pular), não bloqueia (UX first).
-    const isFipeNextDisabled = isFipeComplete ? !areDetailsSelected : false;
+    // A lógica agora é estrita: se não preencheu o básico (FIPE ou Manual) + detalhes técnicos, não continua.
+    const isNextStepDisabled = isManualEntry 
+      ? (!isManualComplete || !areDetailsSelected)
+      : (!isFipeComplete || !areDetailsSelected);
 
     if (isManualEntry) {
       return (
-        <StepContainer title="Dados (Preenchimento Manual)" progress={0.5} onNext={nextStep} nextDisabled={!isManualComplete || !areDetailsSelected} onBack={goBack}>
+        <StepContainer title="Dados (Preenchimento Manual)" progress={0.5} onNext={nextStep} nextDisabled={isNextStepDisabled} onBack={goBack}>
           <div className="space-y-6 animate-in fade-in">
             <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-start gap-3 mb-2">
               <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
@@ -790,7 +790,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     }
 
     return (
-      <StepContainer title="Dados do Veículo" progress={0.5} onNext={nextStep} nextDisabled={isFipeNextDisabled} onBack={goBack}>
+      <StepContainer title="Dados do Veículo" progress={0.5} onNext={nextStep} nextDisabled={isNextStepDisabled} onBack={goBack}>
         <div className="space-y-6">
           {((fipeBrands.length === 0 && !isLoadingBrands) || (selectedBrandId && fipeModels.length === 0 && !isLoadingModels)) && !editingAd ? (
             <div className="bg-red-50 p-6 rounded-3xl mb-6 border border-red-100 animate-in fade-in">
