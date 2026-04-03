@@ -6,7 +6,12 @@ const POPULAR_MODELS = [
   { brand: 'Honda', model: 'Civic', brandId: '25', modelId: '127', yearId: '2016-1', year: '2016' },
   { brand: 'VW', model: 'Gol', brandId: '59', modelId: '205', yearId: '2018-1', year: '2018' },
   { brand: 'GM', model: 'Onix', brandId: '23', modelId: '6175', yearId: '2019-1', year: '2019' },
-  { brand: 'Hyundai', model: 'HB20', brandId: '26', modelId: '6013', yearId: '2017-1', year: '2017' }
+  { brand: 'Hyundai', model: 'HB20', brandId: '26', modelId: '6013', yearId: '2017-1', year: '2017' },
+  { brand: 'Fiat', model: 'Strada', brandId: '21', modelId: '9112', yearId: '2024-5', year: '2024' },
+  { brand: 'Fiat', model: 'Argo', brandId: '21', modelId: '7965', yearId: '2024-5', year: '2024' },
+  { brand: 'VW', model: 'Polo', brandId: '59', modelId: '10176', yearId: '2024-5', year: '2024' },
+  { brand: 'Ford', model: 'Ka', brandId: '22', modelId: '6915', yearId: '2020-5', year: '2020' },
+  { brand: 'Renault', model: 'Kwid', brandId: '48', modelId: '8023', yearId: '2024-5', year: '2024' }
 ];
 
 export const marketPriceService = {

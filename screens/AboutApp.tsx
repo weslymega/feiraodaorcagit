@@ -38,13 +38,23 @@ export const AboutApp: React.FC<AboutAppProps> = ({ onBack }) => {
         </div>
 
         {/* Footer Info */}
-        <div className="mt-auto flex flex-col items-center gap-2 text-gray-400 pt-8">
+        <div className="mt-auto flex flex-col items-center gap-2 text-gray-400 pt-8 text-center">
             <p className="text-xs font-medium">Feito em Brasília para Brasília</p>
-            <div className="flex gap-1">
+            <div className="flex gap-1 justify-center">
               <Heart className="w-4 h-4 text-primary fill-current" />
               <Heart className="w-4 h-4 text-accent fill-current" />
             </div>
-            <p className="text-[10px] mt-4">© 2026 Feirão da Orca. Todos os direitos reservados.</p>
+            
+            <div className="mt-6 px-8">
+              <p className="text-[10px] leading-tight uppercase tracking-widest font-bold">
+                FEIRÃO DA ORCA é uma marca registrada no INPI
+              </p>
+              <p className="text-[9px] mt-1 opacity-70">
+                (Instituto Nacional da Propriedade Industrial)
+              </p>
+            </div>
+
+            <p className="text-[10px] mt-6 mb-8 opacity-50">© 2026 Feirão da Orca. Todos os direitos reservados.</p>
         </div>
       </div>
     </div>

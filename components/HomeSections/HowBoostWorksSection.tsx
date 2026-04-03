@@ -1,5 +1,5 @@
 import React from 'react';
-import { Rocket, PlusCircle, Star, ArrowUpRight, Users, Check } from 'lucide-react';
+import { Rocket, PlusCircle, Star, ArrowUpRight, Users, Check, Info, MoreVertical } from 'lucide-react';
 
 export const HowBoostWorksSection: React.FC = () => {
     const steps = [
@@ -72,12 +72,23 @@ export const HowBoostWorksSection: React.FC = () => {
                     </ul>
                 </div>
 
+                {/* Como destacar - NOVO CAMINHO ORIENTADO COM ÍCONES */}
+                <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100 flex gap-3 items-start animate-in fade-in slide-in-from-bottom-2 duration-700">
+                    <div className="p-1.5 bg-blue-600 rounded-lg shadow-sm">
+                        <Info className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                        <p className="text-[11px] font-black text-blue-900 uppercase tracking-tighter mb-1">Onde destacar meu anúncio?</p>
+                        <p className="text-[11px] text-blue-800 leading-snug font-medium">
+                            Vá na tela <span className="font-black">Meus Anúncios</span>, clique nos <span className="font-black flex inline-flex items-center gap-0.5 bg-white px-1 rounded shadow-sm">três pontinhos <MoreVertical className="w-3 h-3 text-blue-600" /></span> do seu anúncio e selecione a opção de destaque.
+                        </p>
+                    </div>
+                </div>
+
                 {/* Aviso Play Store */}
-                <p className="text-[10px] text-gray-400 italic text-center">
+                <p className="text-[10px] text-gray-400 italic text-center mt-5">
                     *O desempenho pode variar de acordo com o tipo de anúncio.
                 </p>
-
-                {/* espaço reservado para CTA futuro */}
             </div>
         </div>
     );

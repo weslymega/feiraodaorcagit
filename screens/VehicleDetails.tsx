@@ -101,13 +101,6 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
   const handlePrintQR = () => {
     if (onPrint) {
       onPrint();
-      return;
-    }
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      const html = generateA4PrintTemplate(ad, qrCodeUrl);
-      printWindow.document.write(html);
-      printWindow.document.close();
     }
   };
 
