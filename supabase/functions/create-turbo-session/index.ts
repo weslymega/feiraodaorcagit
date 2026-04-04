@@ -7,7 +7,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-    // 1. Garantir que OPTIONS retorne Response
+    // 1. Manuseio de Preflight (CORS)
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -15,7 +15,7 @@ serve(async (req) => {
     try {
         const authHeader = req.headers.get('Authorization');
         if (!authHeader) {
-            return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+            return new Response(JSON.stringify({ error: 'Não autorizado', code: 'ERR_MISSING_AUTH' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 401,
             });
@@ -23,34 +23,30 @@ serve(async (req) => {
 
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
         const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-            global: {
-                headers: { Authorization: authHeader }
-            }
+        // Cliente Anon apenas para validar o TOKEN do usuário
+        const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
         });
 
-        // 2. Validar Usuário
-        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        // 🎯 ARQUITETURA ADMIN-FIRST
+        // Cliente Admin para operações que ignoram RLS (Segurança via Código)
+        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+        // 2. Validar Usuário (Zero confiança no frontend)
+        const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
         if (userError || !user) {
-            return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+            console.error(`[create-turbo-session] JWT FAIL: ${userError?.message}`);
+            return new Response(JSON.stringify({ error: 'Não autorizado', code: 'ERR_INVALID_JWT' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 401,
             });
         }
 
-        // 3. Validar Body
-        let body;
-        try {
-            body = await req.json();
-        } catch (e) {
-            return new Response(JSON.stringify({ error: 'Body inválido' }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400,
-            });
-        }
+        // 3. Extrair e validar inputs do body
+        const { adId, turboType } = await req.json();
 
-        const { adId, turboType } = body;
         if (!adId || !turboType) {
             return new Response(JSON.stringify({ error: 'adId e turboType são obrigatórios' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -58,8 +54,8 @@ serve(async (req) => {
             });
         }
 
-        // 4. Validar Anúncio
-        const { data: ad, error: adError } = await supabaseClient
+        // 4. Validar Anúncio (via Admin Client para ler sem erros de RLS)
+        const { data: ad, error: adError } = await supabaseAdmin
             .from('anuncios')
             .select('id, user_id, status, turbo_expires_at')
             .eq('id', adId)
@@ -72,14 +68,16 @@ serve(async (req) => {
             });
         }
 
+        // 🛡️ VALIDAÇÃO DE PROPRIEDADE (Bypass RLS local)
         if (ad.user_id !== user.id) {
+            console.error(`[create-turbo-session] FRAUDE: User ${user.id} tentou acessar ad ${adId} de ${ad.user_id}`);
             return new Response(JSON.stringify({ error: 'Acesso negado ao anúncio' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 403,
             });
         }
 
-        // Validação de status: 'ativo'
+        // 🛡️ VALIDAÇÃO DE STATUS
         if (ad.status !== 'ativo' && ad.status !== 'active') {
             return new Response(JSON.stringify({ error: 'O anúncio precisa estar ativo para usar o Turbo' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -87,9 +85,8 @@ serve(async (req) => {
             });
         }
 
-        // 🛡️ NOVO: Bloquear se já tiver Turbo Ativo
+        // 🛡️ VALIDAÇÃO DE TURBO EXISTENTE
         if (ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date()) {
-          console.warn(`[create-turbo-session] TURBO_ALREADY_ACTIVE: Ad ${adId}`);
           return new Response(JSON.stringify({ 
               error: 'TURBO_ALREADY_ACTIVE', 
               message: 'Este anúncio já possui um destaque ativo.',
@@ -100,8 +97,8 @@ serve(async (req) => {
           });
         }
 
-        // 5. Validar turboType e steps
-        const typeNormalized = turboType.toLowerCase();
+        // 5. Mapear steps do Turbo
+        const typeNormalized = String(turboType).toLowerCase();
         let requiredSteps = 0;
         if (typeNormalized === 'premium') requiredSteps = 2;
         else if (typeNormalized === 'pro') requiredSteps = 5;
@@ -113,13 +110,12 @@ serve(async (req) => {
             });
         }
 
-        // 6. Criar Sessão
-        // IMPORTANTE: Status deve ser 'active' conforme solicitado pelo usuário
-        const { data: session, error: sessionError } = await supabaseClient
+        // 6. Criar Sessão via ADMIN CLIENT (Blind insert confiável)
+        const { data: session, error: sessionError } = await supabaseAdmin
             .from('ad_turbo_sessions')
             .insert({
                 ad_id: adId,
-                user_id: user.id,
+                user_id: user.id, // Garantido pelo JWT validado
                 turbo_type: typeNormalized,
                 required_steps: requiredSteps,
                 current_step: 0,
@@ -129,13 +125,16 @@ serve(async (req) => {
             .single();
 
         if (sessionError) {
+            console.error(`[create-turbo-session] Erro crasso na inserção:`, sessionError);
             return new Response(JSON.stringify({ error: 'Erro ao criar sessão', details: sessionError.message }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 500,
             });
         }
 
-        // 7. Retorno Sucesso
+        console.log(`[create-turbo-session] Sucesso: Sessão ${session.id} criada para user ${user.id}`);
+
+        // 7. Retorno Padronizado
         return new Response(JSON.stringify({
             success: true,
             sessionId: session.id,
@@ -146,7 +145,7 @@ serve(async (req) => {
         });
 
     } catch (err: any) {
-        // Fallback final para evitar EarlyDrop
+        console.error('[create-turbo-session] Erro Interno:', err.message);
         return new Response(JSON.stringify({
             error: 'Erro interno inesperado',
             details: err.message || 'Unknown error'
@@ -156,3 +155,4 @@ serve(async (req) => {
         });
     }
 });
+
