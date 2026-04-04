@@ -591,7 +591,7 @@ export const api = {
                 .from('anuncios')
                 .select(`
                     *, 
-                    profiles:user_id(id, name, avatar_url),
+                    public_profiles!user_id(id, name, avatar_url),
                     destaques_anuncios(
                         plano_id,
                         result_ends_at:fim_em,
@@ -656,7 +656,7 @@ export const api = {
 
         const { data, error } = await supabase
             .from('favorites')
-            .select('ad_id, anuncios:ad_id(*, profiles:user_id(name, avatar_url))')
+            .select('ad_id, anuncios:ad_id(*, public_profiles!user_id(name, avatar_url))')
             .eq('user_id', user.id);
 
         if (error) {
@@ -997,7 +997,7 @@ export const api = {
 
         try {
             const { data, error } = await supabase
-                .from('profiles')
+                .from('public_profiles')
                 .select('id, name, avatar_url, bio, location, created_at')
                 .eq('id', userId)
                 .single();
@@ -1064,7 +1064,7 @@ export const api = {
                 // Fallback simples caso a function RPC falhe (ex: cache desatualizado)
                 const { data: fallbackData, error: fallbackError } = await supabase
                     .from('anuncios')
-                    .select('*, profiles:user_id(name, avatar_url)')
+                    .select('*, public_profiles!user_id(name, avatar_url)')
                     .eq('status', STATUS_DB_MAP[AdStatus.ACTIVE])
                     .order('created_at', { ascending: false })
                     .limit(limit);
@@ -1108,7 +1108,7 @@ export const api = {
                     *, 
                     turbo_expires_at,
                     last_turbo_at,
-                    profiles:user_id(name, avatar_url),
+                    public_profiles!user_id(name, avatar_url),
                     destaques_anuncios(
                         plano_id,
                         result_ends_at:fim_em,
