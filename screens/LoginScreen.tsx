@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Image as ImageIcon, Shield, Loader2, AlertCircle } from 'lucide-react';
 import { APP_LOGOS, ADMIN_USER, REGULAR_USER } from '../constants';
 import { User } from '../types';
-import { supabase } from '../services/api';
+import { supabase, api } from '../services/api';
 import { getSiteUrl } from '../utils/url';
 import { LegalConsent } from '../components/LegalConsent';
 
@@ -81,8 +81,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     } catch (err: any) {
       console.error("Login error:", err);
       
-      // Smart Error UX: Se as credenciais forem inválidas, pode sugerir que a conta não existe
-      if (err.message === "Invalid login credentials" || err.status === 400) {
+      // Monitoramento de Segurança: Logar falha de tentativa
+      const isCredentialError = err.message === "Invalid login credentials" || err.status === 400;
+      
+      if (isCredentialError) {
+        api.reportSecurityEvent('AUTH_FAILURE', 'low', { email });
         setErrorMsg("Não encontramos uma conta com esse e-mail ou a senha está incorreta.");
         setShowErrorLinks(true);
       } else {

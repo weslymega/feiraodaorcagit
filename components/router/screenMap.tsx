@@ -69,6 +69,7 @@ import { AdminDashboardPromotions } from '../../screens/AdminDashboardPromotions
 import { AdminRealEstatePromotions } from '../../screens/AdminRealEstatePromotions';
 import { AdminPartsServicesPromotions } from '../../screens/AdminPartsServicesPromotions';
 import { AdminVehiclesPromotions } from '../../screens/AdminVehiclesPromotions';
+import { AdminSecurityLogs } from '../../screens/AdminSecurityLogs';
 // ErrorBoundary importado acima
 
 export interface RouterContextProps {
@@ -483,6 +484,22 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                     onDelete={handleDeleteRealEstatePromotion}
                     onToggleActive={handleToggleRealEstatePromotionActive}
                 />
+            ) : (
+                user ? (
+                    <Dashboard
+                        user={user}
+                        onNavigate={navigateTo}
+                        onLogout={handleLogout}
+                        onOpenNewArrivals={openNewArrivals}
+                        onOpenServices={openAutomotiveServices}
+                        onOpenTrending={openTrendingRealEstate}
+                        dashboardPromotions={dashboardPromotions}
+                    />
+                ) : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
+            );
+        case Screen.ADMIN_SECURITY_LOGS:
+            return (user && user.isAdmin) ? (
+                <AdminSecurityLogs onBack={() => navigateTo(Screen.ADMIN_PANEL)} />
             ) : (
                 user ? (
                     <Dashboard

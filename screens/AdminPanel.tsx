@@ -17,7 +17,8 @@ import {
   ShoppingBag,
   DollarSign,
   TrendingUp,
-  ArrowUp
+  ArrowUp,
+  ShieldAlert
 } from 'lucide-react';
 import { AdStatus, Screen } from '../types';
 import {
@@ -235,6 +236,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
           />
           <ManagementItem
             icon={<Shield className="w-5 h-5" />}
+            label="Logs de Segurança (Real-time)"
+            bgClass="bg-orange-100"
+            iconClass="text-orange-700"
+            onClick={() => onNavigate && onNavigate(Screen.ADMIN_SECURITY_LOGS)}
+          />
+          <ManagementItem
+            icon={<Shield className="w-5 h-5" />}
             label="Moderação de Conteúdo"
             bgClass="bg-red-100"
             iconClass="text-red-700"
@@ -247,6 +255,45 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onNavigate }) =>
             iconClass="text-gray-700"
             onClick={() => onNavigate && onNavigate(Screen.ADMIN_SYSTEM_SETTINGS)}
           />
+        </div>
+
+        {/* 🛡️ LABORATÓRIO DE SEGURANÇA (DEMO) */}
+        <div className="mt-10 mb-6 p-6 bg-red-50 rounded-[2rem] border border-red-100">
+          <div className="flex items-center gap-3 mb-4">
+            <Shield className="w-6 h-6 text-red-600" />
+            <h2 className="text-lg font-bold text-red-900">Laboratório de Segurança</h2>
+          </div>
+          <p className="text-sm text-red-700 mb-6 leading-relaxed">
+            Aqui você pode testar a blindagem do banco de dados simulando tentativas de ataque reales.
+          </p>
+          
+          <button 
+            onClick={async () => {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) return alert("Erro: Usuário não autenticado.");
+
+              console.log("🚀 Iniciando Simulação de Ataque: Escalada de Privilégios...");
+              const { error } = await supabase
+                .from('profiles')
+                .update({ 
+                  role: 'admin', 
+                  is_admin: true,
+                  balance: 999999 
+                })
+                .eq('id', user.id);
+
+              if (error) {
+                alert(`✅ ATAQUE BLOQUEADO!\n\nMensagem do Banco: "${error.message}"\n\nEste evento foi logado no novo Monitor de Segurança.`);
+                // Reportar o bloqueio para o monitor
+                api.reportSecurityEvent('SECURITY_VIOLATION_ATTEMPT', 'high', { details: 'Bloqueio de escalada de privilégios (Trigger Enforced)', errorCode: error.code });
+              } else {
+                alert("⚠️ AVISO: O ataque passou. Verifique os triggers SQL!");
+              }
+            }}
+            className="w-full py-4 bg-white border-2 border-red-200 text-red-600 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-red-100 transition-all active:scale-[0.98] shadow-sm"
+          >
+            <ShieldAlert className="w-5 h-5" /> Simular Ataque de Privilégios
+          </button>
         </div>
 
       </div>

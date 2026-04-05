@@ -118,8 +118,8 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         createdAt: ad.created_at || ad.createdAt,
         updatedAt: ad.updated_at || ad.updatedAt,
         userId: ad.user_id || ad.userId,
-        ownerName: isOwner ? 'Eu' : (ad.profiles?.name || 'Usuário não encontrado'),
-        ownerAvatar: ad.profiles?.avatar_url || null,
+        ownerName: isOwner ? 'Eu' : (ad.public_profiles?.name || ad.profiles?.name || 'Usuário não disponível'),
+        ownerAvatar: ad.public_profiles?.avatar_url || ad.profiles?.avatar_url || null,
         additionalInfo: detalhes.additionalInfo || ad.additionalInfo || [],
         isOwner: isOwner,
         isInFair: ad.is_in_fair || false, // Mapeando novo campo do banco
@@ -171,6 +171,44 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
 };
 
 export const api = {
+    /**
+     * Report an event to the security monitor (Non-blocking)
+     */
+    reportSecurityEvent: async (event_type: string, severity: string = 'low', metadata?: any) => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            // Call the logging Edge Function WITHOUT waiting for it (fire and forget)
+            supabase.functions.invoke('log_security_event', {
+                body: {
+                    event_type,
+                    severity,
+                    user_id: user?.id,
+                    metadata: {
+                        window_location: window.location.href,
+                        ...metadata
+                    }
+                }
+            }).catch(e => console.warn("[api.reportSecurityEvent] Failed to send log:", e));
+        } catch (e) {
+            // Silently fail to not break the app
+        }
+    },
+
+    /**
+     * Fetch recent security logs (Admin only)
+     */
+    getSecurityLogs: async () => {
+        return await api.safeRequest(async (token) => {
+            const { data, error } = await supabase
+                .from('security_logs')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+            if (error) throw error;
+            return data || [];
+        });
+    },
 
     /**
      * Get validated access token, refreshing if needed.
@@ -226,6 +264,12 @@ export const api = {
                 console.log("[api.safeRequest] Retrying with fresh token...");
                 return await fn(refreshed.session.access_token);
             }
+
+            // Monitoramento de 403 (Acesso Negado)
+            if (error?.status === 403) {
+                api.reportSecurityEvent('UNAUTHORIZED_ACCESS', 'medium', { reason: '403 Forbidden', message: error.message });
+            }
+
             throw error;
         }
     },
@@ -721,7 +765,7 @@ export const api = {
      */
     getAllUsers: async (): Promise<User[]> => {
         const { data, error } = await supabase
-            .from('profiles')
+            .from('public_profiles')
             .select('*')
             .order('created_at', { ascending: false });
 
@@ -1031,7 +1075,7 @@ export const api = {
         try {
             const { data, error } = await supabase
                 .from('anuncios')
-                .select('*, profiles:user_id(name, avatar_url)')
+                .select('*, public_profiles!user_id(name, avatar_url)')
                 .order('created_at', { ascending: false });
 
             if (error) {

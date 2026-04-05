@@ -42,7 +42,8 @@ export enum Screen {
   ADMIN_DASHBOARD_PROMOTIONS = 'ADMIN_DASHBOARD_PROMOTIONS', // Nova rota de gerenciamento de propagandas do dashboard
   ADMIN_REAL_ESTATE_PROMOTIONS = 'ADMIN_REAL_ESTATE_PROMOTIONS', // Nova rota de gerenciamento de propagandas de imóveis
   ADMIN_PARTS_SERVICES_PROMOTIONS = 'ADMIN_PARTS_SERVICES_PROMOTIONS', // Nova rota de gerenciamento de propagandas de peças e serviços
-  ADMIN_VEHICLES_PROMOTIONS = 'ADMIN_VEHICLES_PROMOTIONS', // Nova rota de gerenciamento de propagandas de veículos
+  ADMIN_VEHICLES_PROMOTIONS = 'ADMIN_VEHICLES_PROMOTIONS',
+  ADMIN_SECURITY_LOGS = 'ADMIN_SECURITY_LOGS', // Nova rota de gerenciamento de propagandas de veículos
 
   ACCOUNT_DATA = 'ACCOUNT_DATA',
   NOTIFICATIONS = 'NOTIFICATIONS',

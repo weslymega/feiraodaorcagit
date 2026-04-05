@@ -17,6 +17,7 @@
  */
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logSecurityEvent } from "./security.ts";
 
 export type AdminContext = {
   error: false;
@@ -118,7 +119,22 @@ export async function requireAdmin(
   const isAdmin = profile?.is_admin === true || profile?.role === "admin";
 
   if (!isAdmin) {
-    // Audit log: unauthorized access attempt
+    // ── Audit Log: Unauthorized access attempt ─────────────────────────────
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    
+    // Log de segurança assíncrono (Non-blocking)
+    logSecurityEvent(adminClient, {
+      event_type: "UNAUTHORIZED_ADMIN",
+      severity: "medium",
+      user_id: user.id,
+      ip_address: ip,
+      user_agent: req.headers.get("user-agent") || "unknown",
+      metadata: {
+        function: functionName,
+        email: user.email
+      }
+    }).catch(e => console.error("[Security] Silent fail in requireAdmin log:", e));
+
     console.warn(
       `${tag} FORBIDDEN access attempt — user: ${user.email} (${user.id}) | is_admin: ${profile?.is_admin} | role: ${profile?.role}`
     );
