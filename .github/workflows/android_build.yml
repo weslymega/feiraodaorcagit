@@ -45,7 +45,9 @@ jobs:
 
     - name: Build Android App Bundle (.aab)
       working-directory: android
-      run: ./gradlew bundleRelease
+      run: |
+        chmod +x gradlew
+        ./gradlew bundleRelease
       env:
         # Passar os privilégios se não estiverem hardcoded no build.gradle
         ANDROID_SDK_ROOT: $ANDROID_HOME
