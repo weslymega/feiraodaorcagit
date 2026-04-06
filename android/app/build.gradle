@@ -33,6 +33,20 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if (details.requested.group == 'androidx.core') {
+            details.useVersion "1.13.1"
+        }
+        if (details.requested.group == 'androidx.activity') {
+            details.useVersion "1.9.3"
+        }
+        if (details.requested.group == 'androidx.fragment') {
+            details.useVersion "1.8.5"
+        }
+    }
+}
+
 repositories {
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
