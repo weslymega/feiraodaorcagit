@@ -35,13 +35,13 @@ android {
 
 configurations.all {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-        if (details.requested.group == 'androidx.core') {
+        if (details.requested.group == 'androidx.core' && details.requested.name == 'core') {
             details.useVersion rootProject.ext.androidxCoreVersion
         }
-        if (details.requested.group == 'androidx.activity') {
+        if (details.requested.group == 'androidx.activity' && details.requested.name == 'activity') {
             details.useVersion rootProject.ext.androidxActivityVersion
         }
-        if (details.requested.group == 'androidx.fragment') {
+        if (details.requested.group == 'androidx.fragment' && details.requested.name == 'fragment') {
             details.useVersion rootProject.ext.androidxFragmentVersion
         }
     }
