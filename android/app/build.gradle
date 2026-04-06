@@ -36,13 +36,13 @@ android {
 configurations.all {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
         if (details.requested.group == 'androidx.core') {
-            details.useVersion "1.13.1"
+            details.useVersion rootProject.ext.androidxCoreVersion
         }
         if (details.requested.group == 'androidx.activity') {
-            details.useVersion "1.9.3"
+            details.useVersion rootProject.ext.androidxActivityVersion
         }
         if (details.requested.group == 'androidx.fragment') {
-            details.useVersion "1.8.5"
+            details.useVersion rootProject.ext.androidxFragmentVersion
         }
     }
 }
