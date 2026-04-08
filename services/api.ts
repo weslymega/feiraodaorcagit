@@ -1287,10 +1287,16 @@ export const api = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return [];
 
-        // Buscamos todas as mensagens onde o usuário participa
+        // Buscamos todas as mensagens onde o usuário participa usando a VIEW pública
+        // SEGURANÇA: Não acessamos 'profiles' diretamente para evitar bloqueios de RLS e vazamento de dados.
         const { data, error } = await supabase
             .from('messages')
-            .select('*, ads:ad_id(titulo, imagens, preco), sender:sender_id(name, avatar_url, read_receipts), receiver:receiver_id(name, avatar_url, read_receipts)')
+            .select(`
+                *, 
+                ads:ad_id(titulo, imagens, preco), 
+                sender:public_profiles!sender_id(id, name, avatar_url), 
+                receiver:public_profiles!receiver_id(id, name, avatar_url)
+            `)
             .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
             .order('created_at', { ascending: false });
 
@@ -1310,7 +1316,7 @@ export const api = {
                 conversationsMap.set(key, {
                     id: m.id, // ID da última mensagem (UUID único)
                     otherUserId: otherUserId, // ID do outro usuário para o ChatDetail
-                    senderName: otherUser?.name || 'Usuário',
+                    senderName: otherUser?.name || 'Usuário indisponível',
                     avatarUrl: otherUser?.avatar_url || `https://ui-avatars.com/api/?name=${otherUser?.name || 'U'}`,
                     lastMessage: m.content || (m.image_url ? '📷 Foto' : ''),
                     time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -1324,8 +1330,8 @@ export const api = {
                     adId: m.ad_id,
                     adImage: m.ads?.imagens?.[0] || 'https://placehold.co/100x100?text=Orca',
                     adPrice: m.ads?.preco || 0,
-                    readReceipts: otherUser?.read_receipts ?? true,
-                    online: otherUser?.show_online_status ? (otherUser.last_active_at ? new Date(otherUser.last_active_at) > new Date(Date.now() - 5 * 60 * 1000) : false) : false
+                    readReceipts: true, // Fallback safe já que não expoemos este campo na view pública
+                    online: false      // Fallback safe já que não expoemos este campo na view pública
                 });
             }
         });

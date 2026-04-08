@@ -173,7 +173,9 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
               <img src={chat.avatarUrl} alt={chat.senderName} className="w-10 h-10 rounded-full object-cover group-hover:opacity-90" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-900 text-sm group-hover:text-primary transition-colors">{chat.senderName}</h1>
+              <h1 className="font-bold text-gray-900 text-sm group-hover:text-primary transition-colors">
+                {chat.senderName && chat.senderName !== "Usuário" ? chat.senderName : "Usuário indisponível"}
+              </h1>
               {isBlocked && <p className="text-xs text-red-500 font-medium">Usuário Bloqueado</p>}
             </div>
           </div>
