@@ -99,11 +99,68 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
   });
 
 
+
   const getFipeType = (): FipeVehicleType => {
     const group = selectedGroup.toLowerCase();
     if (group === 'moto') return 'motos';
     if (group === 'caminhão' || group === 'caminhao') return 'caminhoes';
     return 'carros';
+  };
+
+  // --- DERIVED LISTS FOR DROPDOWNS ---
+
+  // Extrai lista única de primeiros nomes dos modelos (Ex: [Argo, Cronos, Palio...])
+  const uniqueBaseModels = useMemo(() => {
+    if (fipeModels.length === 0) return [];
+    const baseNames = fipeModels.map(m => m.nome.split(' ')[0]);
+    return Array.from(new Set(baseNames)).sort();
+  }, [fipeModels]);
+
+  // Filtra as versões baseadas no modelo base selecionado
+  const availableVersions = useMemo(() => {
+    if (!filters.baseModel) return [];
+    return fipeModels.filter(m => m.nome.split(' ')[0] === filters.baseModel);
+  }, [fipeModels, filters.baseModel]);
+
+  // ------------------------------------
+
+  // 🎯 [FUNC] Carregamento de modelos reativo
+  const loadModels = async (brandName: string) => {
+    if (!brandName) {
+      setFipeModels([]);
+      return;
+    }
+
+    const selectedBrandObj = fipeBrands.find(b => b.nome === brandName);
+    if (!selectedBrandObj) return;
+
+    console.log(`[DEBUG] Intent to load models for brand: ${brandName} (ID: ${selectedBrandObj.codigo})`);
+    setIsLoadingModels(true);
+    try {
+      const models = await fipeApi.getModels(getFipeType(), selectedBrandObj.codigo);
+      setFipeModels(models);
+      console.log(`[DEBUG] Models loaded: ${models.length} items`);
+    } catch (err) {
+      console.error("❌ Erro ao buscar modelos FIPE:", err);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const brand = e.target.value;
+    setFilters(prev => ({
+      ...prev,
+      brand,
+      baseModel: '',
+      version: ''
+    }));
+    setHasUserInteracted(true);
+  };
+
+  const handleModelChange = (modelName: string) => {
+    setFilters(prev => ({ ...prev, baseModel: modelName, version: '' }));
+    setHasUserInteracted(true);
   };
 
   const [isBannerVisible, setIsBannerVisible] = useState(AdManager.isBannerActive());
@@ -139,7 +196,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     loadBrands();
   }, [selectedGroup]);
 
-  // Handle Filter Context
+  // Handle Filter Context Initial Hydration
   useEffect(() => {
     if (!filterContext) return;
 
@@ -148,69 +205,48 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       setSelectedGroup('todos');
       if (onClearFilter) onClearFilter();
     } else if (filterContext.mode === 'category' && filterContext.category === 'veiculos') {
-      // Aplicar filtros inteligentes vindos do Dashboard (ex: FIPE Hub)
       if (filterContext.searchTerm) {
         setSearchTerm(filterContext.searchTerm);
       }
-      if (filterContext.brand) {
-        setFilters(prev => ({ ...prev, brand: filterContext.brand || '' }));
-      }
-      if (filterContext.model) {
-        setFilters(prev => ({ ...prev, baseModel: filterContext.model || '' }));
-      }
       
-      // Se houver uma marca, precisamos carregar os modelos para o dropdown para manter a consistência visual
-      const syncFipeModels = async () => {
-        if (filterContext.brand && fipeBrands.length > 0) {
-          const selectedBrandObj = fipeBrands.find(b => b.nome === filterContext.brand);
-          if (selectedBrandObj) {
-            setIsLoadingModels(true);
-            const models = await fipeApi.getModels(getFipeType(), selectedBrandObj.codigo);
-            setFipeModels(models);
-            setIsLoadingModels(false);
-          }
-        }
-      };
-      syncFipeModels();
-    }
-  }, [filterContext, fipeBrands]);
-
-
-  // Handle Brand Change & Load Models
-  const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const brandName = e.target.value;
-
-    setFilters(prev => ({ ...prev, brand: brandName, baseModel: '', version: '' }));
-    setHasUserInteracted(true);
-    setFipeModels([]); // Reset models
-
-    if (brandName) {
-      const selectedBrandObj = fipeBrands.find(b => b.nome === brandName);
-      if (selectedBrandObj) {
-        setIsLoadingModels(true);
-        const models = await fipeApi.getModels(getFipeType(), selectedBrandObj.codigo);
-        setFipeModels(models);
-        setIsLoadingModels(false);
+      // Hydrate brand/model from context if present
+      if (filterContext.brand || filterContext.model) {
+        console.log('[DEBUG] Hydrating filters from context:', filterContext.brand, filterContext.model);
+        setFilters(prev => ({
+          ...prev,
+          brand: filterContext.brand || prev.brand,
+          baseModel: filterContext.model || prev.baseModel
+        }));
       }
     }
-  };
+  }, [filterContext]);
 
-  // --- DERIVED LISTS FOR DROPDOWNS ---
+  // 🎯 [EFFECT] Reactive to Brand Change (Manual or Programmatic)
+  useEffect(() => {
+    if (filters.brand && fipeBrands.length > 0) {
+      console.log('[DEBUG] selectedBrand active:', filters.brand);
+      loadModels(filters.brand);
+    }
+  }, [filters.brand, selectedGroup, fipeBrands]);
 
-  // Extrai lista única de primeiros nomes dos modelos (Ex: [Argo, Cronos, Palio...])
-  const uniqueBaseModels = useMemo(() => {
-    if (fipeModels.length === 0) return [];
-    const baseNames = fipeModels.map(m => m.nome.split(' ')[0]);
-    return Array.from(new Set(baseNames)).sort();
-  }, [fipeModels]);
 
-  // Filtra as versões baseadas no modelo base selecionado
-  const availableVersions = useMemo(() => {
-    if (!filters.baseModel) return [];
-    return fipeModels.filter(m => m.nome.split(' ')[0] === filters.baseModel);
-  }, [fipeModels, filters.baseModel]);
+  // Secondary Sync: Once models are loaded, ensure the baseModel matches one of the options (Case-Insensitive)
+  // Secondary Sync: Once models are loaded, ensure the baseModel matches one of the options (Case-Insensitive)
+  useEffect(() => {
+    if (fipeModels.length > 0 && filterContext?.model && !hasUserInteracted) {
+      const targetModel = filterContext.model.toLowerCase();
+      
+      // Find case-insensitive match in uniqueBaseModels
+      const match = uniqueBaseModels.find(m => m.toLowerCase() === targetModel);
+      
+      if (match && filters.baseModel !== match) {
+        console.log(`🎯 [VehiclesList] Auto-matching model: ${filterContext.model} -> ${match}`);
+        setFilters(prev => ({ ...prev, baseModel: match }));
+      }
+    }
+  }, [fipeModels, uniqueBaseModels, filterContext, hasUserInteracted]);
 
-  // ------------------------------------
+
 
   // --- MASKING HELPERS ---
 
@@ -546,10 +582,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
           <div className="relative">
             <select
               value={filters.baseModel}
-              onChange={(e) => {
-                setFilters(prev => ({ ...prev, baseModel: e.target.value, version: '' }));
-                setHasUserInteracted(true);
-              }}
+              onChange={(e) => handleModelChange(e.target.value)}
               disabled={!filters.brand || uniqueBaseModels.length === 0}
               className="w-full bg-white border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm disabled:opacity-50"
             >
@@ -692,7 +725,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
       {/* FILTER MODAL (Bottom Sheet) - Reduced Content */}
       {isFilterOpen && (
-        <div className="fixed inset-0 z-[2000] flex items-end justify-center">
+        <div className="fixed inset-0 z-[5000] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 
           <div 

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Heart } from 'lucide-react';
 import { Header } from '../components/Shared';
-import { APP_LOGOS } from '../constants';
+import { APP_LOGOS, APP_VERSION } from '../constants';
 
 interface AboutAppProps {
   onBack: () => void;
@@ -24,7 +24,7 @@ export const AboutApp: React.FC<AboutAppProps> = ({ onBack }) => {
           />
         </div>
 
-        <p className="text-sm text-gray-400 font-medium mb-8 bg-gray-200 px-3 py-1 rounded-full">v1.0.0</p>
+        <p className="text-sm text-gray-400 font-medium mb-8 bg-gray-200 px-3 py-1 rounded-full">v{APP_VERSION}</p>
 
         {/* Main Content Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-full mb-6">

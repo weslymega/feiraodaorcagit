@@ -1,5 +1,5 @@
 import { Screen, User, AdItem, AdStatus, MessageItem, ChatMessage, NotificationItem, ReportItem, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
-import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, MOCK_NOTIFICATIONS, MOCK_REPORTS, MOCK_ADMIN_VEHICLES, MOCK_ADMIN_REAL_ESTATE, MOCK_ADMIN_PARTS_SERVICES } from '../constants';
+import { CURRENT_USER, MY_ADS_DATA, FAVORITES_DATA, MOCK_NOTIFICATIONS, MOCK_REPORTS, MOCK_ADMIN_VEHICLES, MOCK_ADMIN_REAL_ESTATE, MOCK_ADMIN_PARTS_SERVICES, TERMS_VERSION } from '../constants';
 import { MOCK_SELLER } from '../constants';
 import { useRef, useEffect } from 'react';
 import { AppState } from '../types/AppState';
@@ -100,17 +100,24 @@ export const useAppActions = (state: AppState) => {
     // --- AUTH ACTIONS ---
     const handleAcceptTerms = async () => {
         try {
-            // STEP 1: Update DB
-            await api.updateTermsAcceptance();
+            // STEP 1: Update DB with versioning
+            await api.updateTermsAcceptance(TERMS_VERSION);
             
-            // STEP 2: Update Local State IMMEDIATELY (Loop Protection)
+            // STEP 2: Update Local Persistence (Immediate access even on reload)
+            localStorage.setItem("termsAccepted", "true");
+            localStorage.setItem("termsVersion", TERMS_VERSION);
+
+            // STEP 3: Update Local State IMMEDIATELY (Loop Protection)
             setUser(prev => prev ? ({ 
                 ...prev, 
                 acceptedTerms: true, 
-                acceptedAt: new Date().toISOString() 
+                termsAccepted: true,
+                termsVersion: TERMS_VERSION,
+                acceptedAt: new Date().toISOString(),
+                termsAcceptedAt: new Date().toISOString()
             }) : null);
             
-            // STEP 3: Navigate only after state is updated
+            // STEP 4: Navigate only after state is updated
             setCurrentScreen(Screen.DASHBOARD);
             setToast({ message: "Termos aceitos com sucesso! Bem-vindo.", type: 'success' });
         } catch (error) {
@@ -275,14 +282,40 @@ export const useAppActions = (state: AppState) => {
     const handleLogout = async () => {
         try {
             setAuthLoading(true);
+            console.log("🚪 [Auth] Logging out and clearing state...");
+
+            // 1. Limpeza de Persistência Local
+            localStorage.removeItem("termsAccepted");
+            localStorage.removeItem("termsVersion");
+            localStorage.clear(); // Clear all to be safe
+
+            // 2. Supabase SignOut
             await supabase.auth.signOut();
+
+            // 3. Reset de Estado Global (Garantia de Sessão Limpa)
             setUser(null);
-            setAuthLoading(false);
+            setMyAds([]);
+            setFavorites([]);
+            setNotifications([]);
+            setConversations([]);
+            setChatMessages([]);
+            setReports([]);
+            setSelectedAd(null);
+            setSelectedChat(null);
+            setViewingProfile(null);
+            setAdminAds([]);
+            
+            // 4. Redirecionamento
             setCurrentScreen(Screen.LOGIN);
+            setAuthLoading(false);
+            
+            console.log("✅ [Auth] Logout complete.");
         } catch (error) {
             console.error("❌ Erro ao deslogar:", error);
-            setAuthLoading(false);
+            // Mesmo em erro, limpamos o local e voltamos para o login
+            setUser(null);
             setCurrentScreen(Screen.LOGIN);
+            setAuthLoading(false);
         }
     };
 
@@ -299,6 +332,8 @@ export const useAppActions = (state: AppState) => {
                         name: newUserData.name,
                         full_name: newUserData.name,
                         accepted_terms: true,
+                        terms_accepted: true,
+                        terms_version: TERMS_VERSION,
                         accepted_at: new Date().toISOString()
                     }
                 }

@@ -506,7 +506,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       {/* --- FILTER MODAL (FIXED PROPORTIONS) --- */}
       {
         isFilterOpen && (
-          <div className="fixed inset-0 z-[2000] flex items-end justify-center">
+          <div className="fixed inset-0 z-[5000] flex items-end justify-center">
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 

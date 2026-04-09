@@ -10,7 +10,8 @@ import {
   MOCK_ADMIN_PARTS_SERVICES,
   MOCK_NOTIFICATIONS,
   MOCK_REPORTS,
-  PROMO_BANNERS
+  PROMO_BANNERS,
+  TERMS_VERSION
 } from '../constants';
 import AdManager from '../services/AdManager';
 
@@ -183,11 +184,13 @@ export const useAppState = () => {
         phone: "",
         location: "Brasília, DF",
         bio: "",
-        createdAt: sessionUser.created_at,
         emailConfirmedAt: sessionUser.email_confirmed_at,
-        // Default to metadata for initial boot state, but will be overridden by profile fetch
-        acceptedTerms: !!sessionUser.user_metadata?.accepted_terms,
-        acceptedAt: sessionUser.user_metadata?.accepted_at
+        // --- PERSISTÊNCIA EM DUAS CAMADAS (Otimização Local) ---
+        acceptedTerms: (localStorage.getItem("termsAccepted") === "true" && localStorage.getItem("termsVersion") === TERMS_VERSION) 
+          || !!sessionUser.user_metadata?.accepted_terms 
+          || !!sessionUser.user_metadata?.terms_accepted,
+        termsAccepted: localStorage.getItem("termsAccepted") === "true" && localStorage.getItem("termsVersion") === TERMS_VERSION,
+        termsVersion: localStorage.getItem("termsVersion") || sessionUser.user_metadata?.terms_version
       };
     };
 
@@ -332,11 +335,21 @@ export const useAppState = () => {
             setProfileLoaded(true);
             setRetryProfileCount(0); // Reset on success
             
-            // Mandatory Terms Acceptance Guard (Single Source of Truth: DB Profile)
-            // Strict check: No fallback to metadata here.
-            if (!freshProfile.acceptedTerms) {
-              console.log("⚠️ [Auth] Usuário não aceitou os termos no DB. Redirecionando...");
+            // --- VALIDAÇÃO FINAL (Fonte da Verdade: Supabase) ---
+            // Verifica tanto o campo legado quanto o novo com versionamento
+            const hasAcceptedCurrentVersion = (freshProfile.termsAccepted || freshProfile.acceptedTerms) && 
+                                              freshProfile.termsVersion === TERMS_VERSION;
+
+            if (!hasAcceptedCurrentVersion) {
+              console.log("⚠️ [Auth] Aceite de termos ausente ou versão obsoleta no DB. Redirecionando...");
+              // Limpa otimização local se o DB diz que não vale
+              localStorage.removeItem("termsAccepted");
+              localStorage.removeItem("termsVersion");
               setCurrentScreen(Screen.ACCEPT_TERMS);
+            } else {
+              // Sincroniza Local Storage com o DB (Garante persistência para reabertura)
+              localStorage.setItem("termsAccepted", "true");
+              localStorage.setItem("termsVersion", TERMS_VERSION);
             }
           } else {
             // Profile not found yet (race condition with trigger)

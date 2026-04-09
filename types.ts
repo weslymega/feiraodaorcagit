@@ -86,6 +86,9 @@ export interface User {
   emailConfirmedAt?: string;
   acceptedTerms?: boolean;
   acceptedAt?: string;
+  termsAccepted?: boolean;
+  termsAcceptedAt?: string;
+  termsVersion?: string;
   deletedAt?: string;
 }
 

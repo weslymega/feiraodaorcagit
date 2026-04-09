@@ -24,9 +24,9 @@ type AdErrorHandler = (error: string) => void;
 class AdManager {
     private static instance: AdManager;
     private state: AdState = AdState.IDLE;
-    private rewardAdId: string = 'ca-app-pub-3940256099942544/5224354917'; // Test ID
-    private bannerAdId: string = 'ca-app-pub-3940256099942544/6300978111'; // Test ID
-    private interstitialAdId: string = 'ca-app-pub-3940256099942544/1033173712'; // Test ID
+    private rewardAdId: string = 'ca-app-pub-5881779125246456/1300960298'; // Production ID
+    private bannerAdId: string = 'ca-app-pub-5881779125246456/9926525312'; // Production ID
+    private interstitialAdId: string = 'ca-app-pub-3940256099942544/1033173712'; // Test ID (Update to Production later)
     private isInitialized: boolean = false;
     private listenersInitialized: boolean = false; // Singleton listener guard
     private timeoutId: any = null;
@@ -265,6 +265,7 @@ class AdManager {
             this.state = AdState.LOADING;
             const options: AdOptions = {
                 adId: this.rewardAdId,
+                isTesting: false
             };
             try {
                 await AdMob.prepareRewardVideoAd(options);
@@ -406,7 +407,7 @@ class AdManager {
                     adSize: BannerAdSize.ADAPTIVE_BANNER,
                     position: position,
                     margin: 0,
-                    isTesting: true // Ajustar para false em produção
+                    isTesting: false // Produção ativada
                 };
 
                 console.log('[AdMob] Executando AdMob.showBanner global...');
@@ -465,7 +466,10 @@ class AdManager {
         if (!Capacitor.isNativePlatform()) return;
         
         try {
-            await AdMob.prepareInterstitial({ adId: this.interstitialAdId });
+            await AdMob.prepareInterstitial({ 
+                adId: this.interstitialAdId,
+                isTesting: false 
+            });
             await AdMob.showInterstitial();
         } catch (error) {
             console.error('[AdMob] Interstitial failed:', error);

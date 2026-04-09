@@ -385,7 +385,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
       {/* --- FILTER MODAL --- */}
       {isFilterOpen && (
-        <div className="fixed inset-0 z-[2000] flex items-end justify-center">
+        <div className="fixed inset-0 z-[5000] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
 
           <div 

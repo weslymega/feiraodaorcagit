@@ -438,8 +438,11 @@ export const api = {
             showOnlineStatus: data.show_online_status ?? true,
             readReceipts: data.read_receipts ?? true,
             lastActiveAt: data.last_active_at,
-            acceptedTerms: data.accepted_terms || false,
-            acceptedAt: data.accepted_at,
+            acceptedTerms: data.accepted_terms || data.terms_accepted || false,
+            acceptedAt: data.accepted_at || data.terms_accepted_at,
+            termsAccepted: data.terms_accepted || false,
+            termsAcceptedAt: data.terms_accepted_at,
+            termsVersion: data.terms_version,
             cep: data.cep || '',
             deletedAt: data.deleted_at
         };
@@ -473,7 +476,7 @@ export const api = {
     /**
      * Update Terms Acceptance Status
      */
-    updateTermsAcceptance: async () => {
+    updateTermsAcceptance: async (version: string) => {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user?.id) {
@@ -481,13 +484,16 @@ export const api = {
             throw new Error('User not authenticated');
         }
 
-        console.log("💾 Registrando aceite para:", user.id);
+        console.log("💾 Registrando aceite para:", user.id, "Versão:", version);
 
         const { error } = await supabase
             .from('profiles')
             .update({
                 accepted_terms: true,
-                accepted_at: new Date().toISOString()
+                accepted_at: new Date().toISOString(),
+                terms_accepted: true,
+                terms_accepted_at: new Date().toISOString(),
+                terms_version: version
             })
             .eq('id', user.id);
 

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.fipe_cache (
 ALTER TABLE public.fipe_cache ENABLE ROW LEVEL SECURITY;
 
 -- Política de leitura: todos podem ler do cache
+DROP POLICY IF EXISTS "Leitura pública FIPE Cache" ON public.fipe_cache;
 CREATE POLICY "Leitura pública FIPE Cache" 
 ON public.fipe_cache 
 FOR SELECT 
@@ -20,6 +21,7 @@ USING (true);
 
 -- Política de escrita: todos (ou só autenticados) podem salvar no cache 
 -- Como é um cache FIPE inofensivo, permitimos insert publico temporariamente (ou anon)
+DROP POLICY IF EXISTS "Escrita anônima/autenticada FIPE Cache" ON public.fipe_cache;
 CREATE POLICY "Escrita anônima/autenticada FIPE Cache" 
 ON public.fipe_cache 
 FOR ALL 
@@ -35,6 +37,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_fipe_cache_updated_at ON public.fipe_cache;
 CREATE TRIGGER trigger_update_fipe_cache_updated_at
 BEFORE UPDATE ON public.fipe_cache
 FOR EACH ROW

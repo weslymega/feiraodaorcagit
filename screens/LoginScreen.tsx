@@ -4,7 +4,6 @@ import { APP_LOGOS, ADMIN_USER, REGULAR_USER } from '../constants';
 import { User } from '../types';
 import { supabase, api } from '../services/api';
 import { getSiteUrl } from '../utils/url';
-import { LegalConsent } from '../components/LegalConsent';
 
 interface LoginScreenProps {
   onLogin: (user: User) => void;
@@ -12,6 +11,8 @@ interface LoginScreenProps {
   onRegister: () => void;
   onViewTerms: () => void;
   onViewPrivacy: () => void;
+  user: User | null; // Added for Auth Guard
+  navigateTo: (screen: any) => void; // Added for redirection
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ 
@@ -19,7 +20,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onForgotPassword, 
   onRegister,
   onViewTerms,
-  onViewPrivacy
+  onViewPrivacy,
+  user,
+  navigateTo
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,7 +30,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showErrorLinks, setShowErrorLinks] = useState(false);
 
   // Reset form when component mounts to prevent stale state after logout
@@ -42,18 +44,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // --- EARLY RETURN PROTECTION ---
+    if (user) {
+      console.warn('[AUTH] Usuário já autenticado. Redirecionando sem reprocessar login.');
+      navigateTo('DASHBOARD');
+      return;
+    }
+
     // Prevent double submit
     if (isSubmitting) return;
 
     if (!email || !password) {
       setErrorMsg("Preencha todos os campos.");
-      setShowErrorLinks(false);
-      return;
-    }
-
-    // Validação de segurança no submit (Conforme requisitado)
-    if (!acceptedTerms) {
-      setErrorMsg("Você precisa aceitar os termos de uso para continuar.");
       setShowErrorLinks(false);
       return;
     }
@@ -92,13 +94,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         setErrorMsg("Erro ao entrar. Verifique sua conexão e tente novamente.");
         setShowErrorLinks(false);
       }
-      
+    } finally {
+      // --- GUARANTEED STATE RESET ---
       setLoading(false);
       setIsSubmitting(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    // --- EARLY RETURN PROTECTION ---
+    if (user) {
+      console.warn('[AUTH] Usuário já autenticado. Redirecionando...');
+      navigateTo('DASHBOARD');
+      return;
+    }
+
     try {
       setLoading(true);
       setErrorMsg('');
@@ -118,6 +128,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     } catch (err: any) {
       console.error("Google login error:", err);
       setErrorMsg("Erro ao iniciar login com Google.");
+    } finally {
+      // --- GUARANTEED STATE RESET ---
       setLoading(false);
     }
   };
@@ -251,20 +263,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </button>
           </div>
 
-          <div className="pt-2">
-            <LegalConsent 
-              onCheckedChange={setAcceptedTerms}
-              onViewPrivacy={onViewPrivacy}
-              onViewTerms={onViewTerms}
-              initialValue={acceptedTerms}
-            />
-          </div>
-
           <button
             type="submit"
-            disabled={loading || isSubmitting || !acceptedTerms}
+            disabled={loading || isSubmitting}
             className={`w-full py-4.5 rounded-2xl font-bold text-lg shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-2 ${
-              loading || isSubmitting || !acceptedTerms
+              loading || isSubmitting
               ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
               : 'bg-primary hover:bg-primary-dark text-white hover:shadow-primary/20'
             }`}

@@ -30,7 +30,7 @@ export const PromoModal: React.FC<PromoModalProps> = ({ promo, onClose }) => {
     }, [onClose]);
 
     return (
-        <div className="fixed inset-0 z-[900] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
             {/* Backdrop with extreme blur */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-xl transition-opacity"

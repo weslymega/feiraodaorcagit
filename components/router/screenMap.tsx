@@ -130,10 +130,61 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
     } = computed;
 
     const { handleBackFromDetails, handleBackFromProfile } = handlers;
+    const { setCurrentScreen } = state;
+
+    // --- 1. CATEGORIZAÇÃO DE ROTAS (SENIOR ARCHITECTURE) ---
+    const AUTH_ROUTES = [Screen.LOGIN, Screen.REGISTER, Screen.FORGOT_PASSWORD, Screen.RESET_PASSWORD];
+    
+    const APP_ROUTES = [
+        Screen.DASHBOARD, Screen.USER_PANEL, Screen.MY_ADS, Screen.CREATE_AD, 
+        Screen.EDIT_PROFILE, Screen.CHANGE_PASSWORD, Screen.ACCOUNT_DATA, 
+        Screen.NOTIFICATIONS, Screen.PRIVACY, Screen.SECURITY, Screen.BOOST_TURBO,
+        Screen.ADMIN_PANEL, Screen.ADMIN_USERS, Screen.ADMIN_VEHICLES, 
+        Screen.ADMIN_REAL_ESTATE, Screen.ADMIN_PARTS_SERVICES, 
+        Screen.ADMIN_SYSTEM_SETTINGS, Screen.ADMIN_CONTENT_MODERATION, 
+        Screen.ADMIN_DASHBOARD_PROMOTIONS, Screen.ADMIN_REAL_ESTATE_PROMOTIONS, 
+        Screen.ADMIN_PARTS_SERVICES_PROMOTIONS, Screen.ADMIN_VEHICLES_PROMOTIONS,
+        Screen.ADMIN_SECURITY_LOGS, Screen.BLOCKED_USERS
+    ];
+
+    // --- 2. GUARDA DE SESSÃO CENTRALIZADO ---
+
+    // A. Proteção de Rotas Públicas (Auth): Se já está logado, NÃO pode acessar Login/Register
+    if (user && AUTH_ROUTES.includes(currentScreen)) {
+        console.warn(`[Router] Usuário autenticado tentou acessar rota de auth (${currentScreen}). Redirecionando para Dashboard.`);
+        // Note: We return Dashboard component directly to avoid state loops in render
+        return (
+            <Dashboard
+                user={user}
+                onNavigate={navigateTo}
+                onLogout={handleLogout}
+                onAdClick={handleAdClick}
+                adsAtFair={fairAds}
+                featuredAds={displayFeaturedAds}
+                recentVehicles={dashboardVehicleAds}
+                trendingRealEstate={dashboardRealEstateAds}
+                serviceAds={serviceAds}
+                fairActive={fairActive}
+                onOpenNewArrivals={openNewArrivals}
+                onOpenServices={openAutomotiveServices}
+                onOpenTrending={openTrendingRealEstate}
+                dashboardPromotions={dashboardPromotions}
+                hasNotifications={hasUnreadNotifications}
+                setFilterContext={state.setFilterContext}
+                favorites={favorites}
+            />
+        );
+    }
+
+    // B. Proteção de Rotas Privadas (App): Se NÃO está logado, redireciona para Login
+    if (!user && APP_ROUTES.includes(currentScreen)) {
+        console.warn(`[Router] Acesso negado a ${currentScreen}. Redirecionando para Login.`);
+        return <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
+    }
 
     switch (currentScreen) {
         case Screen.LOGIN:
-            return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
+            return <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
         case Screen.REGISTER:
             return <RegisterScreen onBack={() => navigateTo(Screen.LOGIN)} onRegister={handleRegister} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
         case Screen.FORGOT_PASSWORD:
@@ -142,7 +193,6 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             return <AcceptTermsScreen onAccept={actions.handleAcceptTerms} onLogout={handleLogout} />;
 
         case Screen.DASHBOARD:
-            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
             return (
                 <Dashboard
                     user={user}
@@ -166,11 +216,9 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             );
 
         case Screen.USER_PANEL:
-            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
-            return <UserPanel user={user} onNavigate={navigateTo} onLogout={handleLogout} onToggleRole={handleToggleRole} />;
+            return <UserPanel user={user!} onNavigate={navigateTo} onLogout={handleLogout} onToggleRole={handleToggleRole} />;
         case Screen.EDIT_PROFILE:
-            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
-            return <EditProfile user={user} onSave={handleSaveProfile} onBack={goBackToPanel} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} />;
+            return <EditProfile user={user!} onSave={handleSaveProfile} onBack={goBackToPanel} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} />;
         case Screen.MY_ADS:
             return (
                 <MyAds
@@ -192,11 +240,9 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                 />
             );
         case Screen.BOOST_TURBO:
-            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
             return <BoostTurboScreen adId={state.adToEdit?.id || null} onBack={() => { if (state.setAdToEdit) state.setAdToEdit(undefined); navigateTo(Screen.MY_ADS); }} />;
         case Screen.CREATE_AD:
-            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
-            return <CreateAd user={user} onBack={() => { (state.cameFromMyAds) ? navigateTo(Screen.MY_ADS) : goBackToDashboard(); if (state.setAdToEdit) state.setAdToEdit(undefined); if (state.setCameFromMyAds) state.setCameFromMyAds(false); }} onFinish={handleCreateAdFinish} editingAd={state.adToEdit} />;
+            return <CreateAd user={user!} onBack={() => { (state.cameFromMyAds) ? navigateTo(Screen.MY_ADS) : goBackToDashboard(); if (state.setAdToEdit) state.setAdToEdit(undefined); if (state.setCameFromMyAds) state.setCameFromMyAds(false); }} onFinish={handleCreateAdFinish} editingAd={state.adToEdit} />;
         case Screen.VEHICLES_LIST:
             const vehicleListAds = activeRealAds.filter(ad => ad.category === 'veiculos');
             return <VehiclesList ads={vehicleListAds} onBack={goBackToDashboard} onAdClick={handleAdClick} favorites={favorites} onToggleFavorite={handleToggleFavorite} filterContext={state.filterContext} onClearFilter={() => { if (state.setFilterContext) state.setFilterContext(null) }} promotions={vehiclesPromotions} onNavigate={navigateTo} user={user} currentScreen={currentScreen} />;
@@ -299,7 +345,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                             user={user}
                         />
                     ) : (
-                        user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
+                            user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
                     )}
                 </ErrorBoundary>
             );
@@ -318,7 +364,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                             user={user}
                         />
                     ) : (
-                        user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
+                        user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
                     )}
                 </ErrorBoundary>
             );
@@ -326,8 +372,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
         case Screen.FAVORITES:
             return <Favorites favorites={favorites} onBack={goBackToDashboard} onRemove={handleRemoveFavorite} onAdClick={handleAdClick} />;
         case Screen.SETTINGS:
-            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
-            return <Settings user={user} onBack={goBackToPanel} onLogout={handleLogout} onNavigate={navigateTo} />;
+            return <Settings user={user!} onBack={goBackToPanel} onLogout={handleLogout} onNavigate={navigateTo} />;
         case Screen.MESSAGES:
             return <Messages messages={state.conversations || []} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />;
         case Screen.CHAT_DETAIL:
@@ -351,15 +396,12 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                 <Messages messages={state.conversations || []} onBack={goBackToDashboard} onSelectChat={handleSelectChat} />
             );
         case Screen.ACCOUNT_DATA:
-            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
-            return <AccountData user={user} onBack={() => navigateTo(Screen.SETTINGS)} onEdit={() => navigateTo(Screen.EDIT_PROFILE)} />;
+            return <AccountData user={user!} onBack={() => navigateTo(Screen.SETTINGS)} onEdit={() => navigateTo(Screen.EDIT_PROFILE)} />;
         case Screen.NOTIFICATIONS:
             return <Notifications onBack={handleBackFromDetails} onGoToChat={() => navigateTo(Screen.MESSAGES)} onClearAll={handleClearNotifications} items={allNotifications} />;
         case Screen.PRIVACY:
-            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
-            return <Privacy user={user} onBack={() => navigateTo(Screen.SETTINGS)} onUpdateSettings={handleUpdatePrivacySettings} onNavigate={navigateTo} />;
+            return <Privacy user={user!} onBack={() => navigateTo(Screen.SETTINGS)} onUpdateSettings={handleUpdatePrivacySettings} onNavigate={navigateTo} />;
         case Screen.BLOCKED_USERS:
-            if (!user) return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
             return <BlockedUsersScreen onBack={() => navigateTo(Screen.PRIVACY)} onUnblock={actions.handleUnblockUser} />;
         case Screen.SECURITY:
             return <Security onBack={() => navigateTo(Screen.SETTINGS)} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} onDeleteAccount={handleDeleteAccount} />;
@@ -371,7 +413,9 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             return <AboutUs onBack={() => navigateTo(Screen.DASHBOARD)} />;
         case Screen.TERMS_OF_USE: {
             const safeBack = () => {
-                if (previousScreen === Screen.REGISTER) {
+                if (user) {
+                    navigateTo(Screen.DASHBOARD);
+                } else if (previousScreen === Screen.REGISTER) {
                     navigateTo(Screen.REGISTER);
                 } else {
                     navigateTo(Screen.LOGIN);
@@ -381,7 +425,9 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
         }
         case Screen.PRIVACY_POLICY: {
             const safeBack = () => {
-                if (previousScreen === Screen.REGISTER) {
+                if (user) {
+                    navigateTo(Screen.DASHBOARD);
+                } else if (previousScreen === Screen.REGISTER) {
                     navigateTo(Screen.REGISTER);
                 } else {
                     navigateTo(Screen.LOGIN);
@@ -396,19 +442,19 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
 
         // ADMIN ROUTES
         case Screen.ADMIN_PANEL:
-            return (user && user.isAdmin) ? <AdminPanel onBack={() => navigateTo(Screen.SETTINGS)} onNavigate={navigateTo} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
+            return (user && user.isAdmin) ? <AdminPanel onBack={() => navigateTo(Screen.SETTINGS)} onNavigate={navigateTo} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
         case Screen.ADMIN_USERS:
-            return (user && user.isAdmin) ? <AdminUsers onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
+            return (user && user.isAdmin) ? <AdminUsers onBack={() => navigateTo(Screen.ADMIN_PANEL)} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
         case Screen.ADMIN_VEHICLES:
-            return (user && user.isAdmin) ? <AdminVehicleAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminVehicleAds} onUpdateAd={handleAdminAdUpdate} onNavigate={navigateTo} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
+            return (user && user.isAdmin) ? <AdminVehicleAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminVehicleAds} onUpdateAd={handleAdminAdUpdate} onNavigate={navigateTo} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
         case Screen.ADMIN_REAL_ESTATE:
-            return (user && user.isAdmin) ? <AdminRealEstateAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminRealEstateAds} onUpdateAd={handleAdminAdUpdate} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
+            return (user && user.isAdmin) ? <AdminRealEstateAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminRealEstateAds} onUpdateAd={handleAdminAdUpdate} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} adsAtFair={fairAds} featuredAds={displayFeaturedAds} fairActive={fairActive} dashboardPromotions={dashboardPromotions} /> : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
         case Screen.ADMIN_PARTS_SERVICES:
-            return (user && user.isAdmin) ? <AdminPartsServicesAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminPartsServicesAds} onUpdateAd={handleAdminAdUpdate} onNavigate={navigateTo} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
+            return (user && user.isAdmin) ? <AdminPartsServicesAds onBack={() => navigateTo(Screen.ADMIN_PANEL)} ads={allAdminPartsServicesAds} onUpdateAd={handleAdminAdUpdate} onNavigate={navigateTo} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
         case Screen.ADMIN_SYSTEM_SETTINGS:
-            return (user && user.isAdmin) ? <AdminSystemSettings onBack={() => navigateTo(Screen.ADMIN_PANEL)} fairActive={fairActive} onToggleFair={toggleFairActive} maintenanceMode={maintenanceMode} onToggleMaintenance={toggleMaintenanceModeAction} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
+            return (user && user.isAdmin) ? <AdminSystemSettings onBack={() => navigateTo(Screen.ADMIN_PANEL)} fairActive={fairActive} onToggleFair={toggleFairActive} maintenanceMode={maintenanceMode} onToggleMaintenance={toggleMaintenanceModeAction} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
         case Screen.ADMIN_CONTENT_MODERATION:
-            return (user && user.isAdmin) ? <AdminContentModeration onBack={() => navigateTo(Screen.ADMIN_PANEL)} onBlockUser={handleModerationBlockUser} onDeleteAd={handleModerationDeleteAd} reports={reports} onUpdateReport={handleReportAction} onDeleteReport={handleDeleteReport} onViewProfile={handleViewProfile} ads={allModerationAds} onSaveAd={handleAdminSaveAd} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
+            return (user && user.isAdmin) ? <AdminContentModeration onBack={() => navigateTo(Screen.ADMIN_PANEL)} onBlockUser={handleModerationBlockUser} onDeleteAd={handleModerationDeleteAd} reports={reports} onUpdateReport={handleReportAction} onDeleteReport={handleDeleteReport} onViewProfile={handleViewProfile} ads={allModerationAds} onSaveAd={handleAdminSaveAd} /> : (user ? <Dashboard user={user} onNavigate={navigateTo} onLogout={handleLogout} onOpenNewArrivals={openNewArrivals} onOpenServices={openAutomotiveServices} onOpenTrending={openTrendingRealEstate} dashboardPromotions={dashboardPromotions} /> : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />);
         case Screen.ADMIN_DASHBOARD_PROMOTIONS:
             return (user && user.isAdmin) ? (
                 <AdminDashboardPromotions
@@ -429,7 +475,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         onOpenTrending={openTrendingRealEstate}
                         dashboardPromotions={dashboardPromotions}
                     />
-                ) : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
+                ) : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
             );
         case Screen.ADMIN_PARTS_SERVICES_PROMOTIONS:
             return (user && user.isAdmin) ? (
@@ -451,7 +497,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         onOpenTrending={openTrendingRealEstate}
                         dashboardPromotions={dashboardPromotions}
                     />
-                ) : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
+                ) : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
             );
         case Screen.ADMIN_VEHICLES_PROMOTIONS:
             return (user && user.isAdmin) ? (
@@ -473,7 +519,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         onOpenTrending={openTrendingRealEstate}
                         dashboardPromotions={dashboardPromotions}
                     />
-                ) : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
+                ) : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
             );
         case Screen.ADMIN_REAL_ESTATE_PROMOTIONS:
             return (user && user.isAdmin) ? (
@@ -495,7 +541,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         onOpenTrending={openTrendingRealEstate}
                         dashboardPromotions={dashboardPromotions}
                     />
-                ) : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
+                ) : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
             );
         case Screen.ADMIN_SECURITY_LOGS:
             return (user && user.isAdmin) ? (
@@ -511,10 +557,10 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         onOpenTrending={openTrendingRealEstate}
                         dashboardPromotions={dashboardPromotions}
                     />
-                ) : <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
+                ) : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
             );
 
         default:
-            return <LoginScreen onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
+            return <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;
     }
 };

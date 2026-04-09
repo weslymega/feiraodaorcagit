@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowRight, Mail, Lock, User, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 import { User as UserType } from '../types';
-import { LegalConsent } from '../components/LegalConsent';
 
 interface RegisterScreenProps {
   onBack: () => void;
@@ -24,7 +23,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,12 +31,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     // Validações
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       setError('Por favor, preencha todos os campos.');
-      return;
-    }
-
-    // Validação de segurança no submit (Conforme requisitado)
-    if (!acceptedTerms) {
-      setError('Você precisa aceitar os Termos de Uso e a Política de Privacidade para cadastrar.');
       return;
     }
 
@@ -179,19 +171,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           </div>
 
           <div className="pt-2">
-            <LegalConsent 
-               onCheckedChange={setAcceptedTerms}
-               onViewPrivacy={onViewPrivacy}
-               onViewTerms={onViewTerms}
-               initialValue={acceptedTerms}
-            />
+            {/* O checkbox de termos agora é exibido apenas após o login/cadastro inicial */}
           </div>
 
           <button
             type="submit"
-            disabled={isLoading || !acceptedTerms}
+            disabled={isLoading}
             className={`w-full py-4.5 rounded-2xl font-bold text-lg shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-2 ${
-              isLoading || !acceptedTerms
+              isLoading
               ? 'bg-white/10 text-white/40 cursor-not-allowed shadow-none'
               : 'bg-accent hover:bg-yellow-400 text-primary-950 shadow-accent/10'
             }`}

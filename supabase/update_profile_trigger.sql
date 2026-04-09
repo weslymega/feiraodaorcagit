@@ -1,4 +1,4 @@
--- Atualiza o trigger de criação de perfil para incluir aceite de termos
+-- Atualiza o trigger de criação de perfil para incluir aceite de termos com versionamento
 -- Garante que se o usuário vier via Registro normal (com metadados), os termos já nasçam aceitos no perfil.
 
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
@@ -8,6 +8,8 @@ DECLARE
   avatar_val TEXT;
   accepted_terms_val BOOLEAN;
   accepted_at_val TIMESTAMPTZ;
+  terms_accepted_val BOOLEAN;
+  terms_version_val TEXT;
 BEGIN
   -- Extração segura de metadados
   name_val := COALESCE(
@@ -18,10 +20,14 @@ BEGIN
   
   avatar_val := new.raw_user_meta_data->>'avatar_url';
   
-  -- Aceite de termos (vindo do Registro ou Social com flag preemptiva)
+  -- Aceite de termos (Legado)
   accepted_terms_val := COALESCE((new.raw_user_meta_data->>'accepted_terms')::boolean, false);
   
-  IF accepted_terms_val THEN
+  -- Sincronização de Termos (Novo Sistema V1)
+  terms_accepted_val := COALESCE((new.raw_user_meta_data->>'terms_accepted')::boolean, false);
+  terms_version_val := new.raw_user_meta_data->>'terms_version';
+
+  IF accepted_terms_val OR terms_accepted_val THEN
     accepted_at_val := COALESCE((new.raw_user_meta_data->>'accepted_at')::timestamptz, NOW());
   ELSE
     accepted_at_val := NULL;
@@ -34,6 +40,9 @@ BEGIN
     avatar_url,
     accepted_terms,
     accepted_at,
+    terms_accepted,
+    terms_accepted_at,
+    terms_version,
     role,
     balance
   )
@@ -44,6 +53,9 @@ BEGIN
     avatar_val,
     accepted_terms_val,
     accepted_at_val,
+    terms_accepted_val,
+    CASE WHEN terms_accepted_val THEN accepted_at_val ELSE NULL END,
+    terms_version_val,
     'user',
     0.00
   )
@@ -54,4 +66,4 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Comentário explicativo
-COMMENT ON FUNCTION public.handle_new_user() IS 'Cria ou atualiza perfil do usuário sincronizando metadados de autenticação, incluindo aceite de termos.';
+COMMENT ON FUNCTION public.handle_new_user() IS 'Cria perfil do usuário sincronizando metadados de autenticação, incluindo novas colunas de termos v1.';

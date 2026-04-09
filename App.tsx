@@ -59,7 +59,14 @@ const App: React.FC = () => {
   }, [state.isAppReady, state.sessionReady, actions]);
 
   // --- CONTROLE DE LOADING GLOBAL EXPLÍCITO (FULLSCREEN & EXCLUSIVO) ---
-  const isAppLoading = !state.sessionReady || (!!state.user && !state.profileLoaded) || state.authLoading;
+  // Racional: Não bloqueamos rotas híbridas (Termos/Privacidade) se já tivermos sessão básica,
+  // mesmo que o perfil completo ainda esteja sincronizando.
+  const isLegalRoute = state.currentScreen === 'terms_of_use' || state.currentScreen === 'privacy_policy';
+  
+  const isAppLoading = (!state.sessionReady && !isLegalRoute) || 
+                       (!!state.user && !state.profileLoaded && !isLegalRoute) || 
+                       state.authLoading;
+
   const [showExclusiveLoading, setShowExclusiveLoading] = useState(isAppLoading);
 
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { supabase } from './api';
+import { fipeNormalizer } from '../utils/fipeNormalizer';
 
 export interface Brand {
   codigo: string;
@@ -270,6 +271,95 @@ export const fipeApi = {
       }
     } catch (err) {
       if (isDev) console.warn(`[FIPE] Detail fetch failed for ${key}`);
+    }
+
+    return null;
+  },
+
+  // --- DYNAMIC LOOKUP FUNCTIONS ---
+
+  findBrandIdByName: async (type: FipeVehicleType, brandName: string): Promise<string | null> => {
+    const brands = await fipeApi.getBrands(type);
+    const target = fipeNormalizer.normalizeBrandName(brandName);
+    
+    // Exact or contains match for brands (brands are simpler)
+    const match = brands.find(b => {
+      const name = fipeNormalizer.normalizeBrandName(b.nome);
+      return name === target || name.includes(target) || target.includes(name);
+    });
+    
+    return match ? match.codigo : null;
+  },
+
+  findBestModelAndYearId: async (type: FipeVehicleType, brandId: string, modelName: string, targetYearStr: string): Promise<{ modelId: string, yearId: string } | null> => {
+    const models = await fipeApi.getModels(type, brandId);
+    if (!models.length) return null;
+
+    const targetNorm = fipeNormalizer.normalizeModelName(modelName);
+    const candidates: { item: Model, score: number }[] = [];
+
+    // Gather all matching candidates
+    for (const item of models) {
+        const itemNorm = fipeNormalizer.normalizeModelName(item.nome);
+        const isSubstring = itemNorm.includes(targetNorm) || targetNorm.includes(itemNorm);
+        const distance = fipeNormalizer.getLevenshteinDistance(targetNorm, itemNorm);
+        const finalScore = isSubstring ? distance * 0.3 : distance;
+        
+        if (finalScore <= 0.5) {
+            candidates.push({ item, score: finalScore });
+        }
+    }
+
+    // Sort candidates: best match first
+    candidates.sort((a, b) => a.score - b.score);
+    
+    let targetYearNumeric = parseInt(targetYearStr.replace(/\D/g, ''));
+    if (isNaN(targetYearNumeric)) return null;
+
+    // Search for the first candidate that ACTUALLY has the requested year (or fallback year)
+    for (const candidate of candidates) {
+        try {
+            const years = await fipeApi.getYears(type, brandId, candidate.item.codigo);
+            if (!years || !years.length) continue;
+
+            let foundYearId: string | null = null;
+            // Try exact year, then -1, then -2
+            for (let attempt = 0; attempt <= 2; attempt++) {
+                const currentStr = (targetYearNumeric - attempt).toString();
+                const matches = years.filter(y => y.nome.includes(currentStr));
+                
+                if (matches.length > 0) {
+                    const pref = matches.find(y => y.codigo.endsWith('-1') || y.codigo.endsWith('-5'));
+                    foundYearId = pref ? pref.codigo : matches[0].codigo;
+                    break;
+                }
+            }
+
+            if (foundYearId) {
+                return { modelId: candidate.item.codigo, yearId: foundYearId };
+            }
+        } catch (e) {
+            // Ignore API failures for single models and test the next candidate
+        }
+    }
+
+    return null;
+  },
+
+  // Backwards compatibility if needed elsewhere
+  findYearIdByYear: async (type: FipeVehicleType, brandId: string, modelId: string, year: string): Promise<string | null> => {
+    const years = await fipeApi.getYears(type, brandId, modelId);
+    if (!years.length) return null;
+
+    const targetNumeric = year.replace(/\D/g, ''); 
+    if (!targetNumeric) return null;
+
+    const numericMatches = years.filter(y => y.nome.includes(targetNumeric));
+
+    if (numericMatches.length > 0) {
+      if (numericMatches.length === 1) return numericMatches[0].codigo;
+      const flexOrGasolina = numericMatches.find(y => y.codigo.endsWith('-1') || y.codigo.endsWith('-5'));
+      return flexOrGasolina ? flexOrGasolina.codigo : numericMatches[0].codigo;
     }
 
     return null;
