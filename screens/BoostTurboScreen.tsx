@@ -188,6 +188,15 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     console.log("[BoostTurboScreen] [STEP 20] SERVER CONFIRMED TURBO ACTIVATED! Triggering finalized state.");
                     setIsFinalizing(true);
                     finalizingRef.current = true; // Seta o Ref instantaneamente para bloquear eventos paralelos
+                    
+                    // Delay para mostrar sucesso (Substituindo o handleCompleted que foi removido)
+                    setTimeout(async () => {
+                        if (Capacitor.isNativePlatform()) {
+                            await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
+                        }
+                        setShowSuccess(true);
+                        setTimeout(() => onBackRef.current(), 2500);
+                    }, 3000);
                 }
             } else {
                 console.warn("[BoostTurboScreen] [STEP 18b] WARNING: Response succeeded but 'currentStep' is missing.");
@@ -271,38 +280,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             }
             
             setAdReady(AdManager.isAdReady());
-        },
-        handleCompleted: () => {
-            console.log("[BoostTurboScreen] [EVENT] Queue Completed -> Starting Finalization Sequence");
-            setIsFinalizing(true);
-            setWatchingAd(true);
-
-            // Delay para garantir que todas as promessas de sync de handleRewarded tenham resolvido
-            setTimeout(async () => {
-                const current = sessionRef.current;
-                const prog = localProgressRef.current;
-
-                console.log("[BoostTurboScreen] [FLOW] Final Completion Check (DB-ONLY):", { db: current?.currentStep, req: current?.requiredSteps });
-
-                // Verificação final baseada estritamente no estado do banco de dados
-                if (current && current.currentStep >= current.requiredSteps) {
-                    console.log("[BoostTurboScreen] [FLOW] PROGRESS VERIFIED BY SERVER. Closing turbo flow.");
-                    
-                    if (Capacitor.isNativePlatform()) {
-                        await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
-                    }
-                    setShowSuccess(true);
-                    
-                    setTimeout(() => {
-                        onBackRef.current();
-                    }, 2500);
-                } else {
-                    console.warn("[BoostTurboScreen] [FLOW] Completion check failed. Database sync state did not reach the target.");
-                    setIsFinalizing(false);
-                    setWatchingAd(false);
-                    setSyncError("A conclusão não pôde ser confirmada pelo servidor. Por favor, verifique sua conexão e tente clicar em 'Tentar Sincronizar Agora'.");
-                }
-            }, 3500);
         }
     };
 
@@ -322,7 +299,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         });
 
         AdManager.onDismissed(() => handlersRef.current.handleDismissed());
-        AdManager.onCompleted(() => handlersRef.current.handleCompleted());
 
         AdManager.onError((err) => {
             console.error("[BoostTurboScreen] Ad Error:", err);
@@ -351,12 +327,11 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             console.warn("[BoostTurboScreen] [AUTH] Proactive refresh failed, proceeding anyway:", e);
         }
 
-        // Garante que a contagem passada para o AdManager use o nosso otimismo 
-        // caso o sync do servidor ainda esteja em andamento.
-        const effectiveStep = Math.max(localProgress, currentSession.currentStep);
-
-        console.log("[BoostTurboScreen] START AD QUEUE from step:", effectiveStep);
-        AdManager.startAdQueue(currentSession.requiredSteps, effectiveStep);
+        console.log("[BoostTurboScreen] START AD SHOW (Single)");
+        const success = await AdManager.show();
+        if (!success) {
+            setWatchingAd(false);
+        }
     };
 
 
