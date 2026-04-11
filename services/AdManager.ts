@@ -44,6 +44,8 @@ class AdManager {
     private hasInitializedBanner: boolean = false;
     private isAppReady: boolean = false;
     private bannerPromise: Promise<void> = Promise.resolve();
+    private isProcessingShow: boolean = false; // LOCK SÍNCRONO (REQUISITO FUNDAMENTAL)
+    private lastExecutionId: string = '';
 
     // Callbacks
     private onReadyCallbacks: AdEventHandler[] = [];
@@ -113,6 +115,9 @@ class AdManager {
                 try { cb(); } catch (e) { console.error('[AdMob-v8] Dismiss callback fail:', e); }
             });
 
+            // RESET DE TRAVA (REQUISITO 2)
+            this.isProcessingShow = false;
+
             // PREPARA PRÓXIMO ANÚNCIO SEM DISPARAR (REQUISITO 1)
             console.log('[AdMob-v8] Preloading next ad for future use...');
             this.preload();
@@ -150,6 +155,7 @@ class AdManager {
         AdMob.addListener(RewardAdPluginEvents.FailedToShow, (error: any) => {
             console.log('[AdMob] EVENT: FailedToShow', error);
             this.state = AdState.ERROR;
+            this.isProcessingShow = false; // LIBERA TRAVA EM CASO DE FALHA (REQUISITO 2)
             this.clearTimeout();
             this.handleAdError('FAILED_TO_SHOW', error);
             this.onErrorCallbacks.forEach(cb => cb(error.message));
@@ -235,42 +241,61 @@ class AdManager {
     }
 
     public async show(): Promise<boolean> {
-        // TRAVA (REQUISITO 3)
-        if (this.state === AdState.SHOWING) {
-            console.warn('[AdMob] Ad is already playing. Blocking simultaneous call.');
+        const executionId = `EX-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        this.lastExecutionId = executionId;
+        const timestamp = new Date().toISOString();
+
+        console.log(`[AdMob] [${executionId}] [${timestamp}] show() chamado`);
+
+        // 1. TRAVA SÍNCRONA IMEDIATA (REQUISITO 1)
+        if (this.isProcessingShow) {
+            console.warn(`[AdMob] [${executionId}] BLOQUEIO: Já existe um processamento de exibição em curso.`);
             return false;
         }
 
+        // 2. ESTADO SHOWING (REQUISITO 3)
+        if (this.state === AdState.SHOWING) {
+            console.warn(`[AdMob] [${executionId}] BLOQUEIO: Ad já está em exibição (State=SHOWING).`);
+            return false;
+        }
+
+        // ATIVA TRAVA SÍNCRONA (REQUISITO 1)
+        this.isProcessingShow = true;
+
         if (!Capacitor.isNativePlatform()) {
-            console.log('[AdMob] Showing Mock Web Ad');
+            console.log(`[AdMob] [${executionId}] Showing Mock Web Ad`);
             setTimeout(() => {
-                console.log('[AdMob] Mock Rewarded');
+                console.log(`[AdMob] [${executionId}] Mock Rewarded`);
                 this.onRewardedCallbacks.forEach(cb => cb());
-                console.log('[AdMob] Mock Dismissed');
+                console.log(`[AdMob] [${executionId}] Mock Dismissed`);
+                // Mock do evento de dismiss para liberar a trava no web também
+                this.isProcessingShow = false;
                 this.onDismissedCallbacks.forEach(cb => cb());
             }, 1000);
             return true;
         }
 
         if (this.state !== AdState.READY) {
-            console.warn('[AdMob] Ad not ready. Current state:', this.state);
-            this.handleAdError('AD_NOT_READY', { currentState: this.state });
+            console.warn(`[AdMob] [${executionId}] Ad não está pronto. State:`, this.state);
+            this.handleAdError('AD_NOT_READY', { currentState: this.state, executionId });
+            this.isProcessingShow = false; // Libera pois não vai conseguir exibir
             await this.preload();
             return false;
         }
 
-        await this.executeShowDirectly();
+        await this.executeShowDirectly(executionId);
         return true;
     }
 
-    private async executeShowDirectly() {
+    private async executeShowDirectly(executionId: string) {
         try {
-            console.log('[AdMob] Calling AdMob.showRewardVideoAd()...');
+            console.log(`[AdMob] [${executionId}] Calling AdMob.showRewardVideoAd()...`);
             await AdMob.showRewardVideoAd();
         } catch (error: any) {
-            console.error('[AdMob] executeShowDirectly error:', error);
+            console.error(`[AdMob] [${executionId}] executeShowDirectly error:`, error);
             this.handleAdError('FAILED_TO_SHOW', error?.message || error);
             this.state = AdState.ERROR;
+            this.isProcessingShow = false; // LIBERA EM CASO DE EXCEÇÃO (REQUISITO 2)
         }
     }
 

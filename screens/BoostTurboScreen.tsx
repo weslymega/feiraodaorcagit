@@ -29,6 +29,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [showSuccess, setShowSuccess] = useState(false);
     const [loadingTextIndex, setLoadingTextIndex] = useState(0);
     const [adError, setAdError] = useState<{ type: string; details: any; timestamp: string } | null>(null);
+    const isClickLocked = useRef(false); // TRAVA DE CLIQUE SÍNCRONA (REQUISITO 4)
 
     const finalizationTexts = [
         "Verificando recompensa...",
@@ -271,6 +272,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         handleDismissed: async () => {
             console.log("[BoostTurboScreen] [EVENT] Native Dismiss received -> setWatchingAd(false)");
             setWatchingAd(false);
+            isClickLocked.current = false; // LIBERA TRAVA DE CLIQUE (REQUISITO 4)
             
             // 🎯 Reidratação de Sessão ao voltar do AdMob
             try {
@@ -316,6 +318,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         AdManager.onError((err) => {
             console.error("[BoostTurboScreen] Ad Error:", err);
             setWatchingAd(false);
+            isClickLocked.current = false; // LIBERA EM CASO DE ERRO
             setIsFinalizing(false);
         });
 
@@ -327,8 +330,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
     const handleWatchAd = async () => {
         const currentSession = sessionRef.current;
+        
+        // 1. TRAVA DE CLIQUE SÍNCRONA (REQUISITO 4)
+        if (isClickLocked.current) {
+            console.warn("[BoostTurboScreen] [UI LOCK] Clique ignorado: Processamento em curso.");
+            return;
+        }
+
         if (!currentSession || watchingAd) return;
 
+        console.log("[BoostTurboScreen] [UI LOCK] Ativando trava...");
+        isClickLocked.current = true; // ATIVA TRAVA IMEDIATA
+        
         setAdError(null);
         setWatchingAd(true);
         setSyncError(null);
@@ -344,7 +357,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         console.log("[BoostTurboScreen] START AD SHOW (Single)");
         const success = await AdManager.show();
         if (!success) {
+            console.log("[BoostTurboScreen] [UI LOCK] Show falhou ou foi bloqueado pelo Manager. Liberando UI.");
             setWatchingAd(false);
+            isClickLocked.current = false; // LIBERA SE NÃO CONSEGUIU DISPARAR
         }
     };
 
