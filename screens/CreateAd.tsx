@@ -588,11 +588,11 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   const renderVehicleType = () => (
     <StepContainer title="Tipo de Veículo" progress={0.1} onNext={nextStep} onBack={goBack}>
       <div className="flex flex-col gap-4">
-        {[{ id: 'Moto', label: 'Moto', icon: <Bike className="w-6 h-6" /> },
-        { id: 'Caminhão', label: 'Caminhão', icon: <Truck className="w-6 h-6" /> },
-        { id: 'SUV', label: 'SUV', icon: <Car className="w-6 h-6" /> },
+        {[{ id: 'Carro', label: 'Carro (Outros)', icon: <Car className="w-6 h-6" /> },
+        { id: 'Moto', label: 'Moto', icon: <Bike className="w-6 h-6" /> },
         { id: 'Sedã', label: 'Sedã', icon: <Car className="w-6 h-6" /> },
-        { id: 'Carro', label: 'Carro (Outros)', icon: <Car className="w-6 h-6" /> }]
+        { id: 'SUV', label: 'SUV', icon: <Car className="w-6 h-6" /> },
+        { id: 'Caminhão', label: 'Caminhão', icon: <Truck className="w-6 h-6" /> }]
           .map((type) => (
             <button key={type.id} onClick={() => { 
                 const fipeCat: FipeVehicleType = type.id === 'Moto' ? 'motos' : (type.id === 'Caminhão' ? 'caminhoes' : 'carros');

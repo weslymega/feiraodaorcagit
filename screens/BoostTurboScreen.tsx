@@ -28,6 +28,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [syncError, setSyncError] = useState<string | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [loadingTextIndex, setLoadingTextIndex] = useState(0);
+    const [adError, setAdError] = useState<{ type: string; details: any; timestamp: string } | null>(null);
 
     const finalizationTexts = [
         "Verificando recompensa...",
@@ -290,7 +291,16 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         console.log("[BoostTurboScreen] Initializing AdManager for session:", activeSession.id);
         AdManager.initialize();
 
-        AdManager.onReady(() => setAdReady(AdManager.isAdReady()));
+        AdManager.onReady(() => {
+            setAdReady(AdManager.isAdReady());
+            setAdError(null);
+        });
+
+        AdManager.onAdError((err) => {
+            console.error("[BoostTurboScreen] Ad Manager reported error:", err);
+            setAdError(err);
+            setWatchingAd(false);
+        });
 
         // Listener de Recompensa (Aguardado pelo AdManager)
         AdManager.onRewarded(async () => {
@@ -298,7 +308,10 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             await handlersRef.current.handleRewarded();
         });
 
-        AdManager.onDismissed(() => handlersRef.current.handleDismissed());
+        AdManager.onDismissed(() => {
+            setAdError(null); // Clear error on dismissal if any
+            handlersRef.current.handleDismissed();
+        });
 
         AdManager.onError((err) => {
             console.error("[BoostTurboScreen] Ad Error:", err);
@@ -316,6 +329,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         const currentSession = sessionRef.current;
         if (!currentSession || watchingAd) return;
 
+        setAdError(null);
         setWatchingAd(true);
         setSyncError(null);
         
@@ -330,6 +344,32 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         console.log("[BoostTurboScreen] START AD SHOW (Single)");
         const success = await AdManager.show();
         if (!success) {
+            setWatchingAd(false);
+        }
+    };
+
+    const handleDebugAdFlow = async () => {
+        console.log("[AdMob Debug] Starting Full Ad Flow Test...");
+        setAdError(null);
+        setWatchingAd(true);
+
+        try {
+            console.log("[AdMob Debug] 1. Initializing AdManager...");
+            await AdManager.initialize();
+            
+            console.log("[AdMob Debug] 2. Preloading...");
+            await AdManager.preload();
+            
+            // The flow will continue via listeners (onReady/onAdError)
+            // But if it's already ready, we show it
+            if (AdManager.isAdReady()) {
+                console.log("[AdMob Debug] 3. Already Ready. Showing...");
+                await AdManager.show();
+            } else {
+                console.log("[AdMob Debug] 3. Waiting for Load event...");
+            }
+        } catch (err: any) {
+            console.error("[AdMob Debug] TEST FAILED:", err);
             setWatchingAd(false);
         }
     };
@@ -575,6 +615,24 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                     </div>
                                 )}
 
+                                {adError && (
+                                    <div className="mb-6 p-4 bg-red-600 text-white rounded-2xl shadow-lg animate-in zoom-in duration-300">
+                                        <div className="flex items-center gap-2 mb-2 font-black uppercase text-sm">
+                                            <ShieldAlert className="w-5 h-5" /> [ERRO ADMOB]
+                                        </div>
+                                        <div className="space-y-1 font-bold">
+                                            <p className="text-xs opacity-90">Tipo: {adError.type}</p>
+                                            <p className="text-[11px] leading-tight">Detalhe: {JSON.stringify(adError.details)}</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => { setAdError(null); AdManager.preload(); }}
+                                            className="mt-3 w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[10px] uppercase font-black transition-all"
+                                        >
+                                            Tentar Novamente
+                                        </button>
+                                    </div>
+                                )}
+
                                 <button
                                     onClick={handleWatchAd}
                                     disabled={!adReady || watchingAd || loading}
@@ -588,6 +646,14 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                     ) : (
                                         <><Play className="w-5 h-5 fill-current" /> Assistir Anúncio</>
                                     )}
+                                </button>
+
+                                {/* DEBUG BUTTON */}
+                                <button
+                                    onClick={handleDebugAdFlow}
+                                    className="mt-8 px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border border-gray-200 rounded-full hover:bg-gray-100 transition-all"
+                                >
+                                    Testar AdMob (Debug)
                                 </button>
                             </>
                         )}

@@ -1,5 +1,6 @@
 import {
     AdMob,
+    RewardAdOptions,
     RewardAdPluginEvents,
     AdOptions,
     BannerAdOptions,
@@ -31,6 +32,11 @@ class AdManager {
     private listenersInitialized: boolean = false; // Singleton listener guard
     private timeoutId: any = null;
     private TIMEOUT_DURATION = 60000; // 60 seconds (video ads can be long)
+    private PRELOAD_TIMEOUT = 10000; // 10 seconds safety timeout
+
+    // Diagnostic State
+    private adError: { type: string; details: any; timestamp: string } | null = null;
+    private adErrorListeners: ((error: any) => void)[] = [];
 
     // Banner & Concurrency State
     private isBannerShowing: boolean = false;
@@ -112,38 +118,73 @@ class AdManager {
             this.preload();
         };
 
-        // CORE LISTENERS ONLY - No duplicates
-        AdMob.addListener(RewardAdPluginEvents.Rewarded, (r) => handleReward(r));
-        AdMob.addListener(RewardAdPluginEvents.Dismissed, () => handleDismiss());
 
-        AdMob.addListener(RewardAdPluginEvents.Loaded, () => {
-            console.log('[AdMob-v8] Loaded event. Current state:', this.state);
-
+        AdMob.addListener(RewardAdPluginEvents.Loaded, (info: any) => {
+            console.log('[AdMob] EVENT: Loaded', info);
+            
             // CRITICAL: If we are already showing, do NOT touch the state
             if (this.state === AdState.SHOWING) {
-                console.log('[AdMob-v8] Load event ignored while SHOWING');
+                console.log('[AdMob] Load event ignored while SHOWING');
                 return;
             }
 
             this.state = AdState.READY;
+            this.clearTimeout(); // Clear preload timeout
             this.onReadyCallbacks.forEach(cb => cb());
         });
 
-        AdMob.addListener(RewardAdPluginEvents.FailedToShow, (error: any) => {
-            console.error('[AdMob-v8] FailedToShow:', error);
+        AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (error: any) => {
+            console.log('[AdMob] EVENT: FailedToLoad', error);
             this.state = AdState.ERROR;
             this.clearTimeout();
+            this.handleAdError('FAILED_TO_LOAD', error);
             this.onErrorCallbacks.forEach(cb => cb(error.message));
         });
 
-        AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (error: any) => {
-            console.error('[AdMob-v8] FailedToLoad:', error);
+        AdMob.addListener(RewardAdPluginEvents.Showed, () => {
+            console.log('[AdMob] EVENT: Showed');
+            this.state = AdState.SHOWING;
+            this.startShowTimeout();
+        });
+
+        AdMob.addListener(RewardAdPluginEvents.FailedToShow, (error: any) => {
+            console.log('[AdMob] EVENT: FailedToShow', error);
             this.state = AdState.ERROR;
             this.clearTimeout();
+            this.handleAdError('FAILED_TO_SHOW', error);
             this.onErrorCallbacks.forEach(cb => cb(error.message));
+        });
+
+        AdMob.addListener(RewardAdPluginEvents.Rewarded, (reward) => {
+            console.log('[AdMob] EVENT: Rewarded', reward);
+            handleReward(reward);
+        });
+
+        AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
+            console.log('[AdMob] EVENT: Dismissed');
+            handleDismiss();
         });
 
         this.listenersInitialized = true;
+    }
+
+    private handleAdError(type: string, details: any) {
+        const error = {
+            type,
+            details,
+            timestamp: new Date().toISOString()
+        };
+        console.error('[AdMob ERROR]:', type, details);
+        this.adError = error;
+        this.adErrorListeners.forEach(cb => cb(error));
+    }
+
+    public getAdError() {
+        return this.adError;
+    }
+
+    public onAdError(cb: (error: any) => void) {
+        this.adErrorListeners.push(cb);
     }
 
     public async initialize(customAdId?: string) {
@@ -151,7 +192,7 @@ class AdManager {
 
         try {
             if (Capacitor.isNativePlatform()) {
-                console.log('[AdMob-v8] Native setup...');
+                console.log('[AdMob] Native setup...');
                 if (!this.isInitialized) {
                     await AdMob.initialize();
                     this.isInitialized = true;
@@ -163,45 +204,96 @@ class AdManager {
                 this.isInitialized = true;
                 this.state = AdState.READY;
             }
-        } catch (error) {
-            console.error('[AdMob-v8] Init error:', error);
+        } catch (error: any) {
+            console.error('[AdMob] Init error:', error);
+            this.handleAdError('UNEXPECTED_ERROR', error?.message || error);
+        }
+    }
+
+    public async preload() {
+        if (!Capacitor.isNativePlatform()) return;
+        
+        console.log('[AdMob] Calling preload()...');
+        this.state = AdState.LOADING;
+        this.adError = null; // Reset error on new preload attempt
+        
+        try {
+            const options: RewardAdOptions = {
+                adId: this.rewardAdId,
+                isTesting: false
+            };
+            
+            this.startPreloadTimeout();
+            await AdMob.prepareRewardVideoAd(options);
+            console.log('[AdMob] AdMob.prepareRewardVideoAd() promise resolved');
+        } catch (error: any) {
+            console.error('[AdMob] Preload error:', error);
+            this.handleAdError('FAILED_TO_LOAD', error?.message || error);
+            this.state = AdState.ERROR;
+            this.clearTimeout();
         }
     }
 
     public async show(): Promise<boolean> {
         // TRAVA (REQUISITO 3)
         if (this.state === AdState.SHOWING) {
-            console.warn('[AdMob-v8] Ad is already playing. Blocking simultaneous call.');
+            console.warn('[AdMob] Ad is already playing. Blocking simultaneous call.');
             return false;
         }
 
         if (!Capacitor.isNativePlatform()) {
-            console.log('[AdMob-v8] Showing Mock Web Ad');
+            console.log('[AdMob] Showing Mock Web Ad');
             setTimeout(() => {
-                console.log('[AdMob-v8] Mock Rewarded');
+                console.log('[AdMob] Mock Rewarded');
                 this.onRewardedCallbacks.forEach(cb => cb());
-                console.log('[AdMob-v8] Mock Dismissed');
+                console.log('[AdMob] Mock Dismissed');
                 this.onDismissedCallbacks.forEach(cb => cb());
             }, 1000);
             return true;
         }
 
         if (this.state !== AdState.READY) {
-            console.warn('[AdMob-v8] Ad not ready. Current state:', this.state);
+            console.warn('[AdMob] Ad not ready. Current state:', this.state);
+            this.handleAdError('AD_NOT_READY', { currentState: this.state });
             await this.preload();
             return false;
         }
 
-        this.executeShowDirectly();
+        await this.executeShowDirectly();
         return true;
     }
 
-    private startTimeout() {
+    private async executeShowDirectly() {
+        try {
+            console.log('[AdMob] Calling AdMob.showRewardVideoAd()...');
+            await AdMob.showRewardVideoAd();
+        } catch (error: any) {
+            console.error('[AdMob] executeShowDirectly error:', error);
+            this.handleAdError('FAILED_TO_SHOW', error?.message || error);
+            this.state = AdState.ERROR;
+        }
+    }
+
+    private startPreloadTimeout() {
         this.clearTimeout();
         this.timeoutId = setTimeout(() => {
-            console.warn('[AdMob-v8] Ad Timeout reached (60s). Forcing dismissal to unfreeze UI.');
-            this.state = AdState.IDLE;
-            this.onDismissedCallbacks.forEach(cb => cb());
+            if (this.state === AdState.LOADING) {
+                console.warn('[AdMob] Preload Timeout reached (10s).');
+                this.state = AdState.ERROR;
+                this.handleAdError('TIMEOUT_NO_EVENT', 'No Loaded or FailedToLoad event received within 10s');
+                this.onErrorCallbacks.forEach(cb => cb("Timeout ao carregar anúncio"));
+            }
+        }, this.PRELOAD_TIMEOUT);
+    }
+
+    private startShowTimeout() {
+        this.clearTimeout();
+        this.timeoutId = setTimeout(() => {
+            if (this.state === AdState.SHOWING) {
+                console.warn('[AdMob] Show Timeout reached (60s). Forcing dismissal to unfreeze UI.');
+                this.state = AdState.IDLE;
+                this.onDismissedCallbacks.forEach(cb => cb());
+            }
         }, this.TIMEOUT_DURATION);
     }
 
