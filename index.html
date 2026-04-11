@@ -158,12 +158,13 @@
 
 <body class="bg-concrete-50 text-slate-800 antialiased font-sans">
   <div id="root"></div>
-
-  <!-- FOOTER ESTÁTICO PARA VALIDAÇÃO GOOGLE -->
-  <footer style="text-align:center; padding:20px; font-size:14px;">
-    <a href="/privacidade">Política de Privacidade</a> |
-    <a href="/termos">Termos de Uso</a>
+  
+  <!-- LEGAL LINKS FOR GOOGLE COMPLIANCE (VISUALLY HIDDEN) -->
+  <footer style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;">
+    <a href="/privacidade" aria-hidden="false">Política de Privacidade</a>
+    <a href="/termos" aria-hidden="false">Termos de Uso</a>
   </footer>
+
 
   <script type="module" src="/index.tsx"></script>
 </body>

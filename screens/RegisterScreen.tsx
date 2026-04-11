@@ -203,12 +203,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             </button>
         </div>
 
-        {/* --- RODAPÉ DISCRETO --- */}
-        <div className="mt-8 flex justify-center gap-6 border-t border-white/5 pt-8 opacity-40">
-           <button onClick={onViewPrivacy} className="text-[11px] text-white font-bold uppercase tracking-widest hover:opacity-80 transition-opacity">Privacidade</button>
-           <div className="w-[1px] h-3 bg-white/20"></div>
-           <button onClick={onViewTerms} className="text-[11px] text-white font-bold uppercase tracking-widest hover:opacity-80 transition-opacity">Termos</button>
-        </div>
       </div>
     </div>
   );
