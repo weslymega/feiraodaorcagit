@@ -145,6 +145,8 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         return {
             ...baseData,
             vehicleType: detalhes.vehicleType || ad.vehicleType,
+            brand: detalhes.brandName || ad.brand,
+            model: detalhes.modelName || ad.model,
             year: detalhes.year || ad.year || new Date().getFullYear(),
             mileage: detalhes.mileage || ad.mileage || 0,
             fipePrice: detalhes.fipePrice || ad.fipePrice || 0,

@@ -32,12 +32,10 @@ interface VehiclesListProps {
 // Grupos de Veículos (Categorias)
 const VEHICLE_GROUPS = [
   { id: 'todos', label: 'Todos' },
-  { id: 'Moto', label: 'Motos' },
-  { id: 'Caminhão', label: 'Caminhões' },
-  { id: 'SUV', label: 'SUVs' },
-  { id: 'Sedã', label: 'Sedãs' },
-  { id: 'Picape', label: 'Picapes' },
-  { id: 'Hatch', label: 'Hatches' },
+  { id: 'motos', label: 'Motos' },
+  { id: 'caminhoes', label: 'Caminhões' },
+  { id: 'suvs', label: 'SUVs' },
+  { id: 'sedas', label: 'Sedãs' },
 ];
 
 const COLORS = [
@@ -102,8 +100,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   const getFipeType = (): FipeVehicleType => {
     const group = selectedGroup.toLowerCase();
-    if (group === 'moto') return 'motos';
-    if (group === 'caminhão' || group === 'caminhao') return 'caminhoes';
+    if (group === 'motos') return 'motos';
+    if (group === 'caminhoes') return 'caminhoes';
     return 'carros';
   };
 
@@ -317,23 +315,33 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       filters.fuel ||
       filters.color;
 
+    const matchesGroup = (ad: AdItem, group: string) => {
+      if (group === 'todos') return true;
+      const norm = (val: string) => (val || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      
+      const type = norm(ad.vehicleType);
+      const title = norm(ad.title);
+      const searchPool = `${type} ${title}`;
+
+      if (group === 'motos') return searchPool.includes('moto');
+      if (group === 'caminhoes') return searchPool.includes('caminh');
+      if (group === 'suvs') return searchPool.includes('suv');
+      if (group === 'sedas') return searchPool.includes('seda');
+      
+      return type.includes(group.toLowerCase());
+    };
+
     // Se houver filtros específicos, mantemos a lógica estrita original (sem fallback)
     // Se NÃO houver filtros específicos, usamos a lógica inteligente de Fallback para preencher a tela
     if (!hasSpecificFilters) {
-      // Fallback Logic: Preenche com Recentes + Destaques + Aleatórios se necessário
-      // Porém, precisamos respeitar o 'vehicleGroup' se selecionado (exceto 'todos')
-
       let candidates = ads;
-
-      // Se um grupo específico (ex: Moto) for selecionado, filtramos primeiro por ele
-      // O fallback irá operar DENTRO desse grupo se possível
       if (selectedGroup !== 'todos') {
-        candidates = ads.filter(ad => ad.vehicleType?.includes(selectedGroup));
+        candidates = ads.filter(ad => matchesGroup(ad, selectedGroup));
       }
 
       return getVehiclesWithFallback(candidates, {
         category: 'veiculos',
-        minItems: 20 // Garante pelo menos 20 itens na tela inicial
+        minItems: 20
       });
     }
 
@@ -349,10 +357,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       // Status (Relaxed for mocks)
       if (ad.status !== AdStatus.ACTIVE) return false;
 
-      // Grupo
-      if (selectedGroup !== 'todos') {
-        if (!ad.vehicleType?.includes(selectedGroup)) return false;
-      }
+      // Grupo (Usando a mesma lógica unificada)
+      if (!matchesGroup(ad, selectedGroup)) return false;
 
       // Busca Texto Inteligente e Flexível (Tolerante)
       if (activeSearchContent) {

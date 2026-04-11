@@ -279,8 +279,6 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
           year: detail.AnoModelo.toString(),
           fuel: detail.Combustivel,
           fipePrice: priceNum,
-          price: 0,
-          vehicleType: `${prev.brandName} ${prev.modelName}`,
           description: `${prev.brandName} ${prev.modelName} ${detail.AnoModelo} - ${detail.Combustivel}.\n\n` + prev.description
         }));
       }
@@ -359,7 +357,9 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       isFeatured: false,
       boostConfig: null,
       contactPhone: formData.phone,
-      isManualEntry: isManualEntry || false
+      isManualEntry: isManualEntry || false,
+      brandName: formData.brandName,
+      modelName: formData.modelName
     };
 
     if (editingAd) {
@@ -588,9 +588,11 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   const renderVehicleType = () => (
     <StepContainer title="Tipo de Veículo" progress={0.1} onNext={nextStep} onBack={goBack}>
       <div className="flex flex-col gap-4">
-        {[{ id: 'Passeio', label: 'Carro de Passeio', icon: <Car className="w-6 h-6" /> },
-        { id: 'Moto', label: 'Motocicleta', icon: <Bike className="w-6 h-6" /> },
-        { id: 'Caminhão', label: 'Caminhão / Ônibus', icon: <Truck className="w-6 h-6" /> }]
+        {[{ id: 'Moto', label: 'Moto', icon: <Bike className="w-6 h-6" /> },
+        { id: 'Caminhão', label: 'Caminhão', icon: <Truck className="w-6 h-6" /> },
+        { id: 'SUV', label: 'SUV', icon: <Car className="w-6 h-6" /> },
+        { id: 'Sedã', label: 'Sedã', icon: <Car className="w-6 h-6" /> },
+        { id: 'Carro', label: 'Carro (Outros)', icon: <Car className="w-6 h-6" /> }]
           .map((type) => (
             <button key={type.id} onClick={() => { 
                 const fipeCat: FipeVehicleType = type.id === 'Moto' ? 'motos' : (type.id === 'Caminhão' ? 'caminhoes' : 'carros');

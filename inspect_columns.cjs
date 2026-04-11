@@ -1,36 +1,30 @@
-const fs = require('fs');
-const env = fs.readFileSync('.env', 'utf-8').split('\n');
-const supabaseUrl = env.find(l => l.startsWith('VITE_SUPABASE_URL=')).split('=')[1].trim().replace(/['"]/g, '');
-const supabaseKey = env.find(l => l.startsWith('VITE_SUPABASE_ANON_KEY=')).split('=')[1].trim().replace(/['"]/g, '');
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-const sql = `
-  SELECT column_name, data_type 
-  FROM information_schema.columns 
-  WHERE table_name = 'anuncios_ranked';
-`;
+const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 
-fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, { // we probably cant do this directly if not exposed, let's try querying the view and inspecting keys
-  method: 'POST',
-  headers: {
-    'apikey': supabaseKey,
-    'Authorization': 'Bearer ' + supabaseKey
-  }
-}).catch(console.error);
+async function inspectColumns() {
+    const { data, error } = await supabase.rpc('inspect_table_columns', { table_name: 'profiles' });
+    if (error) {
+        // Fallback to direct query on information_schema if RPC fails
+        // Note: This requires a special RPC that executes SQL, which might not exist.
+        // But the user has many "check_schema" files, let's see if one works.
+        console.log('RPC failed, columns might be different than expected.');
+    } else {
+        console.log('Columns on profiles:', data.map(c => c.column_name));
+    }
+}
 
-// Alternatively, just query one row and infer types:
-fetch(`${supabaseUrl}/rest/v1/anuncios_ranked?limit=1`, {
-  method: 'GET',
-  headers: {
-    'apikey': supabaseKey,
-    'Authorization': 'Bearer ' + supabaseKey
-  }
-}).then(r => r.json()).then(data => {
-  if(data && data.length > 0) {
-     const row = data[0];
-     for (const key in row) {
-         console.log(`Column: ${key}, Type: ${typeof row[key]}, Value: ${row[key]}`);
-     }
-  } else {
-     console.log(data);
-  }
-}).catch(console.error);
+// Alternatively, just try to select everything and see the keys
+async function testSelect() {
+   const { data, error } = await supabase.from('profiles').select('*').limit(1);
+   if (error) {
+       console.log('Select failed:', error.message);
+   } else if (data && data[0]) {
+       console.log('Available columns in profiles:', Object.keys(data[0]));
+   } else {
+       console.log('No data in profiles, but select succeeded.');
+   }
+}
+
+testSelect();

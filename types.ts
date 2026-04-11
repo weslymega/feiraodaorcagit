@@ -149,6 +149,8 @@ export interface AdItem {
 
   // Vehicle Specifics
   vehicleType?: string; // e.g., 'Carro', 'Moto', 'Caminhão', 'SUV', 'Sedã', 'Picape'
+  brand?: string;
+  model?: string;
   plate?: string;
   year?: number;
   mileage?: number;
