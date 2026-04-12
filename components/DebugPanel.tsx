@@ -24,7 +24,8 @@ export default function DebugPanel() {
     }
   }, [logs]);
 
-  if (logs.length === 0) return null;
+  // Comentado para garantir que o painel apareça assim que for ativado, mesmo sem logs
+  // if (logs.length === 0) return null;
 
   return (
     <div 

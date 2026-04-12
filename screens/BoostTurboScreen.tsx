@@ -377,26 +377,25 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     };
 
     const handleDebugAdFlow = async () => {
-        console.log("[AdMob Debug] Starting Full Ad Flow Test...");
+        debugLogger.log("--- INICIANDO TESTE MANUAL ADMOB ---");
         setAdError(null);
         setWatchingAd(true);
 
         try {
-            console.log("[AdMob Debug] 1. Initializing AdManager...");
+            debugLogger.log("1. Inicializando AdManager...");
             await adManager.initialize();
             
-            console.log("[AdMob Debug] 2. Preloading...");
+            debugLogger.log("2. Pré-carregando anúncio...");
             await adManager.preload();
             
-            // The flow will continue via listeners (onReady/onAdError)
-            // But if it's already ready, we show it
             if (adManager.isAdReady()) {
-                console.log("[AdMob Debug] 3. Already Ready. Showing...");
+                debugLogger.log("3. Ad está pronto! Disparando Show...");
                 await adManager.show();
             } else {
-                console.log("[AdMob Debug] 3. Waiting for Load event...");
+                debugLogger.log("3. Ad ainda não carregou. Aguardando evento...");
             }
         } catch (err: any) {
+            debugLogger.log(`[ERRO TESTE] ${err.message || 'Erro desconhecido'}`);
             console.error("[AdMob Debug] TEST FAILED:", err);
             setWatchingAd(false);
         }
@@ -689,12 +688,22 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 )}
             </div>
             
-            {/* VERSION INFO FOOTER (Diagnostic) - Secret click to toggle debug */}
+            {/* VERSION INFO (Relocado para o centro para evitar sobreposição do rodapé no APK) */}
             <div 
-                className="absolute bottom-2 right-2 opacity-20 hover:opacity-100 transition-opacity cursor-pointer p-4 z-10"
-                onClick={() => setShowDebug(prev => !prev)}
+                className="flex justify-center w-full mt-8 mb-4 opacity-40 active:opacity-100 transition-opacity cursor-pointer z-50"
+                onClick={() => {
+                    const newState = !showDebug;
+                    setShowDebug(newState);
+                    if (newState) {
+                        debugLogger.log(">>> SISTEMA DE DEBUG GLOBAL ATIVADO <<<");
+                    }
+                }}
             >
-                <span className="text-[8px] font-mono text-gray-500">v1.0.8 (9)</span>
+                <div className="bg-gray-200/50 px-4 py-1 rounded-full border border-gray-300">
+                    <span className="text-[10px] font-black font-mono text-gray-600 uppercase tracking-widest">
+                        Debug Mode: v1.0.8 (9)
+                    </span>
+                </div>
             </div>
 
             {showDebug && <DebugPanel />}

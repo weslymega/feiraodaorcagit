@@ -282,10 +282,13 @@ class AdManager {
         this.isProcessingShow = true;
 
         if (!Capacitor.isNativePlatform()) {
+            debugLogger.log(`[AdMob Web] Simulando abertura de anúncio (Mock)...`);
             console.log(`[AdMob Web] Mock Show (Exec: ${executionId})`);
             setTimeout(() => {
+                debugLogger.log(`[AdMob Web] Recompensa recebida!`);
                 this.onRewardedCallbacks.forEach(cb => cb());
                 this.isProcessingShow = false;
+                debugLogger.log(`[AdMob Web] Painel fechado.`);
                 this.onDismissedCallbacks.forEach(cb => cb());
             }, 1000);
             return true;
