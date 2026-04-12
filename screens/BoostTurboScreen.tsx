@@ -140,7 +140,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 setIsFinalizing(true);
                 finalizingRef.current = true;
                 setTimeout(async () => {
-                    if (Capacitor.isNativePlatform()) await Haptics.notification({ type: NotificationType.Success });
+                    if (Capacitor.isNativePlatform()) {
+                        await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
+                    }
                     setShowSuccess(true);
                     setTimeout(() => onBackRef.current(), 2500);
                 }, 2000);
@@ -176,7 +178,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     setIsFinalizing(true);
                     finalizingRef.current = true;
                     setTimeout(async () => {
-                        if (Capacitor.isNativePlatform()) await Haptics.notification({ type: NotificationType.Success });
+                        if (Capacitor.isNativePlatform()) {
+                            await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
+                        }
                         setShowSuccess(true);
                         setTimeout(() => onBackRef.current(), 2500);
                     }, 3000);
@@ -212,7 +216,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const handleWatchAd = async () => {
         console.log("BOTÃO CLICADO (via handleWatchAd)");
         try {
-            // 🔍 REVISÃO (TRAVAS REMOVIDAS TEMPORARIAMENTE)
             const currentSession = sessionRef.current;
             if (!isProgressiveMode && !currentSession) {
                 console.log("🚫 RETURN: Sem sessão ativa");
@@ -278,7 +281,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div>
-                    <h1 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Boost Turbo {isProgressiveMode ? \"⚡\" : \"\"}</h1>
+                    <h1 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Boost Turbo {isProgressiveMode ? "⚡" : ""}</h1>
                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none">Acelerador de Resultados</p>
                 </div>
                 <button onClick={() => setShowDebug(!showDebug)} className="ml-auto p-2 text-gray-300 hover:text-gray-900">
@@ -290,60 +293,60 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 {showDebug && <div className="mb-6"><DebugPanel /></div>}
 
                 {isProgressiveMode && (
-                    <div className=\"animate-in fade-in slide-in-from-bottom duration-500\">
-                        <div className=\"bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-2xl shadow-blue-500/5 mb-8 relative overflow-hidden group text-center\">
-                            <div className=\"w-20 h-20 bg-blue-600 rounded-[2rem] mx-auto flex items-center justify-center mb-6 shadow-2xl shadow-blue-600/40 rotate-3 transition-transform group-hover:rotate-0\">
-                                <Zap className=\"w-10 h-10 text-white fill-current\" />
+                    <div className="animate-in fade-in slide-in-from-bottom duration-500 text-center">
+                        <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-2xl shadow-blue-500/5 mb-8 relative overflow-hidden group">
+                            <div className="w-20 h-20 bg-blue-600 rounded-[2rem] mx-auto flex items-center justify-center mb-6 shadow-2xl shadow-blue-600/40 rotate-3 transition-transform group-hover:rotate-0">
+                                <Zap className="w-10 h-10 text-white fill-current" />
                             </div>
-                            <h1 className=\"text-3xl font-black text-gray-900 leading-none mb-3\">Turbo <span className=\"text-blue-600 italic\">Boost</span></h1>
-                            <p className=\"text-sm text-gray-500 font-bold leading-relaxed max-w-[240px] mx-auto\">
+                            <h1 className="text-3xl font-black text-gray-900 leading-none mb-3">Turbo <span className="text-blue-600 italic">Boost</span></h1>
+                            <p className="text-sm text-gray-500 font-bold leading-relaxed max-w-[240px] mx-auto">
                                 Assista vídeos curtos para destacar seu anúncio no topo.
                             </p>
 
-                            <div className=\"mt-10 relative z-10\">
-                                <div className=\"flex justify-between items-end mb-3 px-1\">
-                                    <span className=\"text-[10px] font-black text-gray-400 uppercase tracking-widest\">Nível de Destaque</span>
-                                    <span className=\"text-lg font-black text-blue-600 italic\">{(localProgress / 3 * 100).toFixed(0)}%</span>
+                            <div className="mt-10 relative z-10">
+                                <div className="flex justify-between items-end mb-3 px-1">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nível de Destaque</span>
+                                    <span className="text-lg font-black text-blue-600 italic">{(localProgress / 3 * 100).toFixed(0)}%</span>
                                 </div>
-                                <div className=\"h-6 bg-gray-100 rounded-full p-1 border border-gray-50 shadow-inner\">
-                                    <div className=\"h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-1000\" style={{ width: `${Math.min((localProgress / 3) * 100, 100)}%` }}></div>
+                                <div className="h-6 bg-gray-100 rounded-full p-1 border border-gray-50 shadow-inner">
+                                    <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-1000" style={{ width: `${Math.min((localProgress / 3) * 100, 100)}%` }}></div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className=\"bg-white rounded-[2rem] p-6 border border-gray-100 shadow-xl mb-6\">
+                        <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-xl mb-6">
                             <button
                                 onClick={async () => {
-                                    console.log(\"CLICK DIRETO\");
-                                    console.log(\"ANTES DO SHOW\");
+                                    console.log("CLICK DIRETO");
+                                    console.log("ANTES DO SHOW");
                                     const success = await adManager.show();
-                                    console.log(\"DEPOIS DO SHOW | Sucesso:\", success);
+                                    console.log("DEPOIS DO SHOW | Sucesso:", success);
                                 }}
                                 className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] bg-gray-900 text-white`}
                             >
-                                <Play className=\"w-6 h-6 fill-current\" /> Assistir (CLICK DIRETO)
+                                <Play className="w-6 h-6 fill-current" /> Assistir (CLICK DIRETO)
                             </button>
                         </div>
                     </div>
                 )}
                 
                 {activeSession && (
-                    <div className=\"animate-in fade-in flex flex-col items-center\">
-                        <MonitorPlay className=\"w-20 h-20 text-blue-500 mb-6\" />
-                        <h2 className=\"text-2xl font-black text-gray-900 mb-2\">Quase lá!</h2>
-                        <div className=\"w-full max-w-[300px] bg-gray-200 rounded-full h-4 mb-3\">
-                            <div className=\"bg-blue-600 h-4 rounded-full transition-all\" style={{ width: `${(localProgress / activeSession.requiredSteps) * 100}%` }}></div>
+                    <div className="animate-in fade-in flex flex-col items-center text-center pt-8">
+                        <MonitorPlay className="w-20 h-20 text-blue-500 mb-6" />
+                        <h2 className="text-2xl font-black text-gray-900 mb-2">Quase lá!</h2>
+                        <div className="w-full max-w-[300px] bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
+                            <div className="bg-blue-600 h-4 rounded-full transition-all" style={{ width: `${(localProgress / activeSession.requiredSteps) * 100}%` }}></div>
                         </div>
                         <button
                             onClick={async () => {
-                                console.log(\"CLICK DIRETO (Sessão)\");
-                                console.log(\"ANTES DO SHOW\");
+                                console.log("CLICK DIRETO (Sessão)");
+                                console.log("ANTES DO SHOW");
                                 await adManager.show();
-                                console.log(\"DEPOIS DO SHOW\");
+                                console.log("DEPOIS DO SHOW");
                             }}
                             className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] bg-blue-600 text-white shadow-blue-500/30`}
                         >
-                            <Play className=\"w-6 h-6 fill-current\" /> Assistir Anúncio (CLICK DIRETO)
+                            <Play className="w-6 h-6 fill-current" /> Assistir Anúncio (CLICK DIRETO)
                         </button>
                     </div>
                 )}
