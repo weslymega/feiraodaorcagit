@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AdItem } from '../types';
 import { api, supabase } from '../services/api';
 import { Header } from '../components/Shared';
-import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, Rocket, Info } from 'lucide-react';
+import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, Rocket, Info, Bug, ArrowLeft } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 import AdManager from '../services/AdManager';
 import { turboService } from '../services/turboService';
+import { debugLogger } from '../utils/DebugLogger';
 import DebugPanel from '../components/DebugPanel';
-
+import { useNavigate } from 'react-router-dom';
 
 const adManager = AdManager.getInstance();
 
@@ -18,6 +19,7 @@ interface BoostTurboScreenProps {
 }
 
 export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack }) => {
+    const navigate = useNavigate();
     const [ad, setAd] = useState<AdItem | null>(null);
     const [loadingAd, setLoadingAd] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -25,19 +27,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
     // Estado da Sessão do Turbo e AdMob
     const [activeSession, setActiveSession] = useState<{ id: string, adId: string, requiredSteps: number, currentStep: number } | null>(null);
-    const [localProgress, setLocalProgress] = useState(0); // Progresso otimista (AdManager local)
+    const [localProgress, setLocalProgress] = useState(0); 
     const [adReady, setAdReady] = useState(false);
     const [watchingAd, setWatchingAd] = useState(false);
     const [isFinalizing, setIsFinalizing] = useState(false);
-    const finalizingRef = useRef(false); // Ref para leitura imediata em callbacks assíncronos
+    const finalizingRef = useRef(false);
     const [syncError, setSyncError] = useState<string | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [loadingTextIndex, setLoadingTextIndex] = useState(0);
     const [adError, setAdError] = useState<{ type: string; details: any; timestamp: string } | null>(null);
     const [showDebug, setShowDebug] = useState(false);
     const [isProgressiveMode, setIsProgressiveMode] = useState(false);
-    const isClickLocked = useRef(false); // TRAVA DE CLIQUE SÍNCRONA (REQUISITO 4)
-
+    const isClickLocked = useRef(false);
 
     const finalizationTexts = [
         "Verificando recompensa...",
@@ -45,7 +46,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         "Quase pronto..."
     ];
 
-    // Efeito para ciclar os textos de finalização
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (isFinalizing && !showSuccess) {
@@ -54,24 +54,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 setLoadingTextIndex(prev => (prev + 1) % finalizationTexts.length);
             }, 1500);
         }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
+        return () => { if (interval) clearInterval(interval); };
     }, [isFinalizing, showSuccess]);
 
-    // Refs para manter listeners estáveis e acessar estado atualizado sem re-registrar
     const sessionRef = useRef(activeSession);
     const onBackRef = useRef(onBack);
-    // Ref para evitar closures presas nos listeners de eventos globais
     const handlersRef = useRef({
         handleRewarded: async () => { },
-        handleDismissed: () => { },
-        handleCompleted: () => { }
+        handleDismissed: () => { }
     });
 
     useEffect(() => {
         sessionRef.current = activeSession;
-        // Sempre que o banco atualizar, sincronizamos o progresso otimista
         if (activeSession) {
             setLocalProgress(prev => Math.max(prev, activeSession.currentStep));
         }
@@ -87,11 +81,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         const fetchAdAndSession = async () => {
             setLoadingAd(true);
             try {
-                // Fetch Ad Details
                 const fetchedAd = await api.getAdById(adId);
                 if (isMounted) setAd(fetchedAd as AdItem);
 
-                // Fetch Active Session for this AD
                 const { data: sessionData } = await supabase.auth.getSession();
                 if (sessionData.session) {
                     const { data: turboSession } = await supabase
@@ -102,7 +94,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         .maybeSingle();
 
                     if (turboSession && isMounted) {
-                        console.log("[BoostTurboScreen] [SCHEMA CHECK] Session columns from DB:", JSON.stringify(turboSession));
                         const sess = {
                             id: turboSession.id,
                             adId: turboSession.ad_id,
@@ -113,17 +104,14 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         sessionRef.current = sess;
                         setIsProgressiveMode(false);
                     } else {
-                        // Se não encontrou sessão ativa legada, entramos no modo progressivo
                         setIsProgressiveMode(true);
                         setLocalProgress(fetchedAd.turbo_progress || 0);
                     }
                 } else {
-                    // Sem sessão de auth (não logado?), mas por precaução ativamos o modo progressivo visual
                     setIsProgressiveMode(true);
                 }
-
             } catch (err) {
-                console.error('Failed to load ad details for turbo:', err);
+                console.error('Failed to load ad details:', err);
                 if (isMounted) setAd(null);
             } finally {
                 if (isMounted) setLoadingAd(false);
@@ -133,60 +121,32 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         return () => { isMounted = false; };
     }, [adId]);
 
-    // Atualiza o Ref de finalização sempre que o State mudar
     useEffect(() => {
         finalizingRef.current = isFinalizing;
     }, [isFinalizing]);
 
     const handleAdRewardedInternal = async (): Promise<void> => {
-        // 🚨 TRAVA 1: Impedir completamente nova chamada se a finalização já iniciou
-        if (finalizingRef.current) {
-            console.log("[BoostTurboScreen] [TRAVA] Requisição ignorada: Turbo já foi ativado previamente.");
-            return;
-        }
+        if (finalizingRef.current) return;
 
         if (isProgressiveMode) {
-            console.log(`[BoostTurboScreen] [PROGRESSIVE] START REWARD SYNC for Ad ${ad?.id}`);
             setSyncError(null);
-            
             try {
-                // Otimismo visual
                 setLocalProgress(prev => prev + 1);
-
                 const result = await turboService.applyTurboReward(ad!.id);
-                
-                if (!result.success) {
-                    throw new Error(result.error || "Falha ao aplicar recompensa.");
-                }
-
-                console.log("[BoostTurboScreen] [PROGRESSIVE SUCCESS] New Data:", result);
-                
-                // Atualizamos o anúncio local
+                if (!result.success) throw new Error(result.error || "Falha ao aplicar recompensa.");
                 if (ad) {
-                    setAd({
-                        ...ad,
-                        turbo_progress: result.turbo_progress,
-                        turbo_expires_at: result.turbo_expires_at,
-                        is_turbo_active: true
-                    });
+                    setAd({ ...ad, turbo_progress: result.turbo_progress, turbo_expires_at: result.turbo_expires_at, is_turbo_active: true });
                 }
-
-                // Feedback de Sucesso
                 setIsFinalizing(true);
                 finalizingRef.current = true;
-                
                 setTimeout(async () => {
-                    if (Capacitor.isNativePlatform()) {
-                        await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
-                    }
+                    if (Capacitor.isNativePlatform()) await Haptics.notification({ type: NotificationType.Success });
                     setShowSuccess(true);
                     setTimeout(() => onBackRef.current(), 2500);
                 }, 2000);
-
             } catch (err: any) {
-                console.error("[BoostTurboScreen] [PROGRESSIVE ERROR]:", err);
+                console.error("[BoostTurboScreen] Reward Error:", err);
                 setSyncError(err.message || "Erro de sincronização");
-                // Revertemos o progresso otimista em caso de erro real
                 setLocalProgress(ad?.turbo_progress || 0);
                 throw err;
             }
@@ -194,289 +154,97 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         }
 
         const currentSession = sessionRef.current;
-        if (!currentSession) {
-            console.error("[BoostTurboScreen] [STEP 10] ERROR: Reward sync skipped - No active session ref");
-            return;
-        }
-
-        console.log(`[BoostTurboScreen] [STEP 11] START SYNC: Session ${currentSession.id} (Current Local Step: ${localProgress + 1})`);
-
-        // [ENV DEBUG] Verificação de Variáveis de Ambiente no APK
-        console.log("[ENV DEBUG] VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL || "VAZIO/NULL");
-        console.log("[ENV DEBUG] VITE_SUPABASE_ANON_KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY ? "PRESENTE (Inicia com: " + import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 10) + "...)" : "AUSENTE");
+        if (!currentSession) return;
 
         setSyncError(null);
-
         try {
-            // 1. Otimismo Imediato (Visual)
-            console.log(`[BoostTurboScreen] [STEP 12] Optimistic UI Update: ${localProgress} -> ${localProgress + 1}`);
             setLocalProgress(prev => prev + 1);
-
-            // 2. Chamada ao Servidor Blindada (safeRequest com Retry Automático)
-            const startTime = Date.now();
-            
             const data = await api.safeRequest(async (token) => {
-                const funcName = 'increment-turbo-step';
-                const payload = { sessionId: currentSession.id };
-                
-                console.log(`[BoostTurboScreen] [SYNC] Invoking ${funcName} with token`);
-                
-                const { data, error: invokeError } = await supabase.functions.invoke(funcName, {
-                    body: payload,
+                const { data, error: invokeError } = await supabase.functions.invoke('increment-turbo-step', {
+                    body: { sessionId: currentSession.id },
                     headers: { Authorization: `Bearer ${token}` }
                 });
-
                 if (invokeError) throw invokeError;
                 return data;
             });
 
-            const duration = Date.now() - startTime;
-            console.log(`[BoostTurboScreen] [SYNC SUCCESS] Response received in ${duration}ms:`, JSON.stringify(data));
-
-            if (!data?.success) {
-                console.warn("[BoostTurboScreen] [STEP 17] SERVER REJECTION:", data?.error || "Unknown Error");
-                throw new Error(data?.error || "Servidor não confirmou.");
-            }
-
+            if (!data?.success) throw new Error(data?.error || "Servidor não confirmou.");
             const newStep = data?.current_step ?? data?.currentStep;
-
             if (newStep !== undefined) {
-                console.log(`[BoostTurboScreen] [STEP 18] SYNC CONFIRMED! New DB Step: ${newStep}/${currentSession.requiredSteps}`);
-
-                // Atualizamos a sessão real com o dado que veio do banco
-                setActiveSession(prev => {
-                    console.log(`[BoostTurboScreen] [STEP 19] Updating React State 'activeSession' from ${prev?.currentStep} to ${newStep}`);
-                    return prev ? { ...prev, currentStep: newStep } : null;
-                });
-
-                // Se completou, marcamos finalização APENAS se o servidor confirmar ativação real
+                setActiveSession(prev => prev ? { ...prev, currentStep: newStep } : null);
                 if (data?.turbo_activated) {
-                    console.log("[BoostTurboScreen] [STEP 20] SERVER CONFIRMED TURBO ACTIVATED! Triggering finalized state.");
                     setIsFinalizing(true);
-                    finalizingRef.current = true; // Seta o Ref instantaneamente para bloquear eventos paralelos
-                    
-                    // Delay para mostrar sucesso (Substituindo o handleCompleted que foi removido)
+                    finalizingRef.current = true;
                     setTimeout(async () => {
-                        if (Capacitor.isNativePlatform()) {
-                            await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
-                        }
+                        if (Capacitor.isNativePlatform()) await Haptics.notification({ type: NotificationType.Success });
                         setShowSuccess(true);
                         setTimeout(() => onBackRef.current(), 2500);
                     }, 3000);
                 }
-            } else {
-                console.warn("[BoostTurboScreen] [STEP 18b] WARNING: Response succeeded but 'currentStep' is missing.");
             }
         } catch (err: any) {
-            // 🚨 TRAVA 2: Absorver erros atrasados se o sucesso já foi cravado
-            if (finalizingRef.current) {
-                console.log("[BoostTurboScreen] [TRAVA] Erro absorvido e ignorado. Turbo já foi finalizado. Erro barrado:", err);
-                return;
-            }
-
-            console.error("[BoostTurboScreen] [STEP ERROR] CRITICAL SYNC FAILURE:", err);
-
-            // Tenta extrair a mensagem de erro do corpo da resposta (JSON) do Supabase
-            let errorMsg = "";
-            try {
-                // Supabase FunctionsHttpError typically has context with the response
-                if (err.context && typeof err.context.json === 'function') {
-                    const errBody = await err.context.json();
-                    errorMsg = errBody.error || errBody.message || "";
-                    console.log("[BoostTurboScreen] Extracted error from context:", errorMsg);
-                } else if (err.message && (err.message.includes('{') || err.message.includes('success'))) {
-                    // Sometimes the error message itself contains the JSON string
-                    try {
-                        const parsed = JSON.parse(err.message);
-                        errorMsg = parsed.error || parsed.message || "";
-                    } catch (e) { /* ignore */ }
-                }
-            } catch (e) {
-                console.error("[BoostTurboScreen] Failed to parse error context:", e);
-            }
-
-            let msg = errorMsg || err.message || "Erro de rede";
-
-            if (msg.includes("SESSION_EXPIRED")) {
-                msg = "🚨 Sessão Expirada! Esta sessão de anúncios não é mais válida. Por favor, feche e abra novamente para criar uma nova.";
-            } else if (msg.includes("SESSION_ALREADY_COMPLETED")) {
-                msg = "✅ Esta sessão já foi concluída com sucesso!";
-            } else if (msg.includes("UPDATE_FAILED_NO_ROWS_AFFECTED")) {
-                msg = "⚠️ A sincronização não alterou o banco. Pode ser que a sessão expirou ou já foi processada. Tente clicar em 'Tentar Sincronizar Agora'.";
-            } else if (msg.includes("edge function returned a non-2xx status code")) {
-                // If we couldn't extract the specific error, but know it's a non-2xx
-                msg = `Erro do Servidor (${errorMsg || "Código não identificado"}). Verifique sua conexão.`;
-            }
-
-            setSyncError(msg);
-
-            // Em caso de erro, mostramos um alerta sonoro/visual forçado no celular
-            if (Capacitor.isNativePlatform()) {
-                window.alert(`⚠️ ERRO DE SINCRONIZAÇÃO:\n${msg}`);
-            }
+            if (finalizingRef.current) return;
+            setSyncError(err.message || "Erro de rede");
             throw err;
         }
     };
 
-    const localProgressRef = useRef(localProgress);
-    useEffect(() => {
-        localProgressRef.current = localProgress;
-        console.log(`[BoostTurboScreen] [UI-STATE] localProgress changed: ${localProgress}`);
-    }, [localProgress]);
-
-    useEffect(() => {
-        if (activeSession) {
-            console.log(`[BoostTurboScreen] [UI-STATE] activeSession changed: ${activeSession.currentStep}/${activeSession.requiredSteps}`);
-        }
-    }, [activeSession]);
-
-    // Ref com handlers atualizados para evitar closures presas em listeners de 1x
     handlersRef.current = {
         handleRewarded: handleAdRewardedInternal,
-        handleDismissed: async () => {
-            console.log("[BoostTurboScreen] [EVENT] Native Dismiss received -> setWatchingAd(false)");
+        handleDismissed: () => {
             setWatchingAd(false);
-            isClickLocked.current = false; // LIBERA TRAVA DE CLIQUE (REQUISITO 4)
-            
-            // 🎯 Reidratação de Sessão ao voltar do AdMob
-            try {
-                console.log("[BoostTurboScreen] [AUTH] Rehydrating session after ad dismissal...");
-                await supabase.auth.getSession();
-            } catch (e) {
-                console.error("[BoostTurboScreen] [AUTH] Rehydration failed:", e);
-            }
-            
+            isClickLocked.current = false;
             setAdReady(adManager.isAdReady());
         }
     };
 
-    // Registro dos Listeners no Ciclo de Vida do AdId
     useEffect(() => {
-        // Agora permitimos inicializar se estiver no modo progressivo OU se tiver uma sessão ativa
         if (!isProgressiveMode && !activeSession?.id) return;
-
-        console.log("[BoostTurboScreen] Initializing AdManager for:", isProgressiveMode ? "progressive" : activeSession?.id);
         adManager.initialize();
-
-        adManager.onReady(() => {
-            setAdReady(adManager.isAdReady());
-            setAdError(null);
-        });
-
-        adManager.onAdError((err) => {
-            console.error("[BoostTurboScreen] Ad Manager reported error:", err);
-            setAdError(err);
-            setWatchingAd(false);
-        });
-
-        // Listener de Recompensa (Aguardado pelo AdManager)
-        adManager.onRewarded(async () => {
-            console.log("[BoostTurboScreen] Raw onRewarded triggered");
-            await handlersRef.current.handleRewarded();
-        });
-
-        adManager.onDismissed(() => {
-            setAdError(null); // Clear error on dismissal if any
-            handlersRef.current.handleDismissed();
-        });
-
-        adManager.onError((err) => {
-            console.error("[BoostTurboScreen] Ad Error:", err);
-            setWatchingAd(false);
-            isClickLocked.current = false; // LIBERA EM CASO DE ERRO
-            setIsFinalizing(false);
-        });
-
-        return () => {
-            console.log("[BoostTurboScreen] Destroying ad listeners");
-            adManager.removeAllListeners();
-        };
+        adManager.onReady(() => setAdReady(adManager.isAdReady()));
+        adManager.onAdError((err) => { setAdError(err); setWatchingAd(false); });
+        adManager.onRewarded(async () => await handlersRef.current.handleRewarded());
+        adManager.onDismissed(() => handlersRef.current.handleDismissed());
+        adManager.onError(() => { setWatchingAd(false); isClickLocked.current = false; setIsFinalizing(false); });
+        return () => adManager.removeAllListeners();
     }, [activeSession?.id, isProgressiveMode, adId]);
 
     const handleWatchAd = async () => {
-        console.log("BOTÃO CLICADO");
-        
+        console.log("BOTÃO CLICADO (via handleWatchAd)");
         try {
-            // 🔍 REMOÇÃO TEMPORÁRIA DE TRAVAS PARA DEBUG
-            /*
-            if (isClickLocked.current) {
-                console.log("🚫 BLOQUEADO: isClickLocked");
-                return;
-            }
-
-            if (watchingAd) {
-                console.log("🚫 BLOQUEADO: watchingAd");
-                return;
-            }
-            */
-
+            // 🔍 REVISÃO (TRAVAS REMOVIDAS TEMPORARIAMENTE)
             const currentSession = sessionRef.current;
             if (!isProgressiveMode && !currentSession) {
-                console.log("🚫 BLOQUEADO: Sem sessão ativa no modo legado");
+                console.log("🚫 RETURN: Sem sessão ativa");
                 return;
             }
-
-            // Opcional: Manter feedback visual, mas sem bloquear a execução
             setWatchingAd(true);
             setSyncError(null);
             setAdError(null);
-
-            // 🎯 BLINDAGEM PRÉ-ADMOB: Refresh proativo
-            try {
-                console.log("🔄 [AdDebug-UI] Proactive session refresh (3s timeout)...");
-                await Promise.race([
-                    api.refreshSession(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error("REFRESH_TIMEOUT")), 3000))
-                ]);
-            } catch (e: any) {
-                console.warn("⚠️ [AdDebug-UI] Refresh failed/timeout, continuing...", e?.message || e);
-            }
-
-            // 🔍 ETAPA 3 — GARANTIR CHAMADA CORRETA
-            console.log("ANTES DO SHOW");
-            debugLogger.log("🔥 [DEBUG FORCED] Chamando adManager.show()...");
-            
+            console.log("ANTES DO SHOW (via handleWatchAd)");
             const success = await adManager.show();
-            
-            console.log("DEPOIS DO SHOW");
-            debugLogger.log(`🔥 [DEBUG FORCED] Resultado: ${success}`);
-
+            console.log("DEPOIS DO SHOW (via handleWatchAd) | Resultado:", success);
         } catch (e) {
             console.error("❌ ERRO NO FLUXO:", e);
         } finally {
             isClickLocked.current = false;
             setWatchingAd(false);
-            setLoading(false);
         }
     };
 
     const handleDebugAdFlow = async () => {
-        setShowDebug(true); // Abre o painel automaticamente ao testar
+        setShowDebug(true);
         debugLogger.clear();
-        debugLogger.log("--- INICIANDO TESTE MANUAL ADMOB ---");
-        setAdError(null);
+        debugLogger.log("--- TESTE MANUAL ---");
         setWatchingAd(true);
-
         try {
-            debugLogger.log("1. Inicializando AdManager...");
             await adManager.initialize();
-            
-            debugLogger.log("2. Pré-carregando anúncio...");
             await adManager.preload();
-            
-            if (adManager.isAdReady()) {
-                debugLogger.log("3. Ad está pronto! Disparando Show...");
-                await adManager.show();
-            } else {
-                debugLogger.log("3. Ad ainda não carregou (aguarde ou tente novamente)...");
-            }
-        } catch (err: any) {
-            debugLogger.log(`[ERRO TESTE] ${err.message || 'Erro inesperado'}`);
-            console.error("[AdMob Debug] TEST FAILED:", err);
+            if (adManager.isAdReady()) await adManager.show();
+        } finally {
             setWatchingAd(false);
         }
     };
-
 
     if (loadingAd) {
         return (
@@ -503,361 +271,83 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         );
     }
 
-    // Criar a sessão 
-    const handleSelectPlan = async (planId: string) => {
-        setLoading(true);
-        setError(null);
-        try {
-            // 🎯 Blindagem Inicial do Plano
-            const data = await api.safeRequest(async (token) => {
-                console.log("[BoostTurboScreen] [INIT-PLAN] Invoking activate-turbo");
-                const { data, error: invokeError } = await supabase.functions.invoke('activate-turbo', {
-                    body: { adId: ad.id, turboType: planId },
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (invokeError) throw invokeError;
-                return data;
-            });
-
-            if (data?.error) throw new Error(data.error);
-
-            if (data?.success && data?.sessionId) {
-                setActiveSession({
-                    id: data.sessionId,
-                    adId: ad.id,
-                    requiredSteps: data.requiredSteps || 5, // Fallback safe
-                    currentStep: 0
-                });
-            } else {
-                throw new Error(data?.message || 'Falha ao iniciar a sessão do Turbo.')
-            }
-        } catch (err: any) {
-            console.error('Error activating turbo:', err);
-            setError(err.message || 'Falha ao ativar o plano Turbo.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
-        <div className="flex flex-col h-full bg-gray-50">
-            <Header title="Ativar Turbo" onBack={onBack} />
-            <div className="flex-1 overflow-y-auto p-6 pb-36">
-
-                {/* ESTADO 1: Novo Fluxo Progressivo (Ou Escolha de Plano Legado) */}
-                {!activeSession && isProgressiveMode && (
-                    <div className="animate-in fade-in duration-500">
-                        <div className="mb-8 flex flex-col items-center text-center">
-                            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6 shadow-sm border border-blue-200">
-                                <Rocket className="w-10 h-10 text-blue-600" />
-                            </div>
-                            <h2 className="text-2xl font-black text-gray-900 leading-tight mb-2">Turbo Progressivo</h2>
-                            <p className="text-sm text-gray-600 font-medium max-w-[280px]">
-                                Cada vídeo assistido aumenta sua visibilidade e adiciona dias de destaque!
-                            </p>
-                        </div>
-
-                        {/* Níveis do Sistema */}
-                        <div className="grid grid-cols-3 gap-3 mb-8">
-                            <div className={`p-3 rounded-2xl border-2 flex flex-col items-center text-center transition-all ${localProgress >= 1 ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border-gray-100 text-gray-400'}`}>
-                                <Star className={`w-6 h-6 mb-1 ${localProgress >= 1 ? 'fill-current' : ''}`} />
-                                <span className="text-[10px] font-black uppercase">Premium</span>
-                                <span className={`text-[9px] font-bold mt-1 ${localProgress >= 1 ? 'text-blue-100' : 'text-gray-400'}`}>1 Recomp.</span>
-                            </div>
-                            <div className={`p-3 rounded-2xl border-2 flex flex-col items-center text-center transition-all ${localProgress >= 2 ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border-gray-100 text-gray-400'}`}>
-                                <Zap className={`w-6 h-6 mb-1 ${localProgress >= 2 ? 'fill-current' : ''}`} />
-                                <span className="text-[10px] font-black uppercase">Pro</span>
-                                <span className={`text-[9px] font-bold mt-1 ${localProgress >= 2 ? 'text-indigo-100' : 'text-gray-400'}`}>2 Recomp.</span>
-                            </div>
-                            <div className={`p-3 rounded-2xl border-2 flex flex-col items-center text-center transition-all ${localProgress >= 3 ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-200' : 'bg-white border-gray-100 text-gray-400'}`}>
-                                <Zap className={`w-6 h-6 mb-1 ${localProgress >= 3 ? 'fill-current' : ''}`} />
-                                <span className="text-[10px] font-black uppercase">Max</span>
-                                <span className={`text-[9px] font-bold mt-1 ${localProgress >= 3 ? 'text-orange-100' : 'text-gray-400'}`}>3+ Recomp.</span>
-                            </div>
-                        </div>
-
-                        {/* Status Atual */}
-                        <div className="bg-white rounded-3xl p-6 border-2 border-gray-50 shadow-sm mb-8">
-                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Seu Progresso Atual</h4>
-                            <div className="flex items-end justify-between mb-2">
-                                <span className="text-3xl font-black text-gray-900">{localProgress}</span>
-                                <span className="text-xs font-bold text-blue-600">Recompensas</span>
-                            </div>
-                            <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                                <div 
-                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 h-full rounded-full transition-all duration-1000"
-                                    style={{ width: `${Math.min((localProgress / 3) * 100, 100)}%` }}
-                                ></div>
-                            </div>
-                            {localProgress > 0 && ad?.turbo_expires_at && (
-                                <p className="text-[10px] text-gray-400 font-bold mt-3 uppercase text-center">
-                                    Ativo até: {new Date(ad.turbo_expires_at).toLocaleDateString()}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Botão de Ação */}
-                        <button
-                            onClick={handleWatchAd}
-                            disabled={!adReady || watchingAd || loading}
-                            className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98]
-                                ${adReady && !watchingAd && !loading
-                                    ? 'bg-gray-900 text-white shadow-black/20 hover:bg-black'
-                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                        >
-                            {(watchingAd || loading || !adReady) ? (
-                                <><Loader2 className="w-6 h-6 animate-spin" /> {(watchingAd || loading) ? "Processando..." : "Carregando Vídeo"}</>
-                            ) : (
-                                <><Play className="w-6 h-6 fill-current" /> Assistir para Ganhar Destaque</>
-                            )}
-                        </button>
-
-                        <p className="mt-6 text-[11px] text-gray-400 font-medium text-center leading-relaxed">
-                            Ao assistir o anúncio completo, o destaque é aplicado <br/>instantaneamente ao seu veículo.
-                        </p>
-                    </div>
-                )}
-
-                {/* ESTADO OBSOLETO: Escolha do Plano (Apenas se activeSession existir por erro ou legado) */}
-                {!activeSession && !isProgressiveMode && (
-                    <>
-                        <div className="mb-6 flex flex-col items-center text-center animate-in fade-in zoom-in duration-300">
-                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 shadow-sm border border-blue-200">
-                                <Zap className="w-8 h-8 text-blue-600" />
-                            </div>
-                            <h2 className="text-2xl font-black text-gray-900 leading-tight mb-2">Acelere suas Vendas!</h2>
-                            <p className="text-sm text-gray-600 font-medium">Assista vídeos curtos e impulsione seu anúncio de forma 100% gratuita.</p>
-                        </div>
-
-                        {error && (
-                            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-bold mb-6 text-center shadow-sm border border-red-100 animate-in fade-in slide-in-from-top-2 whitespace-pre-line">
-                                {error}
-                            </div>
-                        )}
-
-                        <div className="space-y-4">
-                            {/* PLANO PREMIUM */}
-                            <div className="bg-white rounded-3xl p-5 border-2 border-gray-100 shadow-sm relative overflow-hidden transition-all hover:border-blue-300 animate-in slide-in-from-bottom-2 duration-300 delay-100">
-                                <div className="flex justify-between items-start mb-4 relative z-10">
-                                    <div>
-                                        <h3 className="text-lg font-black text-gray-900 uppercase flex items-center gap-2">Turbo Premium <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" /></h3>
-                                        <p className="text-xs text-gray-500 font-bold mt-1">Destaque mediano</p>
-                                    </div>
-                                </div>
-                                <ul className="text-sm text-gray-600 mb-6 space-y-2 font-medium">
-                                    <li className="flex items-center gap-2">↳ 2 Visualizações de vídeo</li>
-                                    <li className="flex items-center gap-2">↳ 1 Dia de destaque</li>
-                                </ul>
-                                <button
-                                    onClick={() => handleSelectPlan('premium')}
-                                    disabled={loading}
-                                    className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
-                                >
-                                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Play className="w-5 h-5 fill-current" /> Escolher Plano</>}
-                                </button>
-                            </div>
-
-                            {/* PLANO PRO */}
-                            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-5 border shadow-xl relative overflow-hidden text-white transition-all transform hover:-translate-y-1 animate-in slide-in-from-bottom-2 duration-300 delay-200">
-                                <div className="flex justify-between items-start mb-4 relative z-10">
-                                    <div>
-                                        <h3 className="text-lg font-black uppercase flex items-center gap-2">Turbo Pro <Zap className="w-4 h-4 fill-current" /></h3>
-                                        <p className="text-xs text-blue-100 font-bold mt-1">Destaque aprimorado</p>
-                                    </div>
-                                    <span className="bg-white/20 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-white/30 backdrop-blur-sm">Recomendado</span>
-                                </div>
-                                <ul className="text-sm text-blue-50 mb-6 space-y-2 font-medium">
-                                    <li className="flex items-center gap-2">↳ 5 Visualizações de vídeo</li>
-                                    <li className="flex items-center gap-2">↳ 3 Dias de destaque</li>
-                                </ul>
-                                <button
-                                    onClick={() => handleSelectPlan('pro')}
-                                    disabled={loading}
-                                    className="w-full py-4 bg-white text-blue-700 hover:bg-blue-50 rounded-2xl font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-black/10"
-                                >
-                                    {loading ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <><Play className="w-5 h-5 fill-current" /> Escolher Plano</>}
-                                </button>
-                            </div>
-
-                            {/* PLANO MAX */}
-                            <div className="bg-white rounded-3xl p-5 border-2 border-orange-100 shadow-sm relative overflow-hidden transition-all hover:border-orange-300 animate-in slide-in-from-bottom-2 duration-300 delay-300">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-bl-full -z-0"></div>
-                                <div className="flex justify-between items-start mb-4 relative z-10">
-                                    <div>
-                                        <h3 className="text-lg font-black text-orange-600 uppercase flex items-center gap-2">Turbo Max <Zap className="w-5 h-5 fill-current" /></h3>
-                                        <p className="text-xs text-gray-500 font-bold mt-1">Destaque máximo e imediato</p>
-                                    </div>
-                                </div>
-                                <ul className="text-sm text-gray-600 mb-6 space-y-2 font-medium relative z-10">
-                                    <li className="flex items-center gap-2">↳ 7 Visualizações de vídeo</li>
-                                    <li className="flex items-center gap-2">↳ 7 Dias de destaque</li>
-                                </ul>
-                                <button
-                                    onClick={() => handleSelectPlan('max')}
-                                    disabled={loading}
-                                    className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-orange-200"
-                                >
-                                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Play className="w-5 h-5 fill-current" /> Escolher Plano</>}
-                                </button>
-                            </div>
-
-                            {/* NOVO: SEÇÃO COMO FUNCIONA */}
-                            <div className="mt-10 bg-blue-50/50 rounded-3xl p-6 border border-blue-100/50 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-500">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="p-2 bg-blue-600 rounded-lg">
-                                        <Info className="w-4 h-4 text-white" />
-                                    </div>
-                                    <h4 className="font-black text-blue-900 uppercase text-sm tracking-tight">Como funciona o Turbo?</h4>
-                                </div>
-                                
-                                <div className="space-y-4">
-                                    <div className="flex gap-3">
-                                        <div className="mt-1 text-blue-600 font-bold text-lg">🚀</div>
-                                        <div>
-                                            <p className="text-xs font-black text-blue-900 uppercase">Topo das buscas</p>
-                                            <p className="text-[11px] text-blue-800/70 font-medium leading-relaxed">Seu anúncio ganha prioridade absoluta e aparece acima dos anúncios sem destaques nos resultados.</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex gap-3">
-                                        <div className="mt-1 text-blue-600 font-bold text-lg">✨</div>
-                                        <div>
-                                            <p className="text-xs font-black text-blue-900 uppercase">Selo de Destaque</p>
-                                            <p className="text-[11px] text-blue-800/70 font-medium leading-relaxed">Uma etiqueta exclusiva é adicionada à foto do seu anúncio, aumentando a taxa de cliques.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-3">
-                                        <div className="mt-1 text-blue-600 font-bold text-lg">🔥</div>
-                                        <div>
-                                            <p className="text-xs font-black text-blue-900 uppercase">Máximo Alcance</p>
-                                            <p className="text-[11px] text-blue-800/70 font-medium leading-relaxed">O algoritmo do Feirão da Orca prioriza anúncios destacados para aparecerem mais vezes no feed principal.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                {/* ESTADO 2: Monitor de Progresso de Anúncios */}
-                {activeSession && (
-                    <div className="flex flex-col items-center justify-center text-center animate-in fade-in pt-8">
-                        {showSuccess ? (
-                            <div className="flex flex-col items-center justify-center animate-in zoom-in duration-500">
-                                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm border border-green-200">
-                                    <Rocket className="w-12 h-12 text-green-500" />
-                                </div>
-                                <h2 className="text-3xl font-black text-gray-900 mb-3">Turbo ativado!</h2>
-                                <p className="text-gray-600 mb-8 max-w-[280px] font-medium text-center">
-                                    Seu anúncio agora está em destaque e será visto por mais compradores.
-                                    <br /><br />
-                                    <span className="text-blue-600 font-bold">Em breve estará visível!</span>
-                                </p>
-                            </div>
-                        ) : isFinalizing ? (
-                            <div className="flex flex-col items-center justify-center min-h-[160px]">
-                                <Loader2 className="w-20 h-20 text-blue-500 animate-spin mb-6" />
-                                <h2 className="text-2xl font-black text-gray-900 mb-2">Finalizando Turbo...</h2>
-                                <p className="text-gray-600 max-w-[280px] min-h-[48px] transition-all duration-300">
-                                    {finalizationTexts[loadingTextIndex]}
-                                </p>
-                            </div>
-                        ) : (
-                            <>
-                                <MonitorPlay className="w-20 h-20 text-blue-500 mb-6" />
-                                <h2 className="text-2xl font-black text-gray-900 mb-2">Quase lá!</h2>
-                                <p className="text-gray-600 mb-8 max-w-[280px]">Assista aos vídeos para completar o impulsionamento do seu anúncio 100% grátis.</p>
-
-                                {/* Progress Bar - Usa localProgress para feedback instantâneo */}
-                                <div className="w-full max-w-[300px] bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
-                                    <div
-                                        className="bg-blue-600 h-4 rounded-full transition-all duration-500 ease-out"
-                                        style={{ width: `${(localProgress / activeSession.requiredSteps) * 100}%` }}
-                                    ></div>
-                                </div>
-                                <p className="text-sm font-bold text-gray-800 mb-4">
-                                    Progresso: <span className="text-blue-600">{localProgress}</span> / {activeSession.requiredSteps} anúncios
-                                </p>
-
-                                {syncError && (
-                                    <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600 font-bold animate-in fade-in slide-in-from-top-1">
-                                        ⚠️ {syncError}
-                                        <button
-                                            onClick={handleAdRewardedInternal}
-                                            className="ml-2 underline uppercase tracking-tighter"
-                                        >
-                                            Tentar Sincronizar Agora
-                                        </button>
-                                    </div>
-                                )}
-
-                                {adError && (
-                                    <div className="mb-6 p-4 bg-red-600 text-white rounded-2xl shadow-lg animate-in zoom-in duration-300">
-                                        <div className="flex items-center gap-2 mb-2 font-black uppercase text-sm">
-                                            <ShieldAlert className="w-5 h-5" /> [ERRO ADMOB]
-                                        </div>
-                                        <div className="space-y-1 font-bold">
-                                            <p className="text-xs opacity-90">Tipo: {adError.type}</p>
-                                            <p className="text-[11px] leading-tight">Detalhe: {JSON.stringify(adError.details)}</p>
-                                        </div>
-                                        <button 
-                                            onClick={() => { setAdError(null); AdManager.preload(); }}
-                                            className="mt-3 w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[10px] uppercase font-black transition-all"
-                                        >
-                                            Tentar Novamente
-                                        </button>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={handleWatchAd}
-                                    disabled={!adReady || watchingAd || loading}
-                                    className={`w-full max-w-[300px] py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98]
-                                        ${adReady && !watchingAd && !loading
-                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/30 hover:shadow-blue-500/50'
-                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                                >
-                                    {(watchingAd || loading || !adReady) ? (
-                                        <><Loader2 className="w-5 h-5 animate-spin" /> {(watchingAd || loading) ? "Processando..." : "Carregando Vídeo"}</>
-                                    ) : (
-                                        <><Play className="w-5 h-5 fill-current" /> Assistir Anúncio</>
-                                    )}
-                                </button>
-
-                                {/* DEBUG BUTTON */}
-                                <button
-                                    onClick={handleDebugAdFlow}
-                                    className="mt-8 px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border border-gray-200 rounded-full hover:bg-gray-100 transition-all"
-                                >
-                                    Testar AdMob (Debug)
-                                </button>
-                            </>
-                        )}
-                    </div>
-                )}
-            </div>
-            
-            {/* VERSION INFO (Fixado no topo para ser sempre acessível) */}
-            <div 
-                className="fixed top-20 right-4 opacity-50 active:opacity-100 z-[60]"
-                onClick={() => {
-                    const newState = !showDebug;
-                    setShowDebug(newState);
-                    if (newState) {
-                        debugLogger.log(">>> SISTEMA DE DEBUG GLOBAL ATIVADO <<<");
-                    }
-                }}
-            >
-                <div className="bg-gray-800 text-white px-3 py-1 rounded-md shadow-lg">
-                    <span className="text-[10px] font-bold font-mono uppercase">
-                        DEBUG: v1.1.0 (11)
-                    </span>
+        <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden relative">
+            <header className="px-6 pt-12 pb-6 flex items-center gap-4 bg-white border-b border-gray-100 shadow-sm relative z-10">
+                <button onClick={onBack} className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-900 active:scale-90 transition-all border border-gray-100">
+                    <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                    <h1 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Boost Turbo {isProgressiveMode ? \"⚡\" : \"\"}</h1>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none">Acelerador de Resultados</p>
                 </div>
-            </div>
+                <button onClick={() => setShowDebug(!showDebug)} className="ml-auto p-2 text-gray-300 hover:text-gray-900">
+                  <Bug className="w-4 h-4" />
+                </button>
+            </header>
 
-            {showDebug && <DebugPanel />}
+            <main className="flex-1 overflow-y-auto px-6 py-8 scrolling-touch">
+                {showDebug && <div className="mb-6"><DebugPanel /></div>}
+
+                {isProgressiveMode && (
+                    <div className=\"animate-in fade-in slide-in-from-bottom duration-500\">
+                        <div className=\"bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-2xl shadow-blue-500/5 mb-8 relative overflow-hidden group text-center\">
+                            <div className=\"w-20 h-20 bg-blue-600 rounded-[2rem] mx-auto flex items-center justify-center mb-6 shadow-2xl shadow-blue-600/40 rotate-3 transition-transform group-hover:rotate-0\">
+                                <Zap className=\"w-10 h-10 text-white fill-current\" />
+                            </div>
+                            <h1 className=\"text-3xl font-black text-gray-900 leading-none mb-3\">Turbo <span className=\"text-blue-600 italic\">Boost</span></h1>
+                            <p className=\"text-sm text-gray-500 font-bold leading-relaxed max-w-[240px] mx-auto\">
+                                Assista vídeos curtos para destacar seu anúncio no topo.
+                            </p>
+
+                            <div className=\"mt-10 relative z-10\">
+                                <div className=\"flex justify-between items-end mb-3 px-1\">
+                                    <span className=\"text-[10px] font-black text-gray-400 uppercase tracking-widest\">Nível de Destaque</span>
+                                    <span className=\"text-lg font-black text-blue-600 italic\">{(localProgress / 3 * 100).toFixed(0)}%</span>
+                                </div>
+                                <div className=\"h-6 bg-gray-100 rounded-full p-1 border border-gray-50 shadow-inner\">
+                                    <div className=\"h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-1000\" style={{ width: `${Math.min((localProgress / 3) * 100, 100)}%` }}></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className=\"bg-white rounded-[2rem] p-6 border border-gray-100 shadow-xl mb-6\">
+                            <button
+                                onClick={async () => {
+                                    console.log(\"CLICK DIRETO\");
+                                    console.log(\"ANTES DO SHOW\");
+                                    const success = await adManager.show();
+                                    console.log(\"DEPOIS DO SHOW | Sucesso:\", success);
+                                }}
+                                className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] bg-gray-900 text-white`}
+                            >
+                                <Play className=\"w-6 h-6 fill-current\" /> Assistir (CLICK DIRETO)
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                {activeSession && (
+                    <div className=\"animate-in fade-in flex flex-col items-center\">
+                        <MonitorPlay className=\"w-20 h-20 text-blue-500 mb-6\" />
+                        <h2 className=\"text-2xl font-black text-gray-900 mb-2\">Quase lá!</h2>
+                        <div className=\"w-full max-w-[300px] bg-gray-200 rounded-full h-4 mb-3\">
+                            <div className=\"bg-blue-600 h-4 rounded-full transition-all\" style={{ width: `${(localProgress / activeSession.requiredSteps) * 100}%` }}></div>
+                        </div>
+                        <button
+                            onClick={async () => {
+                                console.log(\"CLICK DIRETO (Sessão)\");
+                                console.log(\"ANTES DO SHOW\");
+                                await adManager.show();
+                                console.log(\"DEPOIS DO SHOW\");
+                            }}
+                            className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] bg-blue-600 text-white shadow-blue-500/30`}
+                        >
+                            <Play className=\"w-6 h-6 fill-current\" /> Assistir Anúncio (CLICK DIRETO)
+                        </button>
+                    </div>
+                )}
+            </main>
         </div>
-
     );
 };
