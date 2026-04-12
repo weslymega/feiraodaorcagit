@@ -38,7 +38,7 @@ class AdManager {
     // Diagnostic State
     private adError: { type: string; details: any; timestamp: string } | null = null;
     private adErrorListeners: ((error: any) => void)[] = [];
-    private readonly VERSION_INFO = { name: "1.1.1", code: 12 };
+    private readonly VERSION_INFO = { name: "1.1.2", code: 13 };
 
     // Banner & Concurrency State
     private isBannerShowing: boolean = false;
@@ -215,6 +215,7 @@ class AdManager {
 
     public getAdError() { return this.adError; }
     public onAdError(cb: (error: any) => void) { this.adErrorListeners.push(cb); }
+    public getProcessingShow(): boolean { return this.isProcessingShow; }
 
     public async initialize(customAdId?: string) {
         console.log(`[AdDebug] initialize() called. Version: ${this.VERSION_INFO.name}`);

@@ -395,80 +395,69 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
     const handleWatchAd = async () => {
         console.log("🔥 BOTÃO CLICADO");
-        const currentSession = sessionRef.current;
-        const clickTimestamp = Date.now();
-        console.log(`[AdDebug-UI] handleWatchAd clicked at ${clickTimestamp} | Locked: ${isClickLocked.current} | Progress: ${localProgress}`);
         
-        // 1. TRAVA DE CLIQUE SÍNCRONA (REQUISITO 4)
-        if (isClickLocked.current) {
-            console.warn(`🔥 [AdDebug-UI] CLIQUE BLOQUEADO: isClickLocked is TRUE at ${clickTimestamp}`);
-            return;
-        }
-
-        if (watchingAd) {
-            console.warn(`🔥 [AdDebug-UI] CLIQUE BLOQUEADO: watchingAd is TRUE`);
-            return;
-        }
-
-        // Se estiver no modo sessão, validamos a sessão
-        if (!isProgressiveMode && !currentSession) {
-            console.warn(`🔥 [AdDebug-UI] CLIQUE BLOQUEADO: No session and NOT progressive mode`);
-            return;
-        }
-
-        console.log(`🔥 [AdDebug-UI] LOCKING UI (isClickLocked = true) for click at ${clickTimestamp}`);
-        debugLogger.log(`🔥 [BOTÃO CLICADO] Iniciando fluxo de anúncio...`);
-        isClickLocked.current = true; // ATIVA TRAVA IMEDIATA
-        
-        setAdError(null);
-        setWatchingAd(true);
-        setSyncError(null);
-        
-        // 🎯 BLINDAGEM PRÉ-ADMOB: Refresh proativo antes de abrir o vídeo
         try {
-            console.log("🔥 [AdDebug-UI] Proactive session refresh (3s timeout)...");
-            // Usamos um timeout para não travar o clique se a rede estiver lenta
-            await Promise.race([
-                api.refreshSession(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error("REFRESH_TIMEOUT")), 3000))
-            ]);
-            console.log("🔥 [AdDebug-UI] Refresh session SUCCESS");
-        } catch (e: any) {
-            console.warn("🔥 [AdDebug-UI] Refresh failed or timed out, proceeding anyway:", e?.message || e);
-            debugLogger.log(`🔥 [AdDebug-UI] Aviso: Sincronização de sessão demorou ou falhou.`);
-        }
+            // 🔍 ETAPA 2 — LOGAR TODAS AS TRAVAS
+            if (isClickLocked.current) {
+                console.log("🚫 BLOQUEADO: isClickLocked");
+                return;
+            }
 
-        try {
-            console.log(`🔥 [AdDebug-UI] EFETUANDO CHAMADA: adManager.show() at ${Date.now()}`);
-            debugLogger.log(`🔥 [CHAMANDO SHOW] Solicitando abertura do AdManager...`);
+            if (watchingAd) {
+                console.log("🚫 BLOQUEADO: watchingAd");
+                return;
+            }
+
+            if (adManager.getProcessingShow()) {
+                console.log("🚫 BLOQUEADO: isProcessingShow");
+                return;
+            }
+
+            const currentSession = sessionRef.current;
+            if (!isProgressiveMode && !currentSession) {
+                console.log("🚫 BLOQUEADO: Sem sessão ativa no modo legado");
+                return;
+            }
+
+            // Ativa travas iniciais
+            isClickLocked.current = true;
+            setWatchingAd(true);
+            setSyncError(null);
+            setAdError(null);
+
+            // 🎯 BLINDAGEM PRÉ-ADMOB: Refresh proativo
+            try {
+                console.log("🔥 [AdDebug-UI] Proactive session refresh (3s timeout)...");
+                await Promise.race([
+                    api.refreshSession(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("REFRESH_TIMEOUT")), 3000))
+                ]);
+            } catch (e: any) {
+                console.warn("🔥 [AdDebug-UI] Refresh failed/timeout, continuing...", e?.message || e);
+            }
+
+            // 🔍 ETAPA 3 — GARANTIR CHAMADA CORRETA
+            console.log("🔥 ANTES DO SHOW");
+            debugLogger.log("🔥 [CHAMANDO ADMANAGER] Iniciando método show()...");
             
             const success = await adManager.show();
             
-            console.log(`🔥 [AdDebug-UI] adManager.show() result: ${success} at ${Date.now()}`);
-            debugLogger.log(`🔥 [RESULTADO SHOW] Sucesso: ${success}`);
+            console.log("🔥 DEPOIS DO SHOW");
+            debugLogger.log(`🔥 [RESULTADO ADMANAGER] Sucesso: ${success}`);
 
             if (!success) {
-                console.log(`🔥 [AdDebug-UI] UNLOCKING UI (Show failed/blocked)`);
-                setWatchingAd(false);
-                isClickLocked.current = false; // LIBERA SE NÃO CONSEGUIU DISPARAR
-            } else {
-                debugLogger.log(`🔥 [SISTEMA] Aguardando evento de exibição nativo...`);
-                // 🛡️ TRAVA DE SEGURANÇA FINAL: Se por algum motivo o evento de Dismiss ou Erro nativo não chegar,
-                // liberamos a UI após 40 segundos para não "brickar" a tela do usuário.
-                setTimeout(() => {
-                    if (isClickLocked.current) {
-                        console.warn("[AdDebug-UI] SAFETY UNLOCK triggered after 40s (Event loss protection)");
-                        debugLogger.log(`[SISTEMA] Destravamento automático de segurança (40s).`);
-                        isClickLocked.current = false;
-                        setWatchingAd(false);
-                    }
-                }, 40000);
+                console.warn("⚠️ O método show() retornou falso (BLOQUEADO INTERNAMENTE)");
             }
-        } catch (error: any) {
-            console.error(`[AdDebug-UI] FATAL ERROR during show():`, error);
-            debugLogger.log(`[ERRO FATAL] Falha no fluxo: ${error.message || error}`);
-            setWatchingAd(false);
+
+        } catch (e) {
+            console.error("❌ ERRO:", e);
+            debugLogger.log(`❌ ERRO NO FLUXO: ${e instanceof Error ? e.message : String(e)}`);
+        } finally {
+            // 🔍 ETAPA 5 — RESET DE TRAVAS (OBRIGATÓRIO)
+            console.log("🏁 FINALLY: Resetando travas de UI");
             isClickLocked.current = false;
+            setWatchingAd(false);
+            setLoading(false);
         }
     };
 
