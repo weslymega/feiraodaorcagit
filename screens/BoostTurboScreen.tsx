@@ -377,6 +377,8 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     };
 
     const handleDebugAdFlow = async () => {
+        setShowDebug(true); // Abre o painel automaticamente ao testar
+        debugLogger.clear();
         debugLogger.log("--- INICIANDO TESTE MANUAL ADMOB ---");
         setAdError(null);
         setWatchingAd(true);
@@ -392,10 +394,10 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 debugLogger.log("3. Ad está pronto! Disparando Show...");
                 await adManager.show();
             } else {
-                debugLogger.log("3. Ad ainda não carregou. Aguardando evento...");
+                debugLogger.log("3. Ad ainda não carregou (aguarde ou tente novamente)...");
             }
         } catch (err: any) {
-            debugLogger.log(`[ERRO TESTE] ${err.message || 'Erro desconhecido'}`);
+            debugLogger.log(`[ERRO TESTE] ${err.message || 'Erro inesperado'}`);
             console.error("[AdMob Debug] TEST FAILED:", err);
             setWatchingAd(false);
         }
@@ -688,9 +690,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 )}
             </div>
             
-            {/* VERSION INFO (Relocado para o centro para evitar sobreposição do rodapé no APK) */}
+            {/* VERSION INFO (Fixado no topo para ser sempre acessível) */}
             <div 
-                className="flex justify-center w-full mt-8 mb-4 opacity-40 active:opacity-100 transition-opacity cursor-pointer z-50"
+                className="fixed top-20 right-4 opacity-50 active:opacity-100 z-[60]"
                 onClick={() => {
                     const newState = !showDebug;
                     setShowDebug(newState);
@@ -699,9 +701,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     }
                 }}
             >
-                <div className="bg-gray-200/50 px-4 py-1 rounded-full border border-gray-300">
-                    <span className="text-[10px] font-black font-mono text-gray-600 uppercase tracking-widest">
-                        Debug Mode: v1.0.8 (9)
+                <div className="bg-gray-800 text-white px-3 py-1 rounded-md shadow-lg">
+                    <span className="text-[10px] font-bold font-mono uppercase">
+                        DEBUG: v1.0.9 (10)
                     </span>
                 </div>
             </div>
