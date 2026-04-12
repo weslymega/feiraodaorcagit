@@ -6,6 +6,8 @@ import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, Rocket, Info } from
 import { Capacitor } from '@capacitor/core';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 import AdManager from '../services/AdManager';
+import DebugPanel from '../components/DebugPanel';
+
 
 const adManager = AdManager.getInstance();
 
@@ -31,7 +33,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [showSuccess, setShowSuccess] = useState(false);
     const [loadingTextIndex, setLoadingTextIndex] = useState(0);
     const [adError, setAdError] = useState<{ type: string; details: any; timestamp: string } | null>(null);
+    const [showDebug, setShowDebug] = useState(false);
     const isClickLocked = useRef(false); // TRAVA DE CLIQUE SÍNCRONA (REQUISITO 4)
+
 
     const finalizationTexts = [
         "Verificando recompensa...",
@@ -685,10 +689,16 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 )}
             </div>
             
-            {/* VERSION INFO FOOTER (Diagnostic) */}
-            <div className="absolute bottom-2 right-2 opacity-20 pointer-events-none">
-                <span className="text-[8px] font-mono text-gray-500">v1.0.7 (8)</span>
+            {/* VERSION INFO FOOTER (Diagnostic) - Secret click to toggle debug */}
+            <div 
+                className="absolute bottom-2 right-2 opacity-20 hover:opacity-100 transition-opacity cursor-pointer p-4 z-10"
+                onClick={() => setShowDebug(prev => !prev)}
+            >
+                <span className="text-[8px] font-mono text-gray-500">v1.0.8 (9)</span>
             </div>
+
+            {showDebug && <DebugPanel />}
         </div>
+
     );
 };

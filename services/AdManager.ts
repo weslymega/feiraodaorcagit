@@ -10,6 +10,8 @@ import {
     InterstitialAdPluginEvents
 } from '@capacitor-community/admob';
 import { Capacitor } from '@capacitor/core';
+import { debugLogger } from '../utils/DebugLogger';
+
 
 export enum AdState {
     IDLE = 'IDLE',
@@ -36,7 +38,7 @@ class AdManager {
     // Diagnostic State
     private adError: { type: string; details: any; timestamp: string } | null = null;
     private adErrorListeners: ((error: any) => void)[] = [];
-    private readonly VERSION_INFO = { name: "1.0.7", code: 8 };
+    private readonly VERSION_INFO = { name: "1.0.8", code: 9 };
 
     // Banner & Concurrency State
     private isBannerShowing: boolean = false;
@@ -57,6 +59,8 @@ class AdManager {
 
     private constructor() {
         console.log(`[AdDebug] INSTÂNCIA CRIADA. Version: ${this.VERSION_INFO.name} (${this.VERSION_INFO.code})`);
+        debugLogger.log(`[AdDebug] INSTÂNCIA CRIADA. Version: ${this.VERSION_INFO.name}`);
+
         
         if (!(window as any).__admob_global_listeners) {
             (window as any).__admob_global_listeners = 0;
@@ -95,6 +99,8 @@ class AdManager {
         (window as any).__admob_global_listeners++;
         const globalCount = (window as any).__admob_global_listeners;
         console.log(`[AdDebug] REGISTERING LISTENERS. Global Instance Count: ${globalCount}`);
+        debugLogger.log(`[AdDebug] REGISTERING LISTENERS. Count: ${globalCount}`);
+
         
         if (globalCount > 1) {
             console.error(`[AdDebug] CRITICAL: Multiple AdManager listener registrations detected (${globalCount})!`);
@@ -131,7 +137,9 @@ class AdManager {
             this.lastDismissedTime = now;
 
             console.log(`[AD FLOW] Ad dismissed (Exec: ${this.lastExecutionId})`);
+            debugLogger.log(`[AdDebug] Ad dismissed (Exec: ${this.lastExecutionId})`);
             this.state = AdState.IDLE;
+
             this.clearTimeout();
 
             console.log(`[AD FLOW] Notifying ${this.onDismissedCallbacks.length} dismiss callbacks`);
@@ -158,7 +166,9 @@ class AdManager {
 
         AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (error: any) => {
             console.log(`[AdDebug] EVENT: FailedToLoad (Exec: ${this.lastExecutionId})`, error);
+            debugLogger.log(`[AdDebug] FailedToLoad: ${error.message} (Exec: ${this.lastExecutionId})`);
             this.state = AdState.ERROR;
+
             this.clearTimeout();
             this.handleAdError('FAILED_TO_LOAD', error);
             this.onErrorCallbacks.forEach(cb => cb(error.message));
@@ -172,7 +182,9 @@ class AdManager {
 
         AdMob.addListener(RewardAdPluginEvents.FailedToShow, (error: any) => {
             console.log(`[AdDebug] EVENT: FailedToShow (Exec: ${this.lastExecutionId})`, error);
+            debugLogger.log(`[AdDebug] FailedToShow: ${error.message} (Exec: ${this.lastExecutionId})`);
             this.state = AdState.ERROR;
+
             console.log(`[AdDebug] RESETTING isProcessingShow from ${this.isProcessingShow} to false (FailedToShow)`);
             this.isProcessingShow = false;
             this.clearTimeout();
@@ -253,6 +265,8 @@ class AdManager {
         const executionId = `EX-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         this.lastExecutionId = executionId;
         console.log(`[AdDebug] [SHOW CALL] ID: ${executionId} | State: ${this.state} | isProcessing: ${this.isProcessingShow}`);
+        debugLogger.log(`[AdDebug] [SHOW CALL] ID: ${executionId}`);
+
 
         if (this.isProcessingShow) {
             console.warn(`[AdDebug] [BLOQUEIO] Processing in progress (Exec: ${executionId})`);
