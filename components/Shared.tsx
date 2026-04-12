@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { Screen } from '../types';
 import AdManager from '../services/AdManager';
+
+const adManager = AdManager.getInstance();
 import { getBoostRibbon } from '../utils/boostRibbon';
 import { AdItem } from '../types';
 
@@ -48,11 +50,11 @@ interface BottomNavProps {
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate, unreadCount = 0 }) => {
-  const [isBannerVisible, setIsBannerVisible] = React.useState(AdManager.isBannerActive());
+  const [isBannerVisible, setIsBannerVisible] = React.useState(adManager.isBannerActive());
 
   useEffect(() => {
     // Escuta mudanças no estado do banner para ajustar o layout
-    AdManager.onBannerStateChange((visible) => {
+    adManager.onBannerStateChange((visible) => {
       setIsBannerVisible(visible);
     });
   }, []);

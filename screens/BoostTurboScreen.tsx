@@ -7,6 +7,8 @@ import { Capacitor } from '@capacitor/core';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 import AdManager from '../services/AdManager';
 
+const adManager = AdManager.getInstance();
+
 interface BoostTurboScreenProps {
     adId: string | null;
     onBack: () => void;
@@ -282,7 +284,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 console.error("[BoostTurboScreen] [AUTH] Rehydration failed:", e);
             }
             
-            setAdReady(AdManager.isAdReady());
+            setAdReady(adManager.isAdReady());
         }
     };
 
@@ -291,31 +293,31 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         if (!activeSession?.id) return;
 
         console.log("[BoostTurboScreen] Initializing AdManager for session:", activeSession.id);
-        AdManager.initialize();
+        adManager.initialize();
 
-        AdManager.onReady(() => {
-            setAdReady(AdManager.isAdReady());
+        adManager.onReady(() => {
+            setAdReady(adManager.isAdReady());
             setAdError(null);
         });
 
-        AdManager.onAdError((err) => {
+        adManager.onAdError((err) => {
             console.error("[BoostTurboScreen] Ad Manager reported error:", err);
             setAdError(err);
             setWatchingAd(false);
         });
 
         // Listener de Recompensa (Aguardado pelo AdManager)
-        AdManager.onRewarded(async () => {
+        adManager.onRewarded(async () => {
             console.log("[BoostTurboScreen] Raw onRewarded triggered");
             await handlersRef.current.handleRewarded();
         });
 
-        AdManager.onDismissed(() => {
+        adManager.onDismissed(() => {
             setAdError(null); // Clear error on dismissal if any
             handlersRef.current.handleDismissed();
         });
 
-        AdManager.onError((err) => {
+        adManager.onError((err) => {
             console.error("[BoostTurboScreen] Ad Error:", err);
             setWatchingAd(false);
             isClickLocked.current = false; // LIBERA EM CASO DE ERRO
@@ -324,22 +326,27 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
         return () => {
             console.log("[BoostTurboScreen] Destroying ad listeners");
-            AdManager.removeAllListeners();
+            adManager.removeAllListeners();
         };
     }, [activeSession?.id]);
 
     const handleWatchAd = async () => {
         const currentSession = sessionRef.current;
+        const clickTimestamp = Date.now();
+        console.log(`[AdDebug-UI] handleWatchAd clicked at ${clickTimestamp} | Locked: ${isClickLocked.current} | Progress: ${localProgress}`);
         
         // 1. TRAVA DE CLIQUE SÍNCRONA (REQUISITO 4)
         if (isClickLocked.current) {
-            console.warn("[BoostTurboScreen] [UI LOCK] Clique ignorado: Processamento em curso.");
+            console.warn(`[AdDebug-UI] CLICK IGNORED (UI Lock active) at ${clickTimestamp}`);
             return;
         }
 
-        if (!currentSession || watchingAd) return;
+        if (!currentSession || watchingAd) {
+            console.warn(`[AdDebug-UI] CLICK IGNORED (No session or already watching) Session: ${!!currentSession}, Watching: ${watchingAd}`);
+            return;
+        }
 
-        console.log("[BoostTurboScreen] [UI LOCK] Ativando trava...");
+        console.log(`[AdDebug-UI] LOCKING UI for click at ${clickTimestamp}`);
         isClickLocked.current = true; // ATIVA TRAVA IMEDIATA
         
         setAdError(null);
@@ -348,16 +355,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         
         // 🎯 BLINDAGEM PRÉ-ADMOB: Refresh proativo antes de abrir o vídeo
         try {
-            console.log("[BoostTurboScreen] [AUTH] Proactive session refresh before AdMob...");
+            console.log("[AdDebug-UI] Proactive session refresh...");
             await api.refreshSession();
         } catch (e) {
-            console.warn("[BoostTurboScreen] [AUTH] Proactive refresh failed, proceeding anyway:", e);
+            console.warn("[AdDebug-UI] Refresh failed, proceeding anyway:", e);
         }
 
-        console.log("[BoostTurboScreen] START AD SHOW (Single)");
-        const success = await AdManager.show();
+        console.log(`[AdDebug-UI] Calling adManager.show() for click at ${clickTimestamp}`);
+        const success = await adManager.show();
+        console.log(`[AdDebug-UI] adManager.show() result: ${success} for click at ${clickTimestamp}`);
+
         if (!success) {
-            console.log("[BoostTurboScreen] [UI LOCK] Show falhou ou foi bloqueado pelo Manager. Liberando UI.");
+            console.log(`[AdDebug-UI] UNLOCKING UI (Show failed/blocked) at ${clickTimestamp}`);
             setWatchingAd(false);
             isClickLocked.current = false; // LIBERA SE NÃO CONSEGUIU DISPARAR
         }
@@ -370,16 +379,16 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
         try {
             console.log("[AdMob Debug] 1. Initializing AdManager...");
-            await AdManager.initialize();
+            await adManager.initialize();
             
             console.log("[AdMob Debug] 2. Preloading...");
-            await AdManager.preload();
+            await adManager.preload();
             
             // The flow will continue via listeners (onReady/onAdError)
             // But if it's already ready, we show it
-            if (AdManager.isAdReady()) {
+            if (adManager.isAdReady()) {
                 console.log("[AdMob Debug] 3. Already Ready. Showing...");
-                await AdManager.show();
+                await adManager.show();
             } else {
                 console.log("[AdMob Debug] 3. Waiting for Load event...");
             }
@@ -674,6 +683,11 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         )}
                     </div>
                 )}
+            </div>
+            
+            {/* VERSION INFO FOOTER (Diagnostic) */}
+            <div className="absolute bottom-2 right-2 opacity-20 pointer-events-none">
+                <span className="text-[8px] font-mono text-gray-500">v1.0.7 (8)</span>
             </div>
         </div>
     );

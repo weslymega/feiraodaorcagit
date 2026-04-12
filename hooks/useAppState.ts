@@ -15,6 +15,8 @@ import {
 } from '../constants';
 import AdManager from '../services/AdManager';
 
+const adManager = AdManager.getInstance();
+
 // --- HELPER PARA CARREGAR DADOS SALVOS ---
 const loadFromStorage = <T,>(key: string, fallback: T): T => {
   try {
@@ -82,7 +84,7 @@ export const useAppState = () => {
   useEffect(() => {
     if (sessionReady) {
       console.log("[AdMob] 🚩 Inicialização global solicitada pelo Root");
-      AdManager.initialize();
+      adManager.initialize();
     }
   }, [sessionReady]);
 

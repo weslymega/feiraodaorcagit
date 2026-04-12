@@ -8,6 +8,8 @@ import { Footer } from '../components/Footer';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SmartImage } from '../components/ui/SmartImage';
 import AdManager from '../services/AdManager';
+
+const adManager = AdManager.getInstance();
 import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../utils/boostRibbon';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
 
@@ -50,10 +52,10 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
   // Filter Modal State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const [isBannerVisible, setIsBannerVisible] = useState(AdManager.isBannerActive());
+  const [isBannerVisible, setIsBannerVisible] = useState(adManager.isBannerActive());
 
   useEffect(() => {
-    return AdManager.onBannerStateChange((visible) => {
+    return adManager.onBannerStateChange((visible) => {
       setIsBannerVisible(visible);
     });
   }, []);

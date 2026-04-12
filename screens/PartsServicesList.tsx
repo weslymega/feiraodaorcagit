@@ -11,6 +11,8 @@ import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../utils/
 import { AdMobBanner } from '../components/ui/AdMobBanner';
 import AdManager from '../services/AdManager';
 
+const adManager = AdManager.getInstance();
+
 interface PartsServicesListProps {
   ads: AdItem[];
   onBack: () => void;
@@ -40,10 +42,10 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const [isBannerVisible, setIsBannerVisible] = useState(AdManager.isBannerActive());
+  const [isBannerVisible, setIsBannerVisible] = useState(adManager.isBannerActive());
 
   useEffect(() => {
-    return AdManager.onBannerStateChange((visible) => {
+    return adManager.onBannerStateChange((visible) => {
       setIsBannerVisible(visible);
     });
   }, []);

@@ -3,6 +3,8 @@ import React, { useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import AdManager from '../../services/AdManager';
 
+const adManager = AdManager.getInstance();
+
 /**
  * Componente de Banner Global
  * Renderizado no AppRouter para garantir que o banner exista apenas UMA vez
@@ -24,7 +26,7 @@ export const AdMobBannerGlobal: React.FC = () => {
         // Delay de segurança de 1.2s para garantir que a Activity e o Layout estão prontos
         const timer = setTimeout(() => {
             console.log('[AdMob] Disparando showBanner global após delay...');
-            AdManager.showBanner();
+            adManager.showBanner();
         }, 1200);
 
         return () => {

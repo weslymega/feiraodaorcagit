@@ -15,6 +15,8 @@ import { getBoostRibbon, getBoostPriority, getBoostBorderClass } from '../utils/
 import { AdMobBanner } from '../components/ui/AdMobBanner';
 import AdManager from '../services/AdManager';
 
+const adManager = AdManager.getInstance();
+
 interface VehiclesListProps {
   ads: AdItem[];
   onBack: () => void;
@@ -161,10 +163,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     setHasUserInteracted(true);
   };
 
-  const [isBannerVisible, setIsBannerVisible] = useState(AdManager.isBannerActive());
+  const [isBannerVisible, setIsBannerVisible] = useState(adManager.isBannerActive());
 
   useEffect(() => {
-    return AdManager.onBannerStateChange((visible) => {
+    return adManager.onBannerStateChange((visible) => {
       setIsBannerVisible(visible);
     });
   }, []);

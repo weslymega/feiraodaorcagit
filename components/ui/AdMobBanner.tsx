@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { BannerAdPosition } from '@capacitor-community/admob';
 import AdManager from '../../services/AdManager';
+
+const adManager = AdManager.getInstance();
 import { Screen, User } from '../../types';
 
 interface AdMobBannerProps {
@@ -49,7 +51,7 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
 
       try {
         console.log("[AdMob] ⚡ showBanner...");
-        await AdManager.showBanner(position);
+        await adManager.showBanner(position);
       } catch (e) {
         console.error("[AdMob] ❌ Erro ao exibir banner:", e);
       }
@@ -60,7 +62,7 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       
       console.log("[AdMob] ⏹️ Removendo banner no unmount");
-      AdManager.removeBanner().catch(() => {});
+      adManager.removeBanner().catch(() => {});
     };
   }, [position, currentScreen]);
 
