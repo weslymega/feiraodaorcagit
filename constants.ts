@@ -17,7 +17,7 @@ export const APP_LOGOS = {
 export const APP_URL = 'https://feiraodaorca.com';
 export const BASE_URL = 'https://feiraodaorca.com';
 export const TERMS_VERSION = "v1";
-export const APP_VERSION = "1.0.8";
+export const APP_VERSION = "1.1.0";
 
 export const LOCATION_LABEL = "Localização baseada no CEP informado pelo anunciante.";
 
