@@ -38,7 +38,7 @@ class AdManager {
     // Diagnostic State
     private adError: { type: string; details: any; timestamp: string } | null = null;
     private adErrorListeners: ((error: any) => void)[] = [];
-    private readonly VERSION_INFO = { name: "1.1.2", code: 13 };
+    private readonly VERSION_INFO = { name: "1.1.3", code: 14 };
 
     // Banner & Concurrency State
     private isBannerShowing: boolean = false;
@@ -269,23 +269,21 @@ class AdManager {
     public async show(): Promise<boolean> {
         const executionId = `EX-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         this.lastExecutionId = executionId;
-        console.log(`🔥 [AdDebug] [SHOW CALL] ID: ${executionId} | State: ${this.state} | isProcessing: ${this.isProcessingShow}`);
-        debugLogger.log(`🔥 [AdDebug] [SHOW CALL] ID: ${executionId}`);
+        console.log(`[AdDebug] [SHOW CALL] ID: ${executionId} | State: ${this.state}`);
 
-
+        // 🔍 REMOÇÃO TEMPORÁRIA DE TRAVAS INTERNAS PARA DEBUG
+        /*
         if (this.isProcessingShow) {
             console.warn(`🔥 [AdDebug] [BLOQUEIO] Ad show already in progress (Exec: ${executionId})`);
-            debugLogger.log(`🔥 [AdDebug] [BLOQUEIO] Já existe um processamento em curso.`);
             return false;
         }
 
         if (this.state === AdState.SHOWING) {
             console.warn(`🔥 [AdDebug] [BLOQUEIO] Already showing (Exec: ${executionId})`);
-            debugLogger.log(`🔥 [AdDebug] [BLOQUEIO] O anúncio já está sendo exibido.`);
             return false;
         }
+        */
 
-        console.log(`🔥 [AdDebug] LOCKING isProcessingShow = true (Exec: ${executionId})`);
         this.isProcessingShow = true;
 
         if (!Capacitor.isNativePlatform()) {

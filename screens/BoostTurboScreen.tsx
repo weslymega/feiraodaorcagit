@@ -394,10 +394,11 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     }, [activeSession?.id, isProgressiveMode, adId]);
 
     const handleWatchAd = async () => {
-        console.log("🔥 BOTÃO CLICADO");
+        console.log("BOTÃO CLICADO");
         
         try {
-            // 🔍 ETAPA 2 — LOGAR TODAS AS TRAVAS
+            // 🔍 REMOÇÃO TEMPORÁRIA DE TRAVAS PARA DEBUG
+            /*
             if (isClickLocked.current) {
                 console.log("🚫 BLOQUEADO: isClickLocked");
                 return;
@@ -407,11 +408,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 console.log("🚫 BLOQUEADO: watchingAd");
                 return;
             }
-
-            if (adManager.getProcessingShow()) {
-                console.log("🚫 BLOQUEADO: isProcessingShow");
-                return;
-            }
+            */
 
             const currentSession = sessionRef.current;
             if (!isProgressiveMode && !currentSession) {
@@ -419,42 +416,34 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 return;
             }
 
-            // Ativa travas iniciais
-            isClickLocked.current = true;
+            // Opcional: Manter feedback visual, mas sem bloquear a execução
             setWatchingAd(true);
             setSyncError(null);
             setAdError(null);
 
             // 🎯 BLINDAGEM PRÉ-ADMOB: Refresh proativo
             try {
-                console.log("🔥 [AdDebug-UI] Proactive session refresh (3s timeout)...");
+                console.log("🔄 [AdDebug-UI] Proactive session refresh (3s timeout)...");
                 await Promise.race([
                     api.refreshSession(),
                     new Promise((_, reject) => setTimeout(() => reject(new Error("REFRESH_TIMEOUT")), 3000))
                 ]);
             } catch (e: any) {
-                console.warn("🔥 [AdDebug-UI] Refresh failed/timeout, continuing...", e?.message || e);
+                console.warn("⚠️ [AdDebug-UI] Refresh failed/timeout, continuing...", e?.message || e);
             }
 
             // 🔍 ETAPA 3 — GARANTIR CHAMADA CORRETA
-            console.log("🔥 ANTES DO SHOW");
-            debugLogger.log("🔥 [CHAMANDO ADMANAGER] Iniciando método show()...");
+            console.log("ANTES DO SHOW");
+            debugLogger.log("🔥 [DEBUG FORCED] Chamando adManager.show()...");
             
             const success = await adManager.show();
             
-            console.log("🔥 DEPOIS DO SHOW");
-            debugLogger.log(`🔥 [RESULTADO ADMANAGER] Sucesso: ${success}`);
-
-            if (!success) {
-                console.warn("⚠️ O método show() retornou falso (BLOQUEADO INTERNAMENTE)");
-            }
+            console.log("DEPOIS DO SHOW");
+            debugLogger.log(`🔥 [DEBUG FORCED] Resultado: ${success}`);
 
         } catch (e) {
-            console.error("❌ ERRO:", e);
-            debugLogger.log(`❌ ERRO NO FLUXO: ${e instanceof Error ? e.message : String(e)}`);
+            console.error("❌ ERRO NO FLUXO:", e);
         } finally {
-            // 🔍 ETAPA 5 — RESET DE TRAVAS (OBRIGATÓRIO)
-            console.log("🏁 FINALLY: Resetando travas de UI");
             isClickLocked.current = false;
             setWatchingAd(false);
             setLoading(false);
