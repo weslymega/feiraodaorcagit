@@ -416,6 +416,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         }
 
         console.log(`[AdDebug-UI] LOCKING UI for click at ${clickTimestamp}`);
+        debugLogger.log(`[BOTÃO CLICADO] Iniciando fluxo de anúncio...`);
         isClickLocked.current = true; // ATIVA TRAVA IMEDIATA
         
         setAdError(null);
@@ -430,14 +431,36 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             console.warn("[AdDebug-UI] Refresh failed, proceeding anyway:", e);
         }
 
-        console.log(`[AdDebug-UI] Calling adManager.show() for click at ${clickTimestamp}`);
-        const success = await adManager.show();
-        console.log(`[AdDebug-UI] adManager.show() result: ${success} for click at ${clickTimestamp}`);
+        try {
+            console.log(`[AdDebug-UI] Calling adManager.show() for click at ${clickTimestamp}`);
+            debugLogger.log(`[CHAMANDO SHOW] Solicitando abertura do AdManager...`);
+            
+            const success = await adManager.show();
+            
+            console.log(`[AdDebug-UI] adManager.show() result: ${success} for click at ${clickTimestamp}`);
+            debugLogger.log(`[RESULTADO SHOW] Sucesso: ${success}`);
 
-        if (!success) {
-            console.log(`[AdDebug-UI] UNLOCKING UI (Show failed/blocked) at ${clickTimestamp}`);
+            if (!success) {
+                console.log(`[AdDebug-UI] UNLOCKING UI (Show failed/blocked) at ${clickTimestamp}`);
+                setWatchingAd(false);
+                isClickLocked.current = false; // LIBERA SE NÃO CONSEGUIU DISPARAR
+            } else {
+                // 🛡️ TRAVA DE SEGURANÇA FINAL: Se por algum motivo o evento de Dismiss ou Erro nativo não chegar,
+                // liberamos a UI após 40 segundos para não "brickar" a tela do usuário.
+                setTimeout(() => {
+                    if (isClickLocked.current) {
+                        console.warn("[AdDebug-UI] SAFETY UNLOCK triggered after 40s (Event loss protection)");
+                        debugLogger.log(`[SISTEMA] Destravamento automático de segurança (40s).`);
+                        isClickLocked.current = false;
+                        setWatchingAd(false);
+                    }
+                }, 40000);
+            }
+        } catch (error: any) {
+            console.error(`[AdDebug-UI] FATAL ERROR during show():`, error);
+            debugLogger.log(`[ERRO FATAL] Falha no fluxo: ${error.message || error}`);
             setWatchingAd(false);
-            isClickLocked.current = false; // LIBERA SE NÃO CONSEGUIU DISPARAR
+            isClickLocked.current = false;
         }
     };
 
