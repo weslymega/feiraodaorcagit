@@ -45,9 +45,14 @@ class DebugLogger {
   }
 }
 
-// Singleton global no window para garantir persistência entre reload de componentes
+// Instância privada interna para garantir que o Singleton sobreviva a reloads de HMR
+let instance: DebugLogger | null = null;
+
 if (!(window as any).__debugLogger) {
-  (window as any).__debugLogger = new DebugLogger();
+  instance = new DebugLogger();
+  (window as any).__debugLogger = instance;
+} else {
+  instance = (window as any).__debugLogger;
 }
 
-export const debugLogger = (window as any).__debugLogger;
+export const debugLogger = instance as DebugLogger;

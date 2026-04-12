@@ -38,7 +38,7 @@ class AdManager {
     // Diagnostic State
     private adError: { type: string; details: any; timestamp: string } | null = null;
     private adErrorListeners: ((error: any) => void)[] = [];
-    private readonly VERSION_INFO = { name: "1.0.9", code: 10 };
+    private readonly VERSION_INFO = { name: "1.1.0", code: 11 };
 
     // Banner & Concurrency State
     private isBannerShowing: boolean = false;
@@ -161,6 +161,7 @@ class AdManager {
             }
             this.state = AdState.READY;
             this.clearTimeout();
+            debugLogger.log(`[AdMob] SUCESSO: Vídeo pronto para exibição.`);
             this.onReadyCallbacks.forEach(cb => cb());
         });
 
@@ -224,8 +225,10 @@ class AdManager {
                     await AdMob.initialize();
                     this.isInitialized = true;
                 }
+                debugLogger.log(`[AdMob] Inicializando Native...`);
                 this.setupListeners();
                 await this.preload();
+                debugLogger.log(`[AdMob] Inicialização Concluída.`);
             } else {
                 this.isInitialized = true;
                 this.state = AdState.READY;
@@ -250,6 +253,7 @@ class AdManager {
             const options: RewardAdOptions = { adId: this.rewardAdId, isTesting: false };
             this.startPreloadTimeout();
             await AdMob.prepareRewardVideoAd(options);
+            debugLogger.log('[AdMob] Comando Prepare enviado.');
             console.log('[AdMob] prepareRewardVideoAd resolved');
         } catch (error: any) {
             console.error('[AdMob] Preload error:', error);
