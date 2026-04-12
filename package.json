@@ -1,8 +1,8 @@
 {
   "name": "feiraodaorca95",
   "private": true,
-  "version": "1.1.5",
-  "versionCode": 16,
+  "version": "1.1.6",
+  "versionCode": 17,
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000 --strictPort",

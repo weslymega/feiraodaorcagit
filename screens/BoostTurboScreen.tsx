@@ -9,7 +9,6 @@ import AdManager from '../services/AdManager';
 import { turboService } from '../services/turboService';
 import { debugLogger } from '../utils/DebugLogger';
 import DebugPanel from '../components/DebugPanel';
-import { useNavigate } from 'react-router-dom';
 
 const adManager = AdManager.getInstance();
 
@@ -19,7 +18,6 @@ interface BoostTurboScreenProps {
 }
 
 export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack }) => {
-    const navigate = useNavigate();
     const [ad, setAd] = useState<AdItem | null>(null);
     const [loadingAd, setLoadingAd] = useState(false);
     const [loading, setLoading] = useState(false);
