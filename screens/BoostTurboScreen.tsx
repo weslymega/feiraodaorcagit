@@ -352,9 +352,10 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
     // Registro dos Listeners no Ciclo de Vida do AdId
     useEffect(() => {
-        if (!activeSession?.id) return;
+        // Agora permitimos inicializar se estiver no modo progressivo OU se tiver uma sessão ativa
+        if (!isProgressiveMode && !activeSession?.id) return;
 
-        console.log("[BoostTurboScreen] Initializing AdManager for session:", activeSession.id);
+        console.log("[BoostTurboScreen] Initializing AdManager for:", isProgressiveMode ? "progressive" : activeSession?.id);
         adManager.initialize();
 
         adManager.onReady(() => {
