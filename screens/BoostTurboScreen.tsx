@@ -394,29 +394,30 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     }, [activeSession?.id, isProgressiveMode, adId]);
 
     const handleWatchAd = async () => {
+        console.log("🔥 BOTÃO CLICADO");
         const currentSession = sessionRef.current;
         const clickTimestamp = Date.now();
         console.log(`[AdDebug-UI] handleWatchAd clicked at ${clickTimestamp} | Locked: ${isClickLocked.current} | Progress: ${localProgress}`);
         
         // 1. TRAVA DE CLIQUE SÍNCRONA (REQUISITO 4)
         if (isClickLocked.current) {
-            console.warn(`[AdDebug-UI] CLICK IGNORED (UI Lock active) at ${clickTimestamp}`);
+            console.warn(`🔥 [AdDebug-UI] CLIQUE BLOQUEADO: isClickLocked is TRUE at ${clickTimestamp}`);
             return;
         }
 
         if (watchingAd) {
-            console.warn(`[AdDebug-UI] CLICK IGNORED (Already watching)`);
+            console.warn(`🔥 [AdDebug-UI] CLIQUE BLOQUEADO: watchingAd is TRUE`);
             return;
         }
 
         // Se estiver no modo sessão, validamos a sessão
         if (!isProgressiveMode && !currentSession) {
-            console.warn(`[AdDebug-UI] CLICK IGNORED (No session in session-mode)`);
+            console.warn(`🔥 [AdDebug-UI] CLIQUE BLOQUEADO: No session and NOT progressive mode`);
             return;
         }
 
-        console.log(`[AdDebug-UI] LOCKING UI for click at ${clickTimestamp}`);
-        debugLogger.log(`[BOTÃO CLICADO] Iniciando fluxo de anúncio...`);
+        console.log(`🔥 [AdDebug-UI] LOCKING UI (isClickLocked = true) for click at ${clickTimestamp}`);
+        debugLogger.log(`🔥 [BOTÃO CLICADO] Iniciando fluxo de anúncio...`);
         isClickLocked.current = true; // ATIVA TRAVA IMEDIATA
         
         setAdError(null);
@@ -425,26 +426,33 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         
         // 🎯 BLINDAGEM PRÉ-ADMOB: Refresh proativo antes de abrir o vídeo
         try {
-            console.log("[AdDebug-UI] Proactive session refresh...");
-            await api.refreshSession();
-        } catch (e) {
-            console.warn("[AdDebug-UI] Refresh failed, proceeding anyway:", e);
+            console.log("🔥 [AdDebug-UI] Proactive session refresh (3s timeout)...");
+            // Usamos um timeout para não travar o clique se a rede estiver lenta
+            await Promise.race([
+                api.refreshSession(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("REFRESH_TIMEOUT")), 3000))
+            ]);
+            console.log("🔥 [AdDebug-UI] Refresh session SUCCESS");
+        } catch (e: any) {
+            console.warn("🔥 [AdDebug-UI] Refresh failed or timed out, proceeding anyway:", e?.message || e);
+            debugLogger.log(`🔥 [AdDebug-UI] Aviso: Sincronização de sessão demorou ou falhou.`);
         }
 
         try {
-            console.log(`[AdDebug-UI] Calling adManager.show() for click at ${clickTimestamp}`);
-            debugLogger.log(`[CHAMANDO SHOW] Solicitando abertura do AdManager...`);
+            console.log(`🔥 [AdDebug-UI] EFETUANDO CHAMADA: adManager.show() at ${Date.now()}`);
+            debugLogger.log(`🔥 [CHAMANDO SHOW] Solicitando abertura do AdManager...`);
             
             const success = await adManager.show();
             
-            console.log(`[AdDebug-UI] adManager.show() result: ${success} for click at ${clickTimestamp}`);
-            debugLogger.log(`[RESULTADO SHOW] Sucesso: ${success}`);
+            console.log(`🔥 [AdDebug-UI] adManager.show() result: ${success} at ${Date.now()}`);
+            debugLogger.log(`🔥 [RESULTADO SHOW] Sucesso: ${success}`);
 
             if (!success) {
-                console.log(`[AdDebug-UI] UNLOCKING UI (Show failed/blocked) at ${clickTimestamp}`);
+                console.log(`🔥 [AdDebug-UI] UNLOCKING UI (Show failed/blocked)`);
                 setWatchingAd(false);
                 isClickLocked.current = false; // LIBERA SE NÃO CONSEGUIU DISPARAR
             } else {
+                debugLogger.log(`🔥 [SISTEMA] Aguardando evento de exibição nativo...`);
                 // 🛡️ TRAVA DE SEGURANÇA FINAL: Se por algum motivo o evento de Dismiss ou Erro nativo não chegar,
                 // liberamos a UI após 40 segundos para não "brickar" a tela do usuário.
                 setTimeout(() => {

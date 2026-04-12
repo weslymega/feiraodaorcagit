@@ -38,7 +38,7 @@ class AdManager {
     // Diagnostic State
     private adError: { type: string; details: any; timestamp: string } | null = null;
     private adErrorListeners: ((error: any) => void)[] = [];
-    private readonly VERSION_INFO = { name: "1.1.0", code: 11 };
+    private readonly VERSION_INFO = { name: "1.1.1", code: 12 };
 
     // Banner & Concurrency State
     private isBannerShowing: boolean = false;
@@ -268,21 +268,23 @@ class AdManager {
     public async show(): Promise<boolean> {
         const executionId = `EX-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         this.lastExecutionId = executionId;
-        console.log(`[AdDebug] [SHOW CALL] ID: ${executionId} | State: ${this.state} | isProcessing: ${this.isProcessingShow}`);
-        debugLogger.log(`[AdDebug] [SHOW CALL] ID: ${executionId}`);
+        console.log(`🔥 [AdDebug] [SHOW CALL] ID: ${executionId} | State: ${this.state} | isProcessing: ${this.isProcessingShow}`);
+        debugLogger.log(`🔥 [AdDebug] [SHOW CALL] ID: ${executionId}`);
 
 
         if (this.isProcessingShow) {
-            console.warn(`[AdDebug] [BLOQUEIO] Processing in progress (Exec: ${executionId})`);
+            console.warn(`🔥 [AdDebug] [BLOQUEIO] Ad show already in progress (Exec: ${executionId})`);
+            debugLogger.log(`🔥 [AdDebug] [BLOQUEIO] Já existe um processamento em curso.`);
             return false;
         }
 
         if (this.state === AdState.SHOWING) {
-            console.warn(`[AdDebug] [BLOQUEIO] Already showing (Exec: ${executionId})`);
+            console.warn(`🔥 [AdDebug] [BLOQUEIO] Already showing (Exec: ${executionId})`);
+            debugLogger.log(`🔥 [AdDebug] [BLOQUEIO] O anúncio já está sendo exibido.`);
             return false;
         }
 
-        console.log(`[AdDebug] LOCKING isProcessingShow = true (Exec: ${executionId})`);
+        console.log(`🔥 [AdDebug] LOCKING isProcessingShow = true (Exec: ${executionId})`);
         this.isProcessingShow = true;
 
         if (!Capacitor.isNativePlatform()) {
@@ -299,7 +301,8 @@ class AdManager {
         }
 
         if (this.state !== AdState.READY) {
-            console.warn(`[AdDebug] Show aborted: Not Ready (State: ${this.state}, Exec: ${executionId})`);
+            console.warn(`🔥 [AdDebug] [BLOQUEIO] Show aborted: Not Ready (State: ${this.state}, Exec: ${executionId})`);
+            debugLogger.log(`🔥 [AdDebug] [BLOQUEIO] Ad não está pronto (State: ${this.state})`);
             this.handleAdError('AD_NOT_READY', { currentState: this.state, executionId });
             this.isProcessingShow = false; 
             await this.preload();
