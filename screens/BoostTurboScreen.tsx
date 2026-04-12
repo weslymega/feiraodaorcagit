@@ -6,6 +6,7 @@ import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, Rocket, Info } from
 import { Capacitor } from '@capacitor/core';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 import AdManager from '../services/AdManager';
+import { turboService } from '../services/turboService';
 import DebugPanel from '../components/DebugPanel';
 
 
@@ -34,6 +35,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [loadingTextIndex, setLoadingTextIndex] = useState(0);
     const [adError, setAdError] = useState<{ type: string; details: any; timestamp: string } | null>(null);
     const [showDebug, setShowDebug] = useState(false);
+    const [isProgressiveMode, setIsProgressiveMode] = useState(false);
     const isClickLocked = useRef(false); // TRAVA DE CLIQUE SÍNCRONA (REQUISITO 4)
 
 
@@ -109,7 +111,15 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         };
                         setActiveSession(sess);
                         sessionRef.current = sess;
+                        setIsProgressiveMode(false);
+                    } else {
+                        // Se não encontrou sessão ativa legada, entramos no modo progressivo
+                        setIsProgressiveMode(true);
+                        setLocalProgress(fetchedAd.turbo_progress || 0);
                     }
+                } else {
+                    // Sem sessão de auth (não logado?), mas por precaução ativamos o modo progressivo visual
+                    setIsProgressiveMode(true);
                 }
 
             } catch (err) {
@@ -132,6 +142,54 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         // 🚨 TRAVA 1: Impedir completamente nova chamada se a finalização já iniciou
         if (finalizingRef.current) {
             console.log("[BoostTurboScreen] [TRAVA] Requisição ignorada: Turbo já foi ativado previamente.");
+            return;
+        }
+
+        if (isProgressiveMode) {
+            console.log(`[BoostTurboScreen] [PROGRESSIVE] START REWARD SYNC for Ad ${ad?.id}`);
+            setSyncError(null);
+            
+            try {
+                // Otimismo visual
+                setLocalProgress(prev => prev + 1);
+
+                const result = await turboService.applyTurboReward(ad!.id);
+                
+                if (!result.success) {
+                    throw new Error(result.error || "Falha ao aplicar recompensa.");
+                }
+
+                console.log("[BoostTurboScreen] [PROGRESSIVE SUCCESS] New Data:", result);
+                
+                // Atualizamos o anúncio local
+                if (ad) {
+                    setAd({
+                        ...ad,
+                        turbo_progress: result.turbo_progress,
+                        turbo_expires_at: result.turbo_expires_at,
+                        is_turbo_active: true
+                    });
+                }
+
+                // Feedback de Sucesso
+                setIsFinalizing(true);
+                finalizingRef.current = true;
+                
+                setTimeout(async () => {
+                    if (Capacitor.isNativePlatform()) {
+                        await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
+                    }
+                    setShowSuccess(true);
+                    setTimeout(() => onBackRef.current(), 2500);
+                }, 2000);
+
+            } catch (err: any) {
+                console.error("[BoostTurboScreen] [PROGRESSIVE ERROR]:", err);
+                setSyncError(err.message || "Erro de sincronização");
+                // Revertemos o progresso otimista em caso de erro real
+                setLocalProgress(ad?.turbo_progress || 0);
+                throw err;
+            }
             return;
         }
 
@@ -332,7 +390,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             console.log("[BoostTurboScreen] Destroying ad listeners");
             adManager.removeAllListeners();
         };
-    }, [activeSession?.id]);
+    }, [activeSession?.id, isProgressiveMode, adId]);
 
     const handleWatchAd = async () => {
         const currentSession = sessionRef.current;
@@ -345,8 +403,14 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             return;
         }
 
-        if (!currentSession || watchingAd) {
-            console.warn(`[AdDebug-UI] CLICK IGNORED (No session or already watching) Session: ${!!currentSession}, Watching: ${watchingAd}`);
+        if (watchingAd) {
+            console.warn(`[AdDebug-UI] CLICK IGNORED (Already watching)`);
+            return;
+        }
+
+        // Se estiver no modo sessão, validamos a sessão
+        if (!isProgressiveMode && !currentSession) {
+            console.warn(`[AdDebug-UI] CLICK IGNORED (No session in session-mode)`);
             return;
         }
 
@@ -470,8 +534,82 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             <Header title="Ativar Turbo" onBack={onBack} />
             <div className="flex-1 overflow-y-auto p-6 pb-36">
 
-                {/* ESTADO 1: Escolha do Plano */}
-                {!activeSession && (
+                {/* ESTADO 1: Novo Fluxo Progressivo (Ou Escolha de Plano Legado) */}
+                {!activeSession && isProgressiveMode && (
+                    <div className="animate-in fade-in duration-500">
+                        <div className="mb-8 flex flex-col items-center text-center">
+                            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6 shadow-sm border border-blue-200">
+                                <Rocket className="w-10 h-10 text-blue-600" />
+                            </div>
+                            <h2 className="text-2xl font-black text-gray-900 leading-tight mb-2">Turbo Progressivo</h2>
+                            <p className="text-sm text-gray-600 font-medium max-w-[280px]">
+                                Cada vídeo assistido aumenta sua visibilidade e adiciona dias de destaque!
+                            </p>
+                        </div>
+
+                        {/* Níveis do Sistema */}
+                        <div className="grid grid-cols-3 gap-3 mb-8">
+                            <div className={`p-3 rounded-2xl border-2 flex flex-col items-center text-center transition-all ${localProgress >= 1 ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border-gray-100 text-gray-400'}`}>
+                                <Star className={`w-6 h-6 mb-1 ${localProgress >= 1 ? 'fill-current' : ''}`} />
+                                <span className="text-[10px] font-black uppercase">Premium</span>
+                                <span className={`text-[9px] font-bold mt-1 ${localProgress >= 1 ? 'text-blue-100' : 'text-gray-400'}`}>1 Recomp.</span>
+                            </div>
+                            <div className={`p-3 rounded-2xl border-2 flex flex-col items-center text-center transition-all ${localProgress >= 2 ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border-gray-100 text-gray-400'}`}>
+                                <Zap className={`w-6 h-6 mb-1 ${localProgress >= 2 ? 'fill-current' : ''}`} />
+                                <span className="text-[10px] font-black uppercase">Pro</span>
+                                <span className={`text-[9px] font-bold mt-1 ${localProgress >= 2 ? 'text-indigo-100' : 'text-gray-400'}`}>2 Recomp.</span>
+                            </div>
+                            <div className={`p-3 rounded-2xl border-2 flex flex-col items-center text-center transition-all ${localProgress >= 3 ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-200' : 'bg-white border-gray-100 text-gray-400'}`}>
+                                <Zap className={`w-6 h-6 mb-1 ${localProgress >= 3 ? 'fill-current' : ''}`} />
+                                <span className="text-[10px] font-black uppercase">Max</span>
+                                <span className={`text-[9px] font-bold mt-1 ${localProgress >= 3 ? 'text-orange-100' : 'text-gray-400'}`}>3+ Recomp.</span>
+                            </div>
+                        </div>
+
+                        {/* Status Atual */}
+                        <div className="bg-white rounded-3xl p-6 border-2 border-gray-50 shadow-sm mb-8">
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Seu Progresso Atual</h4>
+                            <div className="flex items-end justify-between mb-2">
+                                <span className="text-3xl font-black text-gray-900">{localProgress}</span>
+                                <span className="text-xs font-bold text-blue-600">Recompensas</span>
+                            </div>
+                            <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                                <div 
+                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 h-full rounded-full transition-all duration-1000"
+                                    style={{ width: `${Math.min((localProgress / 3) * 100, 100)}%` }}
+                                ></div>
+                            </div>
+                            {localProgress > 0 && ad?.turbo_expires_at && (
+                                <p className="text-[10px] text-gray-400 font-bold mt-3 uppercase text-center">
+                                    Ativo até: {new Date(ad.turbo_expires_at).toLocaleDateString()}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Botão de Ação */}
+                        <button
+                            onClick={handleWatchAd}
+                            disabled={!adReady || watchingAd || loading}
+                            className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98]
+                                ${adReady && !watchingAd && !loading
+                                    ? 'bg-gray-900 text-white shadow-black/20 hover:bg-black'
+                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        >
+                            {(watchingAd || loading || !adReady) ? (
+                                <><Loader2 className="w-6 h-6 animate-spin" /> {(watchingAd || loading) ? "Processando..." : "Carregando Vídeo"}</>
+                            ) : (
+                                <><Play className="w-6 h-6 fill-current" /> Assistir para Ganhar Destaque</>
+                            )}
+                        </button>
+
+                        <p className="mt-6 text-[11px] text-gray-400 font-medium text-center leading-relaxed">
+                            Ao assistir o anúncio completo, o destaque é aplicado <br/>instantaneamente ao seu veículo.
+                        </p>
+                    </div>
+                )}
+
+                {/* ESTADO OBSOLETO: Escolha do Plano (Apenas se activeSession existir por erro ou legado) */}
+                {!activeSession && !isProgressiveMode && (
                     <>
                         <div className="mb-6 flex flex-col items-center text-center animate-in fade-in zoom-in duration-300">
                             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 shadow-sm border border-blue-200">
@@ -703,7 +841,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             >
                 <div className="bg-gray-800 text-white px-3 py-1 rounded-md shadow-lg">
                     <span className="text-[10px] font-bold font-mono uppercase">
-                        DEBUG: v1.0.9 (10)
+                        DEBUG: v1.1.0 (11)
                     </span>
                 </div>
             </div>

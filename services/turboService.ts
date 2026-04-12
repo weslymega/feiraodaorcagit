@@ -53,5 +53,44 @@ export const turboService = {
                 error: err.message || 'Ocorreu um erro inesperado ao acionar o Turbo.'
             };
         }
+    },
+
+    /**
+     * Aplica uma recompensa de turbo diretamente ao anúncio (Novo Sistema Progressivo)
+     * 
+     * @param adId - O UUID do anúncio
+     * @returns Objeto de resposta com sucesso e novos dados do turbo
+     */
+    applyTurboReward: async (adId: string): Promise<{ success: boolean; error?: string; turbo_type?: string; turbo_progress?: number; turbo_expires_at?: string }> => {
+        try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+
+            const { data, error } = await supabase.functions.invoke('apply-turbo-reward', {
+                body: { adId },
+                ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {})
+            });
+
+            if (error) {
+                throw new Error(error.message || 'Falha na comunicação com a Edge Function.');
+            }
+
+            if (!data?.success && data?.error) {
+                return { success: false, error: data.error };
+            }
+
+            return {
+                success: true,
+                turbo_type: data.turbo_type,
+                turbo_progress: data.turbo_progress,
+                turbo_expires_at: data.turbo_expires_at
+            };
+        } catch (err: any) {
+            console.error('[turboService] applyTurboReward Error:', err);
+            return {
+                success: false,
+                error: err.message || 'Erro ao aplicar recompensa do Turbo.'
+            };
+        }
     }
 };

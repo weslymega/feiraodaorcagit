@@ -192,6 +192,7 @@ export interface AdItem {
   // Turbo Highlights (Single Source of Truth)
   turbo_expires_at?: string;
   is_turbo_active?: boolean;
+  turbo_progress?: number;
 }
 
 export interface MessageItem {
