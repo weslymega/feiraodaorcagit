@@ -7,9 +7,10 @@ const corsHeaders = {
 }
 
 const jsonResponse = (data: object, status: number = 200) => {
+    // DEBUG MODE: Always return 200 to allow client to see the error body
     return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status
+        status: 200 
     });
 };
 
@@ -86,13 +87,18 @@ serve(async (req) => {
         }
 
         // 🛡️ PROGRESSO E COOLDOWN
-        console.log("[STEP 9] currentProgress:", ad.turbo_progress || 0);
-        
         const now = new Date();
         const lastTurbo = ad.last_turbo_at ? new Date(ad.last_turbo_at) : new Date(0);
+        console.log(`[STEP 9] currentProgress: ${ad.turbo_progress || 0}`);
+        console.log(`[STEP 9] TIME CHECK - Now: ${now.toISOString()}, LastTurbo: ${lastTurbo.toISOString()}`);
+        
         if (now.getTime() - lastTurbo.getTime() < 3000) {
             console.error('[ERRO COOLDOWN] Cooldown active');
-            return jsonResponse({ success: false, error: 'ETAPA_9_FALHOU' }, 429);
+            return jsonResponse({ 
+                success: false, 
+                error: 'ETAPA_9_FALHOU',
+                details: `Cooldown ativo. Diferença: ${now.getTime() - lastTurbo.getTime()}ms`
+            }, 429);
         }
 
         console.log("[STEP 10] newProgress check logic...");
