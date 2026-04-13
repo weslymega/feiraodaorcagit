@@ -161,12 +161,12 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     }
                     setShowSuccess(true);
                     
-                    // Reset visual após 3 segundos para permitir continuar assistindo sem fechar a tela
+                    // Reset visual após 6 segundos para permitir ler todas as informações
                     setTimeout(() => {
                         setShowSuccess(false);
                         setIsFinalizing(false);
                         finalizingRef.current = false;
-                    }, 3000);
+                    }, 6000);
                 }, 1500);
             } catch (err: any) {
                 console.error(err);
@@ -310,6 +310,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         );
     }
 
+    const [showRulesModal, setShowRulesModal] = useState(false);
+
+    // Auxiliar para cores e nomes de níveis dinâmicos
+    const getLevelData = (progress: number) => {
+        if (progress >= 3) return { name: "Turbo Máximo 🔥", color: "from-orange-500 to-red-600", bg: "bg-orange-50", text: "text-orange-600", badge: "bg-orange-100 border-orange-200" };
+        if (progress === 2) return { name: "Nível PRO ⚡", color: "from-indigo-500 to-purple-600", bg: "bg-indigo-50", text: "text-indigo-600", badge: "bg-indigo-100 border-indigo-200" };
+        if (progress === 1) return { name: "Nível PREMIUM ✨", color: "from-blue-500 to-blue-600", bg: "bg-blue-50", text: "text-blue-600", badge: "bg-blue-100 border-blue-200" };
+        return { name: "Aguardando Boost", color: "from-gray-400 to-gray-500", bg: "bg-gray-50", text: "text-gray-400", badge: "bg-gray-100 border-gray-200" };
+    };
+
+    const currentLevel = getLevelData(localProgress);
+
     return (
         <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden relative">
             <header className="px-6 pt-12 pb-6 flex items-center gap-4 bg-white border-b border-gray-100 shadow-sm relative z-10">
@@ -320,9 +332,17 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     <h1 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Boost Turbo {isProgressiveMode ? "⚡" : ""}</h1>
                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none">Acelerador de Resultados</p>
                 </div>
-                <button onClick={() => setShowDebug(!showDebug)} className="ml-auto p-2 text-gray-300 hover:text-gray-900">
-                  <Bug className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2 ml-auto">
+                    <button 
+                        onClick={() => setShowRulesModal(true)}
+                        className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 active:scale-90 transition-all border border-blue-100"
+                    >
+                        <Info className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => setShowDebug(!showDebug)} className="p-2 text-gray-300 hover:text-gray-900">
+                      <Bug className="w-4 h-4" />
+                    </button>
+                </div>
             </header>
 
             <main className="flex-1 overflow-y-auto px-6 py-8 scrolling-touch">
@@ -331,7 +351,14 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 {isProgressiveMode && (
                     <div className="animate-in fade-in slide-in-from-bottom duration-500 text-center">
                         <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-2xl shadow-blue-500/5 mb-8 relative overflow-hidden group">
-                            <div className="w-20 h-20 bg-blue-600 rounded-[2rem] mx-auto flex items-center justify-center mb-6 shadow-2xl shadow-blue-600/40 rotate-3 transition-transform group-hover:rotate-0">
+                            
+                            {/* Novo Badge de Nível Dinâmico */}
+                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border ${currentLevel.badge} ${currentLevel.text} mb-6 animate-bounce`}>
+                                <Zap className="w-3.5 h-3.5 fill-current" />
+                                <span className="text-[11px] font-black uppercase tracking-widest leading-none">{currentLevel.name}</span>
+                            </div>
+
+                            <div className={`w-20 h-20 shadow-2xl rounded-[2rem] mx-auto flex items-center justify-center mb-6 rotate-3 transition-transform group-hover:rotate-0 bg-gradient-to-br ${currentLevel.color}`}>
                                 <Zap className="w-10 h-10 text-white fill-current" />
                             </div>
                             <h1 className="text-3xl font-black text-gray-900 leading-none mb-3">Turbo <span className="text-blue-600 italic">Boost</span></h1>
@@ -341,26 +368,45 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
                             <div className="mt-10 relative z-10">
                                 <div className="flex justify-between items-end mb-3 px-1">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nível de Destaque</span>
-                                    <span className="text-lg font-black text-blue-600 italic">{(localProgress / 3 * 100).toFixed(0)}%</span>
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">{currentLevel.name}</span>
+                                    <span className={`text-lg font-black italic ${currentLevel.text}`}>{(localProgress / 3 * 100).toFixed(0)}%</span>
                                 </div>
                                 <div className="h-6 bg-gray-100 rounded-full p-1 border border-gray-50 shadow-inner">
-                                    <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-1000" style={{ width: `${Math.min((localProgress / 3) * 100, 100)}%` }}></div>
+                                    <div className={`h-full bg-gradient-to-r ${currentLevel.color} rounded-full transition-all duration-1000 shadow-lg`} style={{ width: `${Math.min((localProgress / 3) * 100, 100)}%` }}></div>
                                 </div>
                             </div>
                         </div>
 
                         <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-xl mb-6">
                             <button
+                                disabled={watchingAd}
                                 onClick={async () => {
                                     console.log("CLICK DIRETO");
-                                    console.log("ANTES DO SHOW");
-                                    const success = await adManager.show();
-                                    console.log("DEPOIS DO SHOW | Sucesso:", success);
+                                    setWatchingAd(true);
+                                    setSyncError(null);
+                                    setAdError(null);
+                                    try {
+                                        console.log("ANTES DO SHOW");
+                                        const success = await adManager.show();
+                                        console.log("DEPOIS DO SHOW | Sucesso:", success);
+                                        if (!success) setWatchingAd(false);
+                                    } catch (err) {
+                                        console.error("Erro no clique direto:", err);
+                                        setWatchingAd(false);
+                                    }
                                 }}
-                                className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] bg-gray-900 text-white`}
+                                className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] ${watchingAd ? 'bg-gray-400 opacity-70' : 'bg-gray-900'} text-white`}
                             >
-                                <Play className="w-6 h-6 fill-current" /> Assistir (CLICK DIRETO)
+                                {watchingAd ? (
+                                    <>
+                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                        Preparando anúncio...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play className="w-6 h-6 fill-current" /> Assistir e Ganhar Boost 🎬
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -374,19 +420,89 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                             <div className="bg-blue-600 h-4 rounded-full transition-all" style={{ width: `${(localProgress / activeSession.requiredSteps) * 100}%` }}></div>
                         </div>
                         <button
+                            disabled={watchingAd}
                             onClick={async () => {
                                 console.log("CLICK DIRETO (Sessão)");
-                                console.log("ANTES DO SHOW");
-                                await adManager.show();
-                                console.log("DEPOIS DO SHOW");
+                                setWatchingAd(true);
+                                setSyncError(null);
+                                setAdError(null);
+                                try {
+                                    console.log("ANTES DO SHOW");
+                                    const success = await adManager.show();
+                                    console.log("DEPOIS DO SHOW");
+                                    if (!success) setWatchingAd(false);
+                                } catch (err) {
+                                    console.error("Erro no clique direto sessão:", err);
+                                    setWatchingAd(false);
+                                }
                             }}
-                            className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] bg-blue-600 text-white shadow-blue-500/30`}
+                            className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] ${watchingAd ? 'bg-blue-300' : 'bg-blue-600'} text-white shadow-blue-500/30`}
                         >
-                            <Play className="w-6 h-6 fill-current" /> Assistir Anúncio (CLICK DIRETO)
+                            {watchingAd ? (
+                                <>
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    Preparando anúncio...
+                                </>
+                            ) : (
+                                <>
+                                    <Play className="w-6 h-6 fill-current" /> Assistir e Ganhar Boost 🎬
+                                </>
+                            )}
                         </button>
                     </div>
                 )}
             </main>
+
+            {/* MODAL DE REGRAS */}
+            {showRulesModal && (
+                <div className="absolute inset-0 z-[150] bg-gray-900/60 backdrop-blur-md flex items-end animate-in fade-in duration-300">
+                    <div className="w-full bg-white rounded-t-[3rem] p-8 pb-12 animate-in slide-in-from-bottom duration-500 shadow-2xl">
+                        <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8"></div>
+                        
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 rotate-3">
+                                <Zap className="w-6 h-6 text-white fill-current" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-gray-900 italic">Turbo Progressivo 📈</h2>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Entenda como funciona</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 mb-10">
+                            {[
+                                { level: "1º Vídeo", name: "PREMIUM", gain: "+1 Dia", color: "text-blue-600", bg: "bg-blue-50" },
+                                { level: "2º Vídeo", name: "PRO", gain: "+3 Dias", color: "text-indigo-600", bg: "bg-indigo-50" },
+                                { level: "3º+ Vídeos", name: "MAX (TOP)", gain: "+7 Dias", color: "text-orange-600", bg: "bg-orange-50" }
+                            ].map((row, idx) => (
+                                <div key={idx} className={`${row.bg} rounded-2xl p-4 flex items-center justify-between border border-white/50 shadow-sm transition-transform active:scale-[0.98]`}>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">{row.level}</span>
+                                        <span className={`text-sm font-black italic ${row.color}`}>{row.name}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5 text-right">Tempo Ganho</span>
+                                        <span className={`text-sm font-black ${row.color}`}>{row.gain}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="bg-gray-50 rounded-2xl p-5 mb-8 border border-gray-100 italic">
+                            <p className="text-xs text-gray-500 font-bold leading-relaxed">
+                                💡 <span className="text-gray-900">O tempo é acumulativo!</span> Se você já tem destaque ativo, os novos dias são somados ao tempo restante.
+                            </p>
+                        </div>
+
+                        <button 
+                            onClick={() => setShowRulesModal(false)}
+                            className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black shadow-xl active:scale-95 transition-all"
+                        >
+                            ENTENDI, VAMOS LÁ!
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* OVERLAY DE PROCESSAMENTO */}
             {isFinalizing && !showSuccess && (
@@ -403,7 +519,14 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
             {/* OVERLAY DE SUCESSO E FEEDBACK */}
             {showSuccess && (
-                <div className="absolute inset-0 z-[110] bg-blue-600 flex flex-col items-center justify-center p-8 text-center animate-in zoom-in duration-500">
+                <div 
+                    onClick={() => {
+                        setShowSuccess(false);
+                        setIsFinalizing(false);
+                        finalizingRef.current = false;
+                    }}
+                    className="absolute inset-0 z-[110] bg-blue-600 flex flex-col items-center justify-center p-8 text-center animate-in zoom-in duration-500 cursor-pointer"
+                >
                     <div className="w-24 h-24 bg-white/20 rounded-[2.5rem] flex items-center justify-center mb-8 animate-bounce">
                         <CheckCircle className="w-14 h-14 text-white" />
                     </div>
@@ -414,10 +537,10 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
                     <div className="space-y-4 mb-10">
                         <p className="text-xl font-bold text-blue-50 leading-tight">
-                            {lastReward?.turbo_progress < 33 && "🚀 Seu anúncio começou a subir no ranking!"}
-                            {lastReward?.turbo_progress >= 33 && lastReward?.turbo_progress < 66 && "⚡ Nível Premium! Seu anúncio ganhará mais destaque em breve."}
-                            {lastReward?.turbo_progress >= 66 && lastReward?.turbo_progress < 100 && "🔥 Nível PRO! Seu anúncio está quase no topo!"}
-                            {lastReward?.turbo_progress >= 100 && "👑 TURBO MÁXIMO! Seu anúncio está entre os mais destacados!"}
+                            {lastReward?.turbo_progress < 3 && "🚀 Seu anúncio começou a subir no ranking!"}
+                            {lastReward?.turbo_progress === 1 && "✨ Você atingiu o Nível PREMIUM!"}
+                            {lastReward?.turbo_progress === 2 && "⚡ Você atingiu o Nível PRO!"}
+                            {lastReward?.turbo_progress >= 3 && "👑 TURBO MÁXIMO ATIVADO!"}
                         </p>
                         
                         <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
@@ -430,7 +553,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         </div>
                     </div>
 
-                    {lastReward?.turbo_progress < 100 && (
+                    {lastReward?.turbo_progress < 3 && (
                         <div className="animate-pulse bg-yellow-400 text-blue-900 px-6 py-3 rounded-full font-black text-sm uppercase tracking-tighter">
                             🎯 Assista mais vídeos para aumentar o destaque!
                         </div>

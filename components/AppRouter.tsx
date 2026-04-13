@@ -81,6 +81,17 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         }
     };
 
+    const handleBackFromMyAds = () => {
+        if (previousScreen &&
+            previousScreen !== currentScreen &&
+            previousScreen !== Screen.LOGIN &&
+            previousScreen !== Screen.REGISTER) {
+            setCurrentScreen(previousScreen);
+        } else {
+            goBackToPanel();
+        }
+    };
+
     // --- FILTRAGEM E COMPOSIÇÃO DE DADOS (REAL DATA from Supabase) ---
 
     // Desestruturar ads reais do estado
@@ -203,7 +214,8 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         },
         handlers: {
             handleBackFromDetails,
-            handleBackFromProfile
+            handleBackFromProfile,
+            handleBackFromMyAds
         }
     };
 

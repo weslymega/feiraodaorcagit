@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAppState } from '../hooks/useAppState';
-import { Plus, MoreVertical, Trash2, Edit2, X, AlertTriangle, Clock, TrendingUp, Calendar, Zap, Lock, Info } from 'lucide-react';
+import { Plus, MoreVertical, Trash2, Edit2, X, AlertTriangle, Clock, TrendingUp, Calendar, Zap, Lock, Info, Rocket } from 'lucide-react';
 import { Header, PriceTag, HighlightRibbon } from '../components/Shared';
 import { AdItem, AdStatus } from '../types';
 import { getBoostBorderClass } from '../utils/boostRibbon';
@@ -302,11 +302,27 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
         ))}
 
         {filteredAds.length === 0 && (
-          <div className="text-center py-20 text-gray-400 flex flex-col items-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-              <TrendingUp className="w-8 h-8 text-gray-300" />
+          <div className="text-center py-16 px-6 flex flex-col items-center">
+            <div className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center mb-6 border border-blue-100/50 shadow-inner relative group">
+              <div className="absolute inset-0 bg-blue-400/10 rounded-[2rem] animate-pulse"></div>
+              <Rocket className="w-10 h-10 text-blue-600 relative z-10 group-hover:scale-110 transition-transform duration-500" />
             </div>
-            <p>Nenhum anúncio nesta categoria.</p>
+            
+            <h3 className="text-xl font-black text-gray-900 mb-2 italic">
+              Seu pátio está <span className="text-blue-600">vazio!</span>
+            </h3>
+            
+            <p className="text-sm text-gray-500 font-medium leading-relaxed max-w-[240px] mb-8">
+              Crie seu primeiro anúncio agora e use o <span className="text-indigo-600 font-black italic">Turbo 🚀</span> para alcançar milhares de compradores rapidamente.
+            </p>
+
+            <button 
+              onClick={onCreateNew}
+              className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-blue-200 active:scale-95 transition-all"
+            >
+              <Plus className="w-5 h-5" />
+              Criar meu primeiro anúncio
+            </button>
           </div>
         )}
       </div>

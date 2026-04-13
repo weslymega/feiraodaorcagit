@@ -532,7 +532,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       />
 
       {/* 9. Educational Boost Section */}
-      <HowBoostWorksSection />
+      <HowBoostWorksSection onNavigate={onNavigate} />
 
       {/* 10. Educational App Flow Section */}
       <HowAppWorksSection />

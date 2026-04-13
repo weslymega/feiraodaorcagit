@@ -333,6 +333,21 @@ class AdManager {
             return true;
         }
 
+        if (this.state === AdState.LOADING) {
+            debugLogger.log("⏳ Aguardando anúncio ficar pronto...");
+            console.log(`[AdDebug] Aguardando READY state (Exec: ${executionId})...`);
+            try {
+                await this.waitForAdReady(5000); // timeout 5s
+                debugLogger.log("✅ Anúncio pronto após espera!");
+            } catch (err: any) {
+                console.warn(`🔥 [AdDebug] [BLOQUEIO] Erro/Timeout na espera: ${err} (Exec: ${executionId})`);
+                debugLogger.log(`🔥 [BLOQUEIO] ${err}`);
+                this.handleAdError('AD_WAIT_TIMEOUT', { currentState: this.state, executionId, error: err });
+                this.isProcessingShow = false;
+                return false;
+            }
+        }
+
         if (this.state !== AdState.READY) {
             console.warn(`🔥 [AdDebug] [BLOQUEIO] Show aborted: Not Ready (State: ${this.state}, Exec: ${executionId})`);
             debugLogger.log(`🔥 [AdDebug] [BLOQUEIO] Ad não está pronto (State: ${this.state})`);
@@ -342,21 +357,42 @@ class AdManager {
             return false;
         }
 
-        await this.executeShowDirectly(executionId);
-        return true;
+        return await this.executeShowDirectly(executionId);
     }
 
-    private async executeShowDirectly(executionId: string) {
+    private async executeShowDirectly(executionId: string): Promise<boolean> {
         try {
             console.log(`[AdDebug] CRITICAL: Calling AdMob.showRewardVideoAd() (Exec: ${executionId})`);
             await AdMob.showRewardVideoAd();
             console.log(`[AdDebug] showRewardVideoAd resolved (Exec: ${executionId})`);
+            return true;
         } catch (error: any) {
             console.error(`[AdDebug] showRewardVideoAd error (Exec: ${executionId}):`, error);
             this.handleAdError('FAILED_TO_SHOW', error?.message || error);
             this.state = AdState.ERROR;
             this.isProcessingShow = false; 
+            return false;
         }
+    }
+
+    private waitForAdReady(timeout: number = 5000): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            const start = Date.now();
+            const interval = setInterval(() => {
+                if (this.state === AdState.READY) {
+                    clearInterval(interval);
+                    resolve(true);
+                }
+                if (this.state === AdState.ERROR) {
+                    clearInterval(interval);
+                    reject("Ad falhou ao carregar");
+                }
+                if (Date.now() - start > timeout) {
+                    clearInterval(interval);
+                    reject("Timeout aguardando anúncio");
+                }
+            }, 200);
+        });
     }
 
     private startPreloadTimeout() {

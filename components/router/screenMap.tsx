@@ -91,6 +91,7 @@ export interface RouterContextProps {
     handlers: {
         handleBackFromDetails: () => void;
         handleBackFromProfile: () => void;
+        handleBackFromMyAds: () => void;
     };
 }
 
@@ -129,7 +130,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
         allModerationAds, allAdminPartsServicesAds, allNotifications
     } = computed;
 
-    const { handleBackFromDetails, handleBackFromProfile } = handlers;
+    const { handleBackFromDetails, handleBackFromProfile, handleBackFromMyAds } = handlers;
     const { setCurrentScreen } = state;
 
     // --- 1. CATEGORIZAÇÃO DE ROTAS (SENIOR ARCHITECTURE) ---
@@ -224,7 +225,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                 <MyAds
                     ads={myAds}
                     onBack={() => {
-                        goBackToPanel();
+                        handleBackFromMyAds();
                         if (state.setMyAdsInitialTab) state.setMyAdsInitialTab('ativos');
                     }}
                     onDelete={handleDeleteAd}
