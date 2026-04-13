@@ -200,6 +200,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             if (newStep !== undefined) {
                 setActiveSession(prev => prev ? { ...prev, currentStep: newStep } : null);
                 if (data?.turbo_activated) {
+                    setLastReward({ turbo_progress: 3, turbo_activated: true }); // Mock para o overlay de sucesso mostrar nível máximo
                     setIsFinalizing(true);
                     finalizingRef.current = true;
                     setTimeout(async () => {
@@ -207,8 +208,15 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                             await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
                         }
                         setShowSuccess(true);
-                        setTimeout(() => onBackRef.current(), 2500);
-                    }, 3000);
+                        
+                        // Reset visual após 6 segundos (padrão unificado)
+                        setTimeout(() => {
+                            setShowSuccess(false);
+                            setIsFinalizing(false);
+                            finalizingRef.current = false;
+                            onBackRef.current(); // No modo sessão, voltamos após completar
+                        }, 6000);
+                    }, 1500);
                 }
             }
         } catch (err: any) {
@@ -349,7 +357,8 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             <main className="flex-1 overflow-y-auto px-6 py-8 scrolling-touch">
                 {showDebug && <div className="mb-6"><DebugPanel /></div>}
 
-                {isProgressiveMode && (
+                {/* UI UNIFICADA DE PROGRESSÃO (Suporta Modo Progressivo e Sessões Legadas) */}
+                {(isProgressiveMode || activeSession) && (
                     <div className="animate-in fade-in slide-in-from-bottom duration-500 text-center">
                         <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-2xl shadow-blue-500/5 mb-8 relative overflow-hidden group">
                             
@@ -370,10 +379,15 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                             <div className="mt-10 relative z-10">
                                 <div className="flex justify-between items-end mb-3 px-1">
                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">{currentLevel.name}</span>
-                                    <span className={`text-lg font-black italic ${currentLevel.text}`}>{(localProgress / 3 * 100).toFixed(0)}%</span>
+                                    <span className={`text-lg font-black italic ${currentLevel.text}`}>
+                                        {(localProgress / (activeSession?.requiredSteps || 3) * 100).toFixed(0)}%
+                                    </span>
                                 </div>
                                 <div className="h-6 bg-gray-100 rounded-full p-1 border border-gray-50 shadow-inner">
-                                    <div className={`h-full bg-gradient-to-r ${currentLevel.color} rounded-full transition-all duration-1000 shadow-lg`} style={{ width: `${Math.min((localProgress / 3) * 100, 100)}%` }}></div>
+                                    <div 
+                                        className={`h-full bg-gradient-to-r ${currentLevel.color} rounded-full transition-all duration-1000 shadow-lg`} 
+                                        style={{ width: `${Math.min((localProgress / (activeSession?.requiredSteps || 3)) * 100, 100)}%` }}
+                                    ></div>
                                 </div>
                             </div>
                         </div>
@@ -396,7 +410,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                         setWatchingAd(false);
                                     }
                                 }}
-                                className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] ${watchingAd ? 'bg-gray-400 opacity-70' : 'bg-gray-900'} text-white`}
+                                className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] ${watchingAd ? 'bg-gray-400 opacity-70' : 'bg-blue-600 text-white shadow-blue-500/30'}`}
                             >
                                 {watchingAd ? (
                                     <>
@@ -410,46 +424,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                                 )}
                             </button>
                         </div>
-                    </div>
-                )}
-                
-                {activeSession && (
-                    <div className="animate-in fade-in flex flex-col items-center text-center pt-8">
-                        <MonitorPlay className="w-20 h-20 text-blue-500 mb-6" />
-                        <h2 className="text-2xl font-black text-gray-900 mb-2">Quase lá!</h2>
-                        <div className="w-full max-w-[300px] bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
-                            <div className="bg-blue-600 h-4 rounded-full transition-all" style={{ width: `${(localProgress / activeSession.requiredSteps) * 100}%` }}></div>
-                        </div>
-                        <button
-                            disabled={watchingAd}
-                            onClick={async () => {
-                                console.log("CLICK DIRETO (Sessão)");
-                                setWatchingAd(true);
-                                setSyncError(null);
-                                setAdError(null);
-                                try {
-                                    console.log("ANTES DO SHOW");
-                                    const success = await adManager.show();
-                                    console.log("DEPOIS DO SHOW");
-                                    if (!success) setWatchingAd(false);
-                                } catch (err) {
-                                    console.error("Erro no clique direto sessão:", err);
-                                    setWatchingAd(false);
-                                }
-                            }}
-                            className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] ${watchingAd ? 'bg-blue-300' : 'bg-blue-600'} text-white shadow-blue-500/30`}
-                        >
-                            {watchingAd ? (
-                                <>
-                                    <Loader2 className="w-6 h-6 animate-spin" />
-                                    Preparando anúncio...
-                                </>
-                            ) : (
-                                <>
-                                    <Play className="w-6 h-6 fill-current" /> Assistir e Ganhar Boost 🎬
-                                </>
-                            )}
-                        </button>
                     </div>
                 )}
             </main>
@@ -533,7 +507,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     </div>
                     
                     <h2 className="text-3xl font-black text-white mb-4 leading-none">
-                        {lastReward?.turbo_progress >= 100 ? "TURBO MÁXIMO!" : "VALEU! +1 BOOST"}
+                        {lastReward?.turbo_progress >= 3 ? "TURBO MÁXIMO!" : "VALEU! +1 BOOST"}
                     </h2>
 
                     <div className="space-y-4 mb-10">
