@@ -40,7 +40,7 @@ class AdManager {
     // Diagnostic State
     private adError: { type: string; details: any; timestamp: string } | null = null;
     private adErrorListeners: ((error: any) => void)[] = [];
-    private readonly VERSION_INFO = { name: "1.1.7", code: 18 };
+    private readonly VERSION_INFO = { name: "1.1.8", code: 19 };
 
     // Banner & Concurrency State
     private isBannerShowing: boolean = false;
@@ -114,6 +114,7 @@ class AdManager {
                 // --- PROCESSAMENTO UNIFICADO ---
                 if (eventKey === 'Rewarded' || eventName === 'rewardAdRewarded' || eventName === 'onAdRewarded') {
                     console.log("🎁 [AdManager] RECOMPENSA DETECTADA NO LOOP PRINCIPAL");
+                    debugLogger.log('🎁 RECOMPENSA PROCESSADA');
                     handleReward(data);
                 } else if (eventKey === 'Dismissed' || eventName === 'onAdDismissed') {
                     console.log("🚪 [AdManager] FECHAMENTO DETECTADO NO LOOP PRINCIPAL");
@@ -150,6 +151,7 @@ class AdManager {
             console.log(`🚀 [AdManager] Executando ${this.onRewardedCallbacks.length} callbacks de recompensa registrados`);
             await Promise.all(this.onRewardedCallbacks.map(async (cb, idx) => {
                 try {
+                    debugLogger.log(`🚀 Executando callback #${idx}`);
                     await cb();
                     console.log(`[AD FLOW] Callback ${idx} success`);
                 } catch (e) {
@@ -390,6 +392,7 @@ class AdManager {
     public onReady(cb: AdEventHandler) { this.onReadyCallbacks.push(cb); }
     public onRewarded(cb: AdEventHandler) { 
         console.log("📥 [AdManager] Novo callback de recompensa registrado.");
+        debugLogger.log('📥 Callback registrado no AdManager');
         this.onRewardedCallbacks.push(cb); 
     }
     public onDismissed(cb: AdEventHandler) { this.onDismissedCallbacks.push(cb); }

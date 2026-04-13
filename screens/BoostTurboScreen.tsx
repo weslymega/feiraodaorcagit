@@ -124,6 +124,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     }, [isFinalizing]);
 
     const handleAdRewardedInternal = async (): Promise<void> => {
+        debugLogger.log("🔥 [BoostTurboScreen] EVENTO RECOMPENSA RECEBIDO!");
         console.log("🔥 [BoostTurboScreen] AD REWARDED EVENT RECEIVED! Starting Supabase update...");
         if (finalizingRef.current) {
             console.log("⚠️ [BoostTurboScreen] handleAdRewardedInternal ignored: already finalizing");
@@ -133,9 +134,12 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         if (isProgressiveMode) {
             setSyncError(null);
             try {
+                debugLogger.log('📡 Chamando apply-turbo-reward');
                 setLocalProgress(prev => prev + 1);
                 const result = await turboService.applyTurboReward(ad!.id);
                 if (!result.success) throw new Error(result.error || "Falha ao aplicar recompensa.");
+                
+                debugLogger.log('✅ Turbo aplicado com sucesso');
                 if (ad) {
                     setAd({ ...ad, turbo_progress: result.turbo_progress, turbo_expires_at: result.turbo_expires_at, is_turbo_active: true });
                 }
@@ -162,6 +166,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
         setSyncError(null);
         try {
+            debugLogger.log('📡 Chamando increment-turbo-step');
             setLocalProgress(prev => prev + 1);
             const data = await api.safeRequest(async (token) => {
                 const { data, error: invokeError } = await supabase.functions.invoke('increment-turbo-step', {
@@ -173,6 +178,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             });
 
             if (!data?.success) throw new Error(data?.error || "Servidor não confirmou.");
+            debugLogger.log('✅ Passo do Turbo confirmado');
             const newStep = data?.current_step ?? data?.currentStep;
             if (newStep !== undefined) {
                 setActiveSession(prev => prev ? { ...prev, currentStep: newStep } : null);
@@ -189,6 +195,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 }
             }
         } catch (err: any) {
+            debugLogger.log(`❌ Erro: ${err.message || 'Falha no Turbo'}`);
             if (finalizingRef.current) return;
             setSyncError(err.message || "Erro de rede");
             throw err;
@@ -209,7 +216,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         adManager.initialize();
         adManager.onReady(() => setAdReady(adManager.isAdReady()));
         adManager.onAdError((err) => { setAdError(err); setWatchingAd(false); });
-        adManager.onRewarded(async () => await handlersRef.current.handleRewarded());
+        
+        // --- ETAPA 3: REGISTRO DIRETO (SEM DEPENDER APENAS DE REF) ---
+        const callback = async () => {
+            console.log('🔥 RECOMPENSA NA UI (Callback Direto)');
+            try {
+                await handleAdRewardedInternal();
+            } catch (err) {
+                console.error('Erro ao processar callback de recompensa:', err);
+            }
+        };
+
+        adManager.onRewarded(callback);
         adManager.onDismissed(() => handlersRef.current.handleDismissed());
         adManager.onError(() => { setWatchingAd(false); isClickLocked.current = false; setIsFinalizing(false); });
         return () => adManager.removeAllListeners();
