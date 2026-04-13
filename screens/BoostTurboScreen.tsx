@@ -134,37 +134,17 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         if (isProgressiveMode) {
             setSyncError(null);
             try {
-                const { data: { session } } = await supabase.auth.getSession();
                 const selectedAdId = ad!.id;
 
-                debugLogger.log(`🔑 TOKEN: ${session?.access_token ? 'OK' : 'MISSING'}`);
-                debugLogger.log(`📌 adId: ${selectedAdId}`);
-
-                debugLogger.log('📡 Chamando apply-turbo-reward');
+                debugLogger.log('📡 Chamando turboService.applyTurboReward');
                 setLocalProgress(prev => prev + 1);
 
-                const response = await fetch('https://xkkjjvrucnlilegwnoey.supabase.co/functions/v1/apply-turbo-reward', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session?.access_token}`,
-                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhra2pqdnJ1Y25saWxlZ3dub2V5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzI0MTUsImV4cCI6MjA4MzcwODQxNX0._zW2u3e8xzNethI1fv70oLTOSeOB7z5tFo77zfS4RZQ'
-                    },
-                    body: JSON.stringify({
-                        adId: selectedAdId
-                    })
-                });
+                const data = await turboService.applyTurboReward(selectedAdId);
 
-                const data = await response.json();
-
-                debugLogger.log(`📥 STATUS: ${response.status}`);
-                debugLogger.log(`📥 RESPONSE: ${JSON.stringify(data)}`);
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Erro desconhecido');
+                if (!data.success) {
+                    throw new Error(data.error || 'Erro ao aplicar recompensa');
                 }
 
-                debugLogger.log('✅ Turbo aplicado com sucesso');
                 if (ad) {
                     setAd({ ...ad, turbo_progress: data.turbo_progress, turbo_expires_at: data.turbo_expires_at, is_turbo_active: true });
                 }
@@ -179,7 +159,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 }, 2000);
             } catch (err: any) {
                 console.error(err);
-                debugLogger.log(`❌ ERRO: ${err.message}`);
                 setSyncError(err.message || "Erro de sincronização");
                 setLocalProgress(ad?.turbo_progress || 0);
                 throw err;

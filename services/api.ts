@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AdStatus, User, ReportItem, MessageItem, ChatMessage, HighlightPlan } from '../types';
+import { debugLogger } from '../utils/DebugLogger';
 
 // NOTE: These should be in .env
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim();
@@ -226,6 +227,38 @@ export const api = {
         }
 
         console.log("[api.getAuthToken] Returning valid access token");
+        return session.access_token;
+    },
+
+    /**
+     * Obtém um token válido e atualizado (Helper centralizado)
+     */
+    getValidToken: async (): Promise<string> => {
+        let { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            throw new Error('Usuário não autenticado');
+        }
+
+        // Verifica se está expirado ou prestes a expirar (menos de 1 min)
+        const expiresAt = (session.expires_at || 0) * 1000;
+        const now = Date.now();
+
+        if (expiresAt - now < 60000) {
+            debugLogger.log('♻️ TOKEN PRESTES A EXPIRAR, REFRESHING...');
+            const { data, error } = await supabase.auth.refreshSession();
+
+            if (error || !data.session) {
+                throw new Error('Falha ao atualizar sessão');
+            }
+
+            session = data.session;
+            debugLogger.log('♻️ TOKEN REFRESH OK');
+        }
+
+        debugLogger.log('🔑 TOKEN OK (VALIDADO)');
+        debugLogger.log(`🔐 TOKEN SIZE: ${session.access_token.length}`);
+
         return session.access_token;
     },
 

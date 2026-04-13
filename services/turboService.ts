@@ -1,5 +1,8 @@
-import { supabase } from './api';
+import { api, supabase } from './api';
 import { TurboPlan, TurboSession } from '../types';
+import { debugLogger } from '../utils/DebugLogger';
+
+const FUNCTION_URL = 'https://xkkjjvrucnlilegwnoey.supabase.co/functions/v1/apply-turbo-reward';
 
 export interface CreateTurboSessionResponse {
     success: boolean;
@@ -18,12 +21,11 @@ export const turboService = {
      */
     createTurboSession: async (adId: string, turboType: TurboPlan): Promise<CreateTurboSessionResponse> => {
         try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
+            const token = await api.getValidToken();
 
             const { data, error } = await supabase.functions.invoke('create-turbo-session', {
                 body: { adId, turboType },
-                ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {})
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (error) {
@@ -63,21 +65,30 @@ export const turboService = {
      */
     applyTurboReward: async (adId: string): Promise<{ success: boolean; error?: string; turbo_type?: string; turbo_progress?: number; turbo_expires_at?: string }> => {
         try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
+            debugLogger.log('📡 Iniciando applyTurboReward...');
+            const token = await api.getValidToken();
 
-            const { data, error } = await supabase.functions.invoke('apply-turbo-reward', {
-                body: { adId },
-                ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {})
+            debugLogger.log('📡 Chamando Edge Function apply-turbo-reward');
+            
+            const response = await fetch(FUNCTION_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ adId })
             });
 
-            if (error) {
-                throw new Error(error.message || 'Falha na comunicação com a Edge Function.');
+            const data = await response.json();
+
+            debugLogger.log(`📥 STATUS: ${response.status}`);
+            debugLogger.log(`📥 RESPONSE: ${JSON.stringify(data)}`);
+
+            if (!response.ok) {
+                throw new Error(data.error || `Erro HTTP: ${response.status}`);
             }
 
-            if (!data?.success && data?.error) {
-                return { success: false, error: data.error };
-            }
+            debugLogger.log('✅ Turbo aplicado com sucesso');
 
             return {
                 success: true,
@@ -87,6 +98,7 @@ export const turboService = {
             };
         } catch (err: any) {
             console.error('[turboService] applyTurboReward Error:', err);
+            debugLogger.log(`❌ ERRO BACKEND: ${err.message}`);
             return {
                 success: false,
                 error: err.message || 'Erro ao aplicar recompensa do Turbo.'
