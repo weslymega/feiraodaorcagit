@@ -48,7 +48,11 @@ serve(async (req) => {
         const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
         if (userError || !user) {
             console.error('[EDGE ERROR] User auth error:', userError);
-            return jsonResponse({ success: false, error: 'JWT_EXPIRED' }, 401);
+            return jsonResponse({ 
+                success: false, 
+                error: 'ERRO_IDENTIDADE',
+                details: userError?.message || 'Token não validado pelo Supabase Auth.'
+            }, 401);
         }
 
         console.log('[EDGE] USER:', user?.id);
@@ -74,7 +78,11 @@ serve(async (req) => {
 
         if (ad.user_id !== user.id) {
             console.error('[EDGE ERROR] Access denied for user:', user.id, 'on ad:', adId);
-            return jsonResponse({ success: false, error: 'Acesso negado' }, 403);
+            return jsonResponse({ 
+                success: false, 
+                error: 'ACESSO_NEGADO',
+                details: 'Você não é o proprietário deste anúncio.' 
+            }, 403);
         }
 
         // 🛡️ PROTEÇÃO 1: Frequência de Recompensas (Anti-Spam / Duplo Clique)
@@ -108,8 +116,8 @@ serve(async (req) => {
             console.error('[EDGE ERROR] MASTER RPC ERROR:', rpcError);
             return jsonResponse({ 
                 success: false, 
-                error: 'Falha crítica ao processar recompensa atômica.',
-                details: rpcError?.message 
+                error: 'ERRO_BANCO_DADOS',
+                details: rpcError?.message || 'Falha na execução do RPC atômico.'
             }, 500);
         }
 

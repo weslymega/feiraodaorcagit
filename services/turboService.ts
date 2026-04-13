@@ -105,7 +105,13 @@ export const turboService = {
             };
         } catch (err: any) {
             console.error('[turboService] applyTurboReward Error:', err);
-            debugLogger.log(`❌ ERRO FINAL: ${err.message}`);
+            
+            // Tentar extrair status code se for erro do Supabase Functions
+            const status = err?.status || (err?.message?.includes('status code') ? err.message.match(/\d+/)?.[0] : null);
+            const statusTxt = status ? `[Status ${status}] ` : '';
+            
+            debugLogger.log(`❌ ERRO FINAL: ${statusTxt}${err.message}`);
+            
             return {
                 success: false,
                 error: err.message || 'Erro ao aplicar recompensa do Turbo.'
