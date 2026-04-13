@@ -224,9 +224,6 @@ class AdManager {
             this.onErrorCallbacks.forEach(cb => cb(error.message));
         });
 
-        });
-
-
         this.listenersInitialized = true;
     }
 
