@@ -65,39 +65,37 @@ export const turboService = {
      */
     applyTurboReward: async (adId: string): Promise<{ success: boolean; error?: string; turbo_type?: string; turbo_progress?: number; turbo_expires_at?: string }> => {
         try {
-            debugLogger.log('📡 Iniciando applyTurboReward...');
-            
-            // 🚨 GARANTIR TOKEN ATUALIZADO
+            debugLogger.log("📡 Iniciando applyTurboReward...");
+
+            // 🔁 Garantir sessão atualizada
             await supabase.auth.refreshSession();
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
+
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
 
             if (!token) {
-                throw new Error('TOKEN INVÁLIDO OU AUSENTE');
+                throw new Error("TOKEN AUSENTE");
             }
 
-            debugLogger.log(`🔐 TOKEN (primeiros 20): ${token.slice(0, 20)}...`);
+            debugLogger.log("🔑 TOKEN OK (VALIDADO)");
+            debugLogger.log(`🔐 TOKEN SIZE: ${token.length}`);
             debugLogger.log('📡 Chamando Edge Function apply-turbo-reward');
-            
-            const response = await fetch(FUNCTION_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ adId })
-            });
 
-            const data = await response.json();
+            // 🚀 CHAMADA CORRETA (SEM FETCH MANUAL)
+            const { data, error } = await supabase.functions.invoke(
+                "apply-turbo-reward",
+                {
+                    body: { adId },
+                }
+            );
 
-            debugLogger.log(`📥 STATUS: ${response.status}`);
-            debugLogger.log(`📥 RESPONSE: ${JSON.stringify(data)}`);
-
-            if (!response.ok) {
-                throw new Error(data.error || `Erro HTTP: ${response.status}`);
+            if (error) {
+                debugLogger.log(`❌ ERRO FUNCTION: ${error.message}`);
+                throw error;
             }
 
-            debugLogger.log('✅ Turbo aplicado com sucesso');
+            debugLogger.log("✅ TURBO APLICADO COM SUCESSO");
+            debugLogger.log(JSON.stringify(data));
 
             return {
                 success: true,
@@ -107,7 +105,7 @@ export const turboService = {
             };
         } catch (err: any) {
             console.error('[turboService] applyTurboReward Error:', err);
-            debugLogger.log(`❌ ERRO BACKEND: ${err.message}`);
+            debugLogger.log(`❌ ERRO FINAL: ${err.message}`);
             return {
                 success: false,
                 error: err.message || 'Erro ao aplicar recompensa do Turbo.'
