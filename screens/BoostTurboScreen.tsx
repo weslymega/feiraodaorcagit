@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AdItem } from '../types';
 import { api, supabase } from '../services/api';
 import { Header } from '../components/Shared';
-import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, Rocket, Info, Bug, ArrowLeft } from 'lucide-react';
+import { Play, Loader2, Zap, Star, ShieldAlert, MonitorPlay, Rocket, Info, Bug, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 import AdManager from '../services/AdManager';
@@ -36,6 +36,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [adError, setAdError] = useState<{ type: string; details: any; timestamp: string } | null>(null);
     const [showDebug, setShowDebug] = useState(false);
     const [isProgressiveMode, setIsProgressiveMode] = useState(false);
+    const [lastReward, setLastReward] = useState<any>(null);
     const isClickLocked = useRef(false);
 
     const finalizationTexts = [
@@ -148,15 +149,25 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 if (ad) {
                     setAd({ ...ad, turbo_progress: data.turbo_progress, turbo_expires_at: data.turbo_expires_at, is_turbo_active: true });
                 }
+                
+                setLocalProgress(data.turbo_progress);
+                setLastReward(data);
                 setIsFinalizing(true);
                 finalizingRef.current = true;
+
                 setTimeout(async () => {
                     if (Capacitor.isNativePlatform()) {
                         await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
                     }
                     setShowSuccess(true);
-                    setTimeout(() => onBackRef.current(), 2500);
-                }, 2000);
+                    
+                    // Reset visual após 3 segundos para permitir continuar assistindo sem fechar a tela
+                    setTimeout(() => {
+                        setShowSuccess(false);
+                        setIsFinalizing(false);
+                        finalizingRef.current = false;
+                    }, 3000);
+                }, 1500);
             } catch (err: any) {
                 console.error(err);
                 setSyncError(err.message || "Erro de sincronização");
@@ -376,6 +387,60 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     </div>
                 )}
             </main>
+
+            {/* OVERLAY DE PROCESSAMENTO */}
+            {isFinalizing && !showSuccess && (
+                <div className="absolute inset-0 z-[100] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+                    <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6">
+                        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                    </div>
+                    <h2 className="text-2xl font-black text-gray-900 mb-2">
+                        {finalizationTexts[loadingTextIndex]}
+                    </h2>
+                    <p className="text-gray-500 font-medium">Não feche o aplicativo...</p>
+                </div>
+            )}
+
+            {/* OVERLAY DE SUCESSO E FEEDBACK */}
+            {showSuccess && (
+                <div className="absolute inset-0 z-[110] bg-blue-600 flex flex-col items-center justify-center p-8 text-center animate-in zoom-in duration-500">
+                    <div className="w-24 h-24 bg-white/20 rounded-[2.5rem] flex items-center justify-center mb-8 animate-bounce">
+                        <CheckCircle className="w-14 h-14 text-white" />
+                    </div>
+                    
+                    <h2 className="text-3xl font-black text-white mb-4 leading-none">
+                        {lastReward?.turbo_progress >= 100 ? "TURBO MÁXIMO!" : "VALEU! +1 BOOST"}
+                    </h2>
+
+                    <div className="space-y-4 mb-10">
+                        <p className="text-xl font-bold text-blue-50 leading-tight">
+                            {lastReward?.turbo_progress < 33 && "🚀 Seu anúncio começou a subir no ranking!"}
+                            {lastReward?.turbo_progress >= 33 && lastReward?.turbo_progress < 66 && "⚡ Nível Premium! Seu anúncio ganhará mais destaque em breve."}
+                            {lastReward?.turbo_progress >= 66 && lastReward?.turbo_progress < 100 && "🔥 Nível PRO! Seu anúncio está quase no topo!"}
+                            {lastReward?.turbo_progress >= 100 && "👑 TURBO MÁXIMO! Seu anúncio está entre os mais destacados!"}
+                        </p>
+                        
+                        <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
+                            <p className="text-sm font-bold text-white mb-1">
+                                🚀 Seu anúncio já está sendo impulsionado!
+                            </p>
+                            <p className="text-xs text-blue-100 italic">
+                                ⏱️ Pode levar alguns segundos para aparecer no topo.
+                            </p>
+                        </div>
+                    </div>
+
+                    {lastReward?.turbo_progress < 100 && (
+                        <div className="animate-pulse bg-yellow-400 text-blue-900 px-6 py-3 rounded-full font-black text-sm uppercase tracking-tighter">
+                            🎯 Assista mais vídeos para aumentar o destaque!
+                        </div>
+                    )}
+                    
+                    <div className="mt-12 text-blue-200 text-[10px] font-bold uppercase tracking-widest">
+                        Sincronizando com o servidor...
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
