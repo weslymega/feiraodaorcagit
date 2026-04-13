@@ -14,7 +14,7 @@ const jsonResponse = (data: object, status: number = 200) => {
 };
 
 serve(async (req) => {
-    console.log('[EDGE] FUNÇÃO CHAMADA');
+    console.log("[STEP 1] Função iniciada");
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -25,14 +25,13 @@ serve(async (req) => {
         const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
         const authHeader = req.headers.get('Authorization');
-        console.log('[AUTH] HEADER:', authHeader);
+        console.log("[STEP 2] Authorization header:", authHeader);
         if (!authHeader) {
-            console.error('[EDGE ERROR] Authorization header missing');
-            return jsonResponse({ success: false, error: 'Não autorizado' }, 401);
+            console.error('[ERRO AUTH] Authorization header missing');
+            return jsonResponse({ success: false, error: 'ETAPA_2_FALHOU' }, 401);
         }
 
         const token = authHeader.replace('Bearer ', '');
-
         const supabaseUser = createClient(
             supabaseUrl,
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -47,24 +46,25 @@ serve(async (req) => {
 
         const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
         if (userError || !user) {
-            console.error('[EDGE ERROR] User auth error:', userError);
+            console.error('[ERRO USER] User auth error:', userError);
             return jsonResponse({ 
                 success: false, 
-                error: 'ERRO_IDENTIDADE',
-                details: userError?.message || 'Token não validado pelo Supabase Auth.'
+                error: 'ETAPA_3_FALHOU',
+                details: userError?.message
             }, 401);
         }
 
-        console.log('[EDGE] USER:', user?.id);
+        console.log("[STEP 3] USER:", user?.id);
 
         const { adId } = await req.json();
-        console.log('[EDGE] adId:', adId);
+        console.log("[STEP 4] adId recebido:", adId);
         if (!adId) {
-            console.error('[EDGE ERROR] adId missing in payload');
-            return jsonResponse({ success: false, error: 'adId é obrigatório' }, 400);
+            console.error('[ERRO INPUT] adId missing');
+            return jsonResponse({ success: false, error: 'ETAPA_4_FALHOU' }, 400);
         }
 
-        // 1. Buscar Anúncio (Validar Posse e Cooldown)
+        // 1. Buscar Anúncio
+        console.log("[STEP 5] Buscando anúncio...");
         const { data: ad, error: adFetchError } = await supabaseAdmin
             .from('anuncios')
             .select('*')
@@ -72,91 +72,87 @@ serve(async (req) => {
             .single();
 
         if (adFetchError || !ad) {
-            console.error('[EDGE ERROR] Ad not found:', adFetchError);
-            return jsonResponse({ success: false, error: 'Anúncio não encontrado' }, 404);
+            console.error('[ERRO BUSCA] Ad not found:', adFetchError);
+            return jsonResponse({ success: false, error: 'ETAPA_5_FALHOU' }, 404);
         }
+        console.log("[STEP 6] AD:", ad);
 
+        // Validar Posse
+        console.log("[STEP 7] user.id:", user.id);
+        console.log("[STEP 8] ad.user_id:", ad.user_id);
         if (ad.user_id !== user.id) {
-            console.error('[EDGE ERROR] Access denied for user:', user.id, 'on ad:', adId);
-            return jsonResponse({ 
-                success: false, 
-                error: 'ACESSO_NEGADO',
-                details: 'Você não é o proprietário deste anúncio.' 
-            }, 403);
+            console.error('[ERRO POSSE] Access denied');
+            return jsonResponse({ success: false, error: 'ETAPA_8_FALHOU' }, 403);
         }
 
-        // 🛡️ PROTEÇÃO 1: Frequência de Recompensas (Anti-Spam / Duplo Clique)
-        // Verificamos antes do RPC para evitar locks desnecessários no banco
+        // 🛡️ PROGRESSO E COOLDOWN
+        console.log("[STEP 9] currentProgress:", ad.turbo_progress || 0);
+        
         const now = new Date();
         const lastTurbo = ad.last_turbo_at ? new Date(ad.last_turbo_at) : new Date(0);
-        const cooldownMs = 3000; // 3 segundos
-        if (now.getTime() - lastTurbo.getTime() < cooldownMs) {
-            console.error('[EDGE ERROR] Cooldown active');
-            return jsonResponse({ 
-                success: false, 
-                error: 'Aguarde um momento antes de aplicar a próxima recompensa.',
-                cooldown: true
-            }, 429);
+        if (now.getTime() - lastTurbo.getTime() < 3000) {
+            console.error('[ERRO COOLDOWN] Cooldown active');
+            return jsonResponse({ success: false, error: 'ETAPA_9_FALHOU' }, 429);
         }
 
-        // 🛡️ PROTEÇÃO 2: Limite de Progresso
-        const MAX_PROGRESS = 1000;
-        if ((ad.turbo_progress || 0) >= MAX_PROGRESS) {
-             console.error('[EDGE ERROR] Max progress reached');
-             return jsonResponse({ success: false, error: 'Limite de turbos atingido para este anúncio.' }, 400);
+        console.log("[STEP 10] newProgress check logic...");
+        if ((ad.turbo_progress || 0) >= 1000) {
+             console.error('[ERRO MAX_PROGRESS] Limit reached');
+             return jsonResponse({ success: false, error: 'ETAPA_10_FALHOU' }, 400);
         }
 
-        // 2. CHAMAR MASTER RPC ATÔMICO
-        // Toda a lógica de incremento, nível e expiração ocorre em uma única transação no banco.
+        console.log("[STEP 11] currentExpiry:", ad.turbo_expires_at);
+        console.log("[STEP 12] newExpiry calculation flow...");
+
+        // 2. ATUALIZAR (VIA RPC ATÔMICO)
+        console.log("[STEP 13] Atualizando anúncio...");
         const { data: result, error: rpcError } = await supabaseUser.rpc('apply_turbo_reward_atomic', { 
             ad_id: adId 
         });
 
         if (rpcError || !result) {
-            console.error('[EDGE ERROR] MASTER RPC ERROR:', rpcError);
+            console.error("[ERRO UPDATE]", rpcError);
             return jsonResponse({ 
                 success: false, 
-                error: 'ERRO_BANCO_DADOS',
-                details: rpcError?.message || 'Falha na execução do RPC atômico.'
+                error: 'ETAPA_13_FALHOU',
+                details: rpcError?.message
             }, 500);
         }
 
-        const { turbo_progress, turbo_type, previous_turbo_type, turbo_expires_at } = result;
+        const { turbo_progress, turbo_type, turbo_expires_at } = result;
 
-        // 3. Determinar UUID do Plano para Histórico
-        let planId = 'f174fc27-88a8-4ac4-a26f-2cd0b8b81cd9'; // Premium default
+        // Determinar Plano
+        let planId = 'f174fc27-88a8-4ac4-a26f-2cd0b8b81cd9'; 
         if (turbo_type === 'pro') planId = '90c61495-d664-464c-92f6-8c489a695283';
         if (turbo_type === 'max') planId = '072d6be5-4e77-4c75-9ad5-2df2f3cf562b';
 
-        // 4. Registrar Histórico (Resiliente)
+        // 3. REGISTRAR HISTÓRICO (PROTEGER COM TRY/CATCH)
         try {
-            const { error: highlightError } = await supabaseAdmin
-                .from('ad_highlights')
-                .insert({
-                    ad_id: adId,
-                    user_id: user.id,
-                    plan_id: planId,
-                    status: 'active',
-                    starts_at: now.toISOString(),
-                    ends_at: turbo_expires_at
-                });
-            
-            if (highlightError) console.error('[apply-turbo-reward] Highlight history error:', highlightError);
+            await supabaseAdmin.from('ad_highlights').insert({
+                ad_id: adId,
+                user_id: user.id,
+                plan_id: planId,
+                status: 'active',
+                starts_at: now.toISOString(),
+                ends_at: turbo_expires_at
+            });
+            console.log("[STEP 14] highlight inserido");
         } catch (e) {
-            console.error('[apply-turbo-reward] Silently failed to log highlight:', e);
+            console.error("[ERRO HIGHLIGHT]", e);
+            // Non-blocking error
         }
 
+        console.log("[STEP 15] SUCESSO FINAL");
         return jsonResponse({
             success: true,
             turbo_type,
-            previous_turbo_type,
             turbo_progress,
             turbo_expires_at,
-            message: `Turbo ${turbo_type} aplicado! Registro #${turbo_progress}.`
+            message: `SUCESSO: Turbo ${turbo_type} aplicado!`
         });
 
     } catch (err: any) {
-        console.error('[apply-turbo-reward] Unexpected Error:', err.message);
-        return jsonResponse({ success: false, error: 'Erro interno de servidor' }, 500);
+        console.error('[ERRO FATAL]', err.message);
+        return jsonResponse({ success: false, error: 'ERRO_INTERNO' }, 500);
     }
 });
