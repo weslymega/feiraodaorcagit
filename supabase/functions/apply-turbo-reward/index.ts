@@ -14,6 +14,7 @@ const jsonResponse = (data: object, status: number = 200) => {
 };
 
 serve(async (req) => {
+    console.log('[EDGE] FUNÇÃO CHAMADA');
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -25,6 +26,7 @@ serve(async (req) => {
 
         const authHeader = req.headers.get('Authorization');
         if (!authHeader) {
+            console.error('[EDGE ERROR] Authorization header missing');
             return jsonResponse({ success: false, error: 'Não autorizado' }, 401);
         }
 
@@ -34,11 +36,16 @@ serve(async (req) => {
 
         const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
         if (userError || !user) {
+            console.error('[EDGE ERROR] User auth error:', userError);
             return jsonResponse({ success: false, error: 'JWT_EXPIRED' }, 401);
         }
 
+        console.log('[EDGE] USER:', user?.id);
+
         const { adId } = await req.json();
+        console.log('[EDGE] adId:', adId);
         if (!adId) {
+            console.error('[EDGE ERROR] adId missing in payload');
             return jsonResponse({ success: false, error: 'adId é obrigatório' }, 400);
         }
 
@@ -50,10 +57,12 @@ serve(async (req) => {
             .single();
 
         if (adFetchError || !ad) {
+            console.error('[EDGE ERROR] Ad not found:', adFetchError);
             return jsonResponse({ success: false, error: 'Anúncio não encontrado' }, 404);
         }
 
         if (ad.user_id !== user.id) {
+            console.error('[EDGE ERROR] Access denied for user:', user.id, 'on ad:', adId);
             return jsonResponse({ success: false, error: 'Acesso negado' }, 403);
         }
 
@@ -63,6 +72,7 @@ serve(async (req) => {
         const lastTurbo = ad.last_turbo_at ? new Date(ad.last_turbo_at) : new Date(0);
         const cooldownMs = 3000; // 3 segundos
         if (now.getTime() - lastTurbo.getTime() < cooldownMs) {
+            console.error('[EDGE ERROR] Cooldown active');
             return jsonResponse({ 
                 success: false, 
                 error: 'Aguarde um momento antes de aplicar a próxima recompensa.',
@@ -73,6 +83,7 @@ serve(async (req) => {
         // 🛡️ PROTEÇÃO 2: Limite de Progresso
         const MAX_PROGRESS = 1000;
         if ((ad.turbo_progress || 0) >= MAX_PROGRESS) {
+             console.error('[EDGE ERROR] Max progress reached');
              return jsonResponse({ success: false, error: 'Limite de turbos atingido para este anúncio.' }, 400);
         }
 
@@ -83,7 +94,7 @@ serve(async (req) => {
         });
 
         if (rpcError || !result) {
-            console.error('[apply-turbo-reward] MASTER RPC ERROR:', rpcError);
+            console.error('[EDGE ERROR] MASTER RPC ERROR:', rpcError);
             return jsonResponse({ 
                 success: false, 
                 error: 'Falha crítica ao processar recompensa atômica.',
