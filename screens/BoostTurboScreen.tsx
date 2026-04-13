@@ -124,7 +124,11 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     }, [isFinalizing]);
 
     const handleAdRewardedInternal = async (): Promise<void> => {
-        if (finalizingRef.current) return;
+        console.log("🔥 [BoostTurboScreen] AD REWARDED EVENT RECEIVED! Starting Supabase update...");
+        if (finalizingRef.current) {
+            console.log("⚠️ [BoostTurboScreen] handleAdRewardedInternal ignored: already finalizing");
+            return;
+        }
 
         if (isProgressiveMode) {
             setSyncError(null);

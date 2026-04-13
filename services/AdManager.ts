@@ -110,6 +110,15 @@ class AdManager {
                 const eventKey = Object.keys(RewardAdPluginEvents).find(k => (RewardAdPluginEvents as any)[k] === eventName);
                 console.log(`[AD-RAW] EVENTO RECEBIDO: ${eventKey} (${eventName})`, data);
                 debugLogger.log(`[AD-RAW] ${eventKey}`);
+
+                // --- PROCESSAMENTO UNIFICADO ---
+                if (eventKey === 'Rewarded' || eventName === 'rewardAdRewarded' || eventName === 'onAdRewarded') {
+                    console.log("🎁 [AdManager] RECOMPENSA DETECTADA NO LOOP PRINCIPAL");
+                    handleReward(data);
+                } else if (eventKey === 'Dismissed' || eventName === 'onAdDismissed') {
+                    console.log("🚪 [AdManager] FECHAMENTO DETECTADO NO LOOP PRINCIPAL");
+                    handleDismiss();
+                }
             });
         });
 
@@ -138,7 +147,7 @@ class AdManager {
             console.log(`[AD FLOW] Reward confirmado (Exec: ${this.lastExecutionId}):`, reward);
             this.clearTimeout();
 
-            console.log(`[AD FLOW] Executing ${this.onRewardedCallbacks.length} reward callbacks`);
+            console.log(`🚀 [AdManager] Executando ${this.onRewardedCallbacks.length} callbacks de recompensa registrados`);
             await Promise.all(this.onRewardedCallbacks.map(async (cb, idx) => {
                 try {
                     await cb();
@@ -215,14 +224,6 @@ class AdManager {
             this.onErrorCallbacks.forEach(cb => cb(error.message));
         });
 
-        AdMob.addListener(RewardAdPluginEvents.Rewarded, (reward) => {
-            console.log(`[AdDebug] EVENT: Rewarded direto do Listener (Exec: ${this.lastExecutionId})`, reward);
-            handleReward(reward);
-        });
-
-        AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
-            console.log(`[AdDebug] EVENT: Dismissed direto do Listener (Exec: ${this.lastExecutionId})`);
-            handleDismiss();
         });
 
 
@@ -390,7 +391,10 @@ class AdManager {
 
     public isAdReady(): boolean { return this.state === AdState.READY; }
     public onReady(cb: AdEventHandler) { this.onReadyCallbacks.push(cb); }
-    public onRewarded(cb: AdEventHandler) { this.onRewardedCallbacks.push(cb); }
+    public onRewarded(cb: AdEventHandler) { 
+        console.log("📥 [AdManager] Novo callback de recompensa registrado.");
+        this.onRewardedCallbacks.push(cb); 
+    }
     public onDismissed(cb: AdEventHandler) { this.onDismissedCallbacks.push(cb); }
     public onError(cb: AdErrorHandler) { this.onErrorCallbacks.push(cb); }
 
