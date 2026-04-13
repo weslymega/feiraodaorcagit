@@ -67,33 +67,38 @@ export const turboService = {
         try {
             debugLogger.log("📡 Iniciando applyTurboReward...");
 
-            // 🔁 Garantir sessão atualizada
             await supabase.auth.refreshSession();
-
             const { data: sessionData } = await supabase.auth.getSession();
             const token = sessionData?.session?.access_token;
 
-            if (!token) {
-                throw new Error("TOKEN AUSENTE");
-            }
+            if (!token) throw new Error("TOKEN AUSENTE");
 
             debugLogger.log("🔑 TOKEN OK (VALIDADO)");
-            debugLogger.log(`🔐 TOKEN SIZE: ${token.length}`);
             debugLogger.log('📡 Chamando Edge Function apply-turbo-reward');
 
-            // 🚀 CHAMADA CORRETA (SEM FETCH MANUAL)
-            const { data, error } = await supabase.functions.invoke(
+            // Usamos o invoke mas capturamos o erro de forma mais detalhada
+            const response = await supabase.functions.invoke(
                 "apply-turbo-reward",
                 {
                     body: { adId },
                 }
             );
 
-            if (error) {
-                debugLogger.log(`❌ ERRO FUNCTION: ${error.message}`);
-                throw error;
+            if (response.error) {
+                // Tenta extrair o corpo do erro se disponível
+                let errorBody: any = null;
+                try {
+                    // Em algumas versões do SDK, o erro contém o texto original
+                    errorBody = response.error instanceof Error ? response.error.message : JSON.stringify(response.error);
+                } catch (e) { }
+
+                debugLogger.log(`❌ ERRO FUNCTION: ${response.error.message || 'Erro desconhecido'}`);
+                if (errorBody) debugLogger.log(`📦 DETALHES DO ERRO: ${errorBody}`);
+                
+                throw new Error(response.error.message || "FALHA_EDGE_FUNCTION");
             }
 
+            const data = response.data;
             debugLogger.log("✅ TURBO APLICADO COM SUCESSO");
             debugLogger.log(JSON.stringify(data));
 
@@ -106,15 +111,13 @@ export const turboService = {
         } catch (err: any) {
             console.error('[turboService] applyTurboReward Error:', err);
             
-            // Tentar extrair status code se for erro do Supabase Functions
-            const status = err?.status || (err?.message?.includes('status code') ? err.message.match(/\d+/)?.[0] : null);
-            const statusTxt = status ? `[Status ${status}] ` : '';
-            
-            debugLogger.log(`❌ ERRO FINAL: ${statusTxt}${err.message}`);
+            // Log final para o AdDebug
+            const diagnostic = err.message || 'Erro desconhecido';
+            debugLogger.log(`❌ ERRO FINAL: ${diagnostic}`);
             
             return {
                 success: false,
-                error: err.message || 'Erro ao aplicar recompensa do Turbo.'
+                error: diagnostic
             };
         }
     }
