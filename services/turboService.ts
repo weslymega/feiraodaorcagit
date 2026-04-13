@@ -66,8 +66,17 @@ export const turboService = {
     applyTurboReward: async (adId: string): Promise<{ success: boolean; error?: string; turbo_type?: string; turbo_progress?: number; turbo_expires_at?: string }> => {
         try {
             debugLogger.log('📡 Iniciando applyTurboReward...');
-            const token = await api.getValidToken();
+            
+            // 🚨 GARANTIR TOKEN ATUALIZADO
+            await supabase.auth.refreshSession();
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
 
+            if (!token) {
+                throw new Error('TOKEN INVÁLIDO OU AUSENTE');
+            }
+
+            debugLogger.log(`🔐 TOKEN (primeiros 20): ${token.slice(0, 20)}...`);
             debugLogger.log('📡 Chamando Edge Function apply-turbo-reward');
             
             const response = await fetch(FUNCTION_URL, {

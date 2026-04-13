@@ -25,14 +25,25 @@ serve(async (req) => {
         const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
         const authHeader = req.headers.get('Authorization');
+        console.log('[AUTH] HEADER:', authHeader);
         if (!authHeader) {
             console.error('[EDGE ERROR] Authorization header missing');
             return jsonResponse({ success: false, error: 'Não autorizado' }, 401);
         }
 
-        const supabaseUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
-            global: { headers: { Authorization: authHeader } }
-        });
+        const token = authHeader.replace('Bearer ', '');
+
+        const supabaseUser = createClient(
+            supabaseUrl,
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            {
+                global: {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            }
+        );
 
         const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
         if (userError || !user) {
