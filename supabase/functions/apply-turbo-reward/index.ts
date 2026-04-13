@@ -110,14 +110,15 @@ serve(async (req) => {
         console.log("[STEP 11] currentExpiry:", ad.turbo_expires_at);
         console.log("[STEP 12] newExpiry calculation flow...");
 
-        // 2. ATUALIZAR (VIA RPC ATÔMICO)
-        console.log("[STEP 13] Atualizando anúncio...");
-        const { data: result, error: rpcError } = await supabaseUser.rpc('apply_turbo_reward_atomic', { 
-            ad_id: adId 
+        // 2. ATUALIZAR (VIA RPC ATÔMICO COM PRIVILÉGIO ADMIN)
+        console.log("[STEP 13] Atualizando anúncio (ADMIN RPC)...");
+        const { data: result, error: rpcError } = await supabaseAdmin.rpc('apply_turbo_reward_atomic', { 
+            ad_id: adId,
+            p_user_id: user.id
         });
 
         if (rpcError || !result) {
-            console.error("[ERRO UPDATE]", rpcError);
+            console.error("[ERRO UPDATE ADMIN]", rpcError);
             return jsonResponse({ 
                 success: false, 
                 error: 'ETAPA_13_FALHOU',

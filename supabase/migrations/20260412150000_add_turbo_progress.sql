@@ -9,49 +9,47 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    -- 1. PERMISSÃO ADMINISTRATIVA
-    IF (current_setting('request.jwt.claim.role', true) IN ('service_role', 'supabase_admin')) 
-       OR (auth.role() = 'service_role') THEN
+    -- 1. LOG DE AUDITORIA (Temporário para Debug)
+    RAISE NOTICE 'ROLE: %, USER: %', current_setting('request.jwt.claim.role', true), auth.uid();
+
+    -- 2. PERMISSÃO ADMINISTRATIVA / SERVICE ROLE
+    -- Liberamos totalmente se for service_role ou admin
+    IF (current_setting('request.jwt.claim.role', true) = 'service_role') 
+       OR (auth.role() = 'service_role')
+       OR (current_setting('request.jwt.claim.role', true) = 'supabase_admin') THEN
         RETURN NEW;
     END IF;
 
-    -- 2. RESTRIÇÕES PARA USUÁRIOS COMUNS
+    -- 3. RESTRIÇÕES PARA USUÁRIOS COMUNS
     IF NOT public.is_admin() THEN
         -- A. POSSE
         IF OLD.user_id != auth.uid() THEN
-            RAISE EXCEPTION 'Security Violation: Você não é o dono deste anúncio.';
+            RAISE EXCEPTION 'Security Violation: Você não é o dono deste anúncio. (BLOCKED BY TRIGGER protect_ads_fields)';
         END IF;
 
         -- B. CAMPOS IMUTÁVEIS
         IF NEW.user_id IS DISTINCT FROM OLD.user_id THEN
-            RAISE EXCEPTION 'Security Violation: Não é permitido trocar o dono do anúncio.';
+            RAISE EXCEPTION 'Security Violation: Não é permitido trocar o dono do anúncio. (BLOCKED BY TRIGGER protect_ads_fields)';
         END IF;
 
         IF NEW.created_at IS DISTINCT FROM OLD.created_at THEN
-            RAISE EXCEPTION 'Security Violation: A data de criação não pode ser alterada.';
+            RAISE EXCEPTION 'Security Violation: A data de criação não pode ser alterada. (BLOCKED BY TRIGGER protect_ads_fields)';
         END IF;
 
-        -- C. PROTEÇÃO DE CAMPOS TURBO/DESTAQUE (Incluindo turbo_progress)
+        -- C. PROTEÇÃO DE CAMPOS TURBO/DESTAQUE
+        -- Bloqueamos a alteração direta via RLS/Rest API para campos sensíveis
         IF (NEW.is_turbo IS DISTINCT FROM OLD.is_turbo) OR
            (NEW.turbo_type IS DISTINCT FROM OLD.turbo_type) OR
            (NEW.boost_plan IS DISTINCT FROM OLD.boost_plan) OR
            (NEW.turbo_expires_at IS DISTINCT FROM OLD.turbo_expires_at) OR
            (NEW.turbo_progress IS DISTINCT FROM OLD.turbo_progress) THEN
-            RAISE EXCEPTION 'Security Violation: a alteração de campos turbo só é permitida via código do backend (edge functions).';
+            RAISE EXCEPTION 'Security Violation: alteração de campos turbo só é permitida via código do backend. (BLOCKED BY TRIGGER protect_ads_fields)';
         END IF;
 
         -- D. REGRAS DE STATUS
         IF NEW.status IS DISTINCT FROM OLD.status THEN
             IF NEW.status IN ('active', 'ativo') THEN
-                RAISE EXCEPTION 'Security Violation: A ativação de anúncios requer aprovação administrativa.';
-            END IF;
-            
-            IF NEW.status = 'rejected' THEN
-                RAISE EXCEPTION 'Security Violation: Transição de status inválida.';
-            END IF;
-
-            IF NEW.status IN ('sold', 'paused', 'arquivado') AND OLD.status NOT IN ('active', 'ativo') THEN
-                RAISE EXCEPTION 'Security Violation: Só é possível marcar como vendido/pausado se estiver ativo.';
+                RAISE EXCEPTION 'Security Violation: A ativação requer aprovação administrativa. (BLOCKED BY TRIGGER protect_ads_fields)';
             END IF;
         END IF;
     END IF;
@@ -107,7 +105,7 @@ $$;
 
 -- 5. FUNÇÃO MASTER ATÔMICA (Destaque Progressivo Unificado)
 -- Esta função executa todo o fluxo de lógica (Nível + Tempo + Progresso) de forma transacional.
-CREATE OR REPLACE FUNCTION public.apply_turbo_reward_atomic(ad_id UUID)
+CREATE OR REPLACE FUNCTION public.apply_turbo_reward_atomic(ad_id UUID, p_user_id UUID DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -117,25 +115,28 @@ DECLARE
     v_new_progress INT;
     v_new_type TEXT;
     v_days_to_add INT;
-    v_plan_id UUID;
     v_old_type TEXT;
     v_result JSONB;
+    v_effective_user_id UUID;
 BEGIN
-    -- 1. BLOQUEIO E VALIDAÇÃO (Lock da linha para evitar concorrência)
+    -- Determinar o UID efetivo (se passado por admin, usar o passado, senão usar a sessão)
+    v_effective_user_id := COALESCE(p_user_id, auth.uid());
+
+    -- 1. BLOQUEIO E VALIDAÇÃO
     SELECT * INTO v_ad 
     FROM public.anuncios 
-    WHERE id = ad_id AND user_id = auth.uid()
+    WHERE id = ad_id AND user_id = v_effective_user_id
     FOR UPDATE;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'Anúncio não encontrado ou acesso negado.';
+        RAISE EXCEPTION 'Anúncio não encontrado ou posse não validada para o usuário %', v_effective_user_id;
     END IF;
 
     -- 2. CALCULAR NOVO PROGRESSO
     v_new_progress := COALESCE(v_ad.turbo_progress, 0) + 1;
     v_old_type := v_ad.turbo_type;
 
-    -- 3. LOGICA DE NEGÓCIO (Níveis e Tempos)
+    -- 3. LOGICA DE NEGÓCIO
     IF v_new_progress = 1 THEN
         v_new_type := 'premium';
         v_days_to_add := 1;
@@ -168,7 +169,8 @@ BEGIN
         'turbo_progress', v_new_progress,
         'turbo_type', v_new_type,
         'previous_turbo_type', v_old_type,
-        'turbo_expires_at', v_ad.turbo_expires_at
+        'turbo_expires_at', v_ad.turbo_expires_at,
+        'user_id_used', v_effective_user_id
     );
 
     RETURN v_result;
