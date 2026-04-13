@@ -37,6 +37,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [showDebug, setShowDebug] = useState(false);
     const [isProgressiveMode, setIsProgressiveMode] = useState(false);
     const [lastReward, setLastReward] = useState<any>(null);
+    const [showRulesModal, setShowRulesModal] = useState(false);
     const isClickLocked = useRef(false);
 
     const finalizationTexts = [
@@ -310,7 +311,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         );
     }
 
-    const [showRulesModal, setShowRulesModal] = useState(false);
+
 
     // Auxiliar para cores e nomes de níveis dinâmicos
     const getLevelData = (progress: number) => {
@@ -456,10 +457,10 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             {/* MODAL DE REGRAS */}
             {showRulesModal && (
                 <div className="absolute inset-0 z-[150] bg-gray-900/60 backdrop-blur-md flex items-end animate-in fade-in duration-300">
-                    <div className="w-full bg-white rounded-t-[3rem] p-8 pb-12 animate-in slide-in-from-bottom duration-500 shadow-2xl">
-                        <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8"></div>
+                    <div className="w-full bg-white rounded-t-[3rem] p-6 pb-10 animate-in slide-in-from-bottom duration-500 shadow-2xl max-h-[92vh] overflow-y-auto">
+                        <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-6"></div>
                         
-                        <div className="flex items-center gap-4 mb-8">
+                        <div className="flex items-center gap-4 mb-6">
                             <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 rotate-3">
                                 <Zap className="w-6 h-6 text-white fill-current" />
                             </div>
@@ -469,7 +470,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                             </div>
                         </div>
 
-                        <div className="space-y-4 mb-10">
+                        <div className="space-y-3 mb-6">
                             {[
                                 { level: "1º Vídeo", name: "PREMIUM", gain: "+1 Dia", color: "text-blue-600", bg: "bg-blue-50" },
                                 { level: "2º Vídeo", name: "PRO", gain: "+3 Dias", color: "text-indigo-600", bg: "bg-indigo-50" },
@@ -488,7 +489,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                             ))}
                         </div>
 
-                        <div className="bg-gray-50 rounded-2xl p-5 mb-8 border border-gray-100 italic">
+                        <div className="bg-gray-50 rounded-2xl p-5 mb-6 border border-gray-100 italic">
                             <p className="text-xs text-gray-500 font-bold leading-relaxed">
                                 💡 <span className="text-gray-900">O tempo é acumulativo!</span> Se você já tem destaque ativo, os novos dias são somados ao tempo restante.
                             </p>
