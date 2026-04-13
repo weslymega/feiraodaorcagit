@@ -34,11 +34,13 @@ class AdManager {
     private timeoutId: any = null;
     private TIMEOUT_DURATION = 60000; 
     private PRELOAD_TIMEOUT = 10000; 
+    private diagnosticMode: boolean = false;
+    private readonly REWARDED_TEST_ID = 'ca-app-pub-3940256099942544/5224354917';
 
     // Diagnostic State
     private adError: { type: string; details: any; timestamp: string } | null = null;
     private adErrorListeners: ((error: any) => void)[] = [];
-    private readonly VERSION_INFO = { name: "1.1.6", code: 17 };
+    private readonly VERSION_INFO = { name: "1.1.7", code: 18 };
 
     // Banner & Concurrency State
     private isBannerShowing: boolean = false;
@@ -102,19 +104,38 @@ class AdManager {
         debugLogger.log(`[AdDebug] REGISTERING LISTENERS. Count: ${globalCount}`);
 
         
-        if (globalCount > 1) {
-            console.error(`[AdDebug] CRITICAL: Multiple AdManager listener registrations detected (${globalCount})!`);
-        }
+        // --- ULTRA DIAGNÓSTICO: CAPTURAR TODOS OS EVENTOS DO ENUM ---
+        Object.values(RewardAdPluginEvents).forEach(eventName => {
+            AdMob.addListener(eventName as any, (data: any) => {
+                const eventKey = Object.keys(RewardAdPluginEvents).find(k => (RewardAdPluginEvents as any)[k] === eventName);
+                console.log(`[AD-RAW] EVENTO RECEBIDO: ${eventKey} (${eventName})`, data);
+                debugLogger.log(`[AD-RAW] ${eventKey}`);
+            });
+        });
+
+        // --- VARIANTES MANUAIS DE STRINGS (Caso o Enum esteja incompleto) ---
+        const variantEvents = ['onAdRewarded', 'onReward', 'rewardEarned', 'rewardAdRewarded', 'rewarded'];
+        variantEvents.forEach(evt => {
+            AdMob.addListener(evt as any, (data: any) => {
+                console.log(`[AD-VARIANT] STRING EVENT DETECTED: ${evt}`, data);
+                debugLogger.log(`[AD-VAR] ${evt}`);
+                if (evt.toLowerCase().includes('reward')) {
+                    handleReward(data);
+                }
+            });
+        });
 
         const handleReward = async (reward: any) => {
             const now = Date.now();
+            console.log(`[AD-FLOW] Tentativa de processar recompensa:`, reward);
+            
             if (now - this.lastRewardTime < 3000) {
                 console.log('[AdDebug] handleReward: Throttled (duplicate)');
                 return;
             }
             this.lastRewardTime = now;
 
-            console.log(`[AD FLOW] Reward received (Exec: ${this.lastExecutionId}):`, reward);
+            console.log(`[AD FLOW] Reward confirmado (Exec: ${this.lastExecutionId}):`, reward);
             this.clearTimeout();
 
             console.log(`[AD FLOW] Executing ${this.onRewardedCallbacks.length} reward callbacks`);
@@ -130,6 +151,7 @@ class AdManager {
 
         const handleDismiss = async () => {
             const now = Date.now();
+            console.log(`[AD-FLOW] Tentativa de processar fechamento (Dismissed)`);
             if (now - this.lastDismissedTime < 2000) {
                 console.log('[AdDebug] handleDismiss: Throttled');
                 return;
@@ -194,14 +216,15 @@ class AdManager {
         });
 
         AdMob.addListener(RewardAdPluginEvents.Rewarded, (reward) => {
-            console.log(`[AdDebug] EVENT: Rewarded (Exec: ${this.lastExecutionId})`, reward);
+            console.log(`[AdDebug] EVENT: Rewarded direto do Listener (Exec: ${this.lastExecutionId})`, reward);
             handleReward(reward);
         });
 
         AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
-            console.log(`[AdDebug] EVENT: Dismissed (Exec: ${this.lastExecutionId})`);
+            console.log(`[AdDebug] EVENT: Dismissed direto do Listener (Exec: ${this.lastExecutionId})`);
             handleDismiss();
         });
+
 
         this.listenersInitialized = true;
     }
@@ -220,6 +243,13 @@ class AdManager {
     public async initialize(customAdId?: string) {
         console.log(`[AdDebug] initialize() called. Version: ${this.VERSION_INFO.name}`);
         if (customAdId) this.rewardAdId = customAdId;
+        
+        // Se estiver em modo diagnóstico, troca o ID pelo oficial de teste
+        if (this.diagnosticMode) {
+            console.log(`[AdDebug] MODO DIAGNÓSTICO ATIVO: Usando Test ID Oficial`);
+            this.rewardAdId = this.REWARDED_TEST_ID;
+        }
+
         try {
             if (Capacitor.isNativePlatform()) {
                 if (!this.isInitialized) {
@@ -251,7 +281,11 @@ class AdManager {
         this.isPreloading = true;
         this.state = AdState.LOADING;
         try {
-            const options: RewardAdOptions = { adId: this.rewardAdId, isTesting: false };
+            const currentId = this.diagnosticMode ? this.REWARDED_TEST_ID : this.rewardAdId;
+            console.log(`[AdDebug] PRELOAD INICIADO. ID used: ${currentId} | Diagnostic: ${this.diagnosticMode}`);
+            debugLogger.log(`[AdMob] Preload: ${currentId.substring(currentId.length - 5)}`);
+            
+            const options: RewardAdOptions = { adId: currentId, isTesting: this.diagnosticMode };
             this.startPreloadTimeout();
             await AdMob.prepareRewardVideoAd(options);
             debugLogger.log('[AdMob] Comando Prepare enviado.');
@@ -438,6 +472,14 @@ class AdManager {
             await AdMob.prepareInterstitial({ adId: this.interstitialAdId, isTesting: false });
             await AdMob.showInterstitial();
         } catch (error) {}
+    }
+
+    public setDiagnosticMode(active: boolean) {
+        console.log(`[AdDebug] Diagnostic Mode -> ${active}`);
+        this.diagnosticMode = active;
+        if (active) {
+            this.rewardAdId = this.REWARDED_TEST_ID;
+        }
     }
 }
 

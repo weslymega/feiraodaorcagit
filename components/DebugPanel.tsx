@@ -74,10 +74,37 @@ export default function DebugPanel() {
               border: '1px solid #FF4444',
               borderRadius: '3px',
               padding: '0 4px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              marginRight: '8px'
             }}
           >
             LIMPAR
+          </button>
+          
+          <button 
+            id="diag-mode-toggle"
+            onClick={() => {
+              const AdManager = (window as any).__adManagerInstance;
+              if (AdManager) {
+                const isDiag = !AdManager.diagnosticMode;
+                AdManager.setDiagnosticMode(isDiag);
+                debugLogger.log(`[SYS] MODO TESTE: ${isDiag ? 'ATIVO' : 'DESLIGADO'}`);
+                // Força re-render do componente para mostrar o estado (opcional, mas o log já ajuda)
+              } else {
+                debugLogger.log(`[SYS] ERRO: AdManager não instanciado`);
+              }
+            }}
+            style={{ 
+              color: '#FFFF00', 
+              fontSize: '9px', 
+              background: 'transparent', 
+              border: '1px solid #FFFF00',
+              borderRadius: '3px',
+              padding: '0 4px',
+              cursor: 'pointer'
+            }}
+          >
+            TESTE OFICIAL
           </button>
         </div>
         
