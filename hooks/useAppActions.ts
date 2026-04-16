@@ -451,40 +451,9 @@ export const useAppActions = (state: AppState) => {
     };
 
     const handleEditAd = async (ad: AdItem) => {
-        // --- REGRA CRÍTICA: REMOVER DESTAQUE AO EDITAR ---
-        const isTurboActive = ad.turbo_expires_at && new Date(ad.turbo_expires_at) > new Date();
-
-        if (isTurboActive) {
-            setToast({ message: "Removendo destaque para edição...", type: 'info' });
-            try {
-                // Sincroniza com o backend (força status pendente e remove expiração)
-                await api.updateAd(ad.id, { 
-                    turbo_expires_at: null,
-                    status: AdStatus.PENDING 
-                });
-
-                // Atualiza estado local imediatamente
-                const updatedAd = { 
-                    ...ad, 
-                    turbo_expires_at: null, 
-                    status: AdStatus.PENDING,
-                    isFeatured: false,
-                    boostConfig: null 
-                };
-
-                setMyAds((prev: AdItem[]) => prev.map(a => a.id === ad.id ? updatedAd : a));
-                
-                // Prossegue para o editor com o objeto atualizado
-                setAdToEdit(updatedAd);
-            } catch (error) {
-                console.error("❌ Erro ao remover destaque pré-edição:", error);
-                setToast({ message: "Aviso: Não foi possível remover o destaque no servidor.", type: 'warning' });
-                setAdToEdit(ad);
-            }
-        } else {
-            setAdToEdit(ad);
-        }
-
+        // --- NOVO COMPORTAMENTO: PRESERVAR DESTAQUE AO EDITAR ---
+        // Não removemos mais o turbo_expires_at e não fazemos chamadas de API aqui.
+        setAdToEdit(ad);
         setCameFromMyAds(true);
         setCurrentScreen(Screen.CREATE_AD);
     };

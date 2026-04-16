@@ -436,7 +436,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
       if (filters.transmission && ad.gearbox !== filters.transmission) return false;
       if (filters.fuel && ad.fuel !== filters.fuel) return false;
-      if (filters.color && ad.color !== filters.color) return false;
+      if (filters.color) {
+        const adColor = (ad.color || ad.detalhes?.color || "").toLowerCase();
+        if (!adColor.includes(filters.color.toLowerCase())) return false;
+      }
 
       return true;
     });
@@ -744,8 +747,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
             <div className="px-6 pt-4 pb-4 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-[30px]">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-gray-900">Filtros Avançados</h2>
-                {activeFiltersCount > 0 && (
-                  <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">{activeFiltersCount}</span>
+                {hasUserInteracted && (
+                  <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">{filteredAds.length}</span>
                 )}
               </div>
               <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">

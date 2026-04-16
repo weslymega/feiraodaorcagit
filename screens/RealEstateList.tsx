@@ -44,7 +44,7 @@ const PROPERTY_QUICK_FILTERS = [
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 
 export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate, user, currentScreen }) => {
-  const [transactionType, setTransactionType] = useState<'sale' | 'rent'>('sale');
+  const [transactionType, setTransactionType] = useState<'all' | 'sale' | 'rent'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPropertyType, setSelectedPropertyType] = useState('todos');
   const [isTrending, setIsTrending] = useState(false);
@@ -124,7 +124,12 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
     const filtered = ads.filter(ad => {
       // Status (Relaxed for mocks)
       if (ad.status !== AdStatus.ACTIVE) return false;
-      if ((ad.transactionType || 'sale') !== transactionType) return false;
+      
+      // Transaction Type Filtering (Strict)
+      if (transactionType !== 'all') {
+        const adType = (ad.transactionType || '').toLowerCase();
+        if (adType !== transactionType) return false;
+      }
 
       // 2. Quick Filter (Tabs)
       if (selectedPropertyType !== 'todos') {
@@ -316,9 +321,20 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
         }
       />
 
-      {/* Transaction Type Toggle */}
       <div className="bg-white px-4 pt-2 pb-4 border-b border-gray-100 relative z-10">
         <div className="flex bg-gray-100 p-1.5 rounded-2xl">
+          <button
+            onClick={() => {
+              setTransactionType('all');
+              setHasUserInteracted(true);
+            }}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${transactionType === 'all'
+              ? 'bg-white shadow-md text-primary'
+              : 'text-gray-500 hover:text-gray-700'
+              }`}
+          >
+            Todos
+          </button>
           <button
             onClick={() => {
               setTransactionType('sale');
@@ -352,7 +368,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
           <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder={`Buscar em ${transactionType === 'sale' ? 'Comprar' : 'Alugar'}...`}
+            placeholder={`Buscar em ${transactionType === 'all' ? 'Todos' : (transactionType === 'sale' ? 'Comprar' : 'Alugar')}...`}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -465,6 +481,11 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                     <span className="bg-white/95 backdrop-blur-sm text-gray-800 text-xs font-bold px-3 py-1 rounded-lg shadow-sm">
                       {ad.realEstateType}
                     </span>
+                    {ad.transactionType && (
+                      <span className={`backdrop-blur-sm text-white text-[10px] font-black uppercase px-2 py-1 rounded-lg shadow-sm ${ad.transactionType.toLowerCase() === 'rent' ? 'bg-blue-600/90' : 'bg-green-600/90'}`}>
+                        {ad.transactionType.toLowerCase() === 'rent' ? 'Aluguel' : 'Venda'}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -492,18 +513,27 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
             );
           })
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <Search className="w-12 h-12 mb-2 text-gray-300" />
-            <p>Nenhum imóvel encontrado.</p>
-            {activeFiltersCount > 0 && (
-              <button onClick={clearFilters} className="mt-4 text-primary font-bold text-sm underline">
-                Limpar Filtros
+          <div className="col-span-1 sm:col-span-2 py-12 flex flex-col items-center justify-center text-center px-6 animate-in fade-in duration-500">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <Search className="w-10 h-10 text-gray-300" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Nenhum imóvel encontrado</h3>
+            <p className="text-gray-500 max-w-xs leading-relaxed">
+              {transactionType === 'rent'
+                ? "Ainda não temos muitos imóveis para aluguel. Seja o primeiro a anunciar!"
+                : "Não encontramos imóveis com os filtros selecionados. Tente ajustar sua busca."}
+            </p>
+            {hasUserInteracted && (
+              <button
+                onClick={clearFilters}
+                className="mt-6 text-primary font-bold hover:underline"
+              >
+                Limpar todos os filtros
               </button>
             )}
           </div>
-        )
-        }
-      </div >
+        )}
+      </div>
 
       {/* --- FILTER MODAL (FIXED PROPORTIONS) --- */}
       {

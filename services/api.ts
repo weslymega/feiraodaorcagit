@@ -347,6 +347,8 @@ export const api = {
                 fuel: adData.fuel,
                 gearbox: adData.gearbox,
                 color: adData.color,
+                steering: adData.steering,
+                doors: adData.doors,
                 plate: adData.plate,
                 fipePrice: adData.fipePrice,
                 brandName: adData.brandName,
@@ -924,7 +926,7 @@ export const api = {
             };
         }
 
-        // Prepare update payload
+        // 1. Prepare update payload
         const updatePayload: any = {
             titulo: adData.title,
             descricao: adData.description,
@@ -936,13 +938,35 @@ export const api = {
             updated_at: new Date().toISOString()
         };
 
-        // CRITICAL SECURITY: Ignore status from payload and force 'pending'
+        // 2. CRITICAL SECURITY: Ignore status from payload and force 'pending'
         updatePayload.status = 'pending';
 
-        // Support clearing/setting highlight if explicitly provided
-        if (adData.turbo_expires_at !== undefined) {
-            updatePayload.turbo_expires_at = adData.turbo_expires_at;
+        // 3. HARDENING: Blindagem Global contra alteração de campos de Destaque/Turbo
+        // Estes campos são protegidos por trigger no banco, mas aqui evitamos até a tentativa de envio.
+        const FORBIDDEN_FIELDS = [
+            'turbo_expires_at',
+            'turbo_score',
+            'turbo_type',
+            'is_turbo',
+            'turbo_weight',
+            'turbo_progress',
+            'boost_plan'
+        ];
+
+        let removedFields: string[] = [];
+        FORBIDDEN_FIELDS.forEach(field => {
+            // Verifica tanto no adData original quanto no updatePayload final
+            if (field in adData || field in updatePayload) {
+                delete updatePayload[field];
+                removedFields.push(field);
+            }
+        });
+
+        if (removedFields.length > 0) {
+            console.warn(`[SECURITY] Campos proibidos removidos do payload de update: ${removedFields.join(', ')}`);
         }
+
+        console.log("[EDIT] Payload enviado (sem turbo)");
 
         const { error } = await supabase
             .from('anuncios')

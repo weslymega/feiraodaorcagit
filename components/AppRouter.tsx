@@ -85,7 +85,8 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
         if (previousScreen &&
             previousScreen !== currentScreen &&
             previousScreen !== Screen.LOGIN &&
-            previousScreen !== Screen.REGISTER) {
+            previousScreen !== Screen.REGISTER &&
+            previousScreen !== Screen.BOOST_TURBO) {
             setCurrentScreen(previousScreen);
         } else {
             goBackToPanel();

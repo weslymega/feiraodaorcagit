@@ -176,7 +176,14 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps & { user?: User 
 
         <div className="flex justify-between items-start mb-2">
           <h1 className="text-xl font-bold text-gray-900 leading-snug flex-1 mr-2">{ad.title || "Sem título"}</h1>
-          <span className="bg-purple-100 text-primary text-xs font-bold px-2 py-1 rounded-md whitespace-nowrap">{ad.realEstateType || "Imóvel"}</span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="bg-purple-100 text-primary text-xs font-bold px-2 py-1 rounded-md whitespace-nowrap">{ad.realEstateType || "Imóvel"}</span>
+            {ad.transactionType && (
+              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${ad.transactionType.toLowerCase() === 'rent' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                {ad.transactionType.toLowerCase() === 'rent' ? 'Aluguel' : 'Venda'}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-1 text-gray-500 text-sm mb-4">
@@ -185,7 +192,10 @@ export const RealEstateDetails: React.FC<RealEstateDetailsProps & { user?: User 
         </div>
 
         <div className="mb-6 pb-6 border-b border-gray-100">
-          <h2 className="text-3xl font-bold text-gray-900">{(ad.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h2>
+          <h2 className="text-3xl font-bold text-gray-900">
+            {(ad.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            {ad.transactionType?.toLowerCase() === 'rent' && <span className="text-lg text-gray-400 font-bold ml-1">/mês</span>}
+          </h2>
         </div>
 
         <div className="grid grid-cols-4 gap-2 mb-8">

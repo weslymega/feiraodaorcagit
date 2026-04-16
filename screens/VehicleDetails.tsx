@@ -343,6 +343,14 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
               <SpecItem label="KM" value={ad.mileage !== undefined ? `${Number(ad.mileage).toLocaleString('pt-BR')} km` : 'N/A'} />
               <SpecItem label="Câmbio" value={ad.gearbox || "Manual"} />
               <SpecItem label="Combustível" value={ad.fuel || "Flex"} />
+              <SpecItem label="Cor" value={ad.color ? (ad.color.charAt(0).toUpperCase() + ad.color.slice(1)) : "Não informada"} />
+              {ad.steering && (
+                <SpecItem 
+                  label="Direção" 
+                  value={ad.steering.charAt(0).toUpperCase() + ad.steering.slice(1).replace('au', 'áu').replace('et', 'ét')} 
+                />
+              )}
+              {ad.doors && <SpecItem label="Portas" value={`${ad.doors} Portas`} />}
               <SpecItem label="Motor" value={ad.engine || "1.0"} />
               <SpecItem label="Final da Placa" value={ad.plate ? ad.plate.slice(-1) : "?"} />
             </div>

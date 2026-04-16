@@ -26,6 +26,7 @@ enum CreateStep {
   CATEGORY = 0,
   VEHICLE_TYPE = 1,
   REAL_ESTATE_TYPE = 2,
+  REAL_ESTATE_TRANSACTION_TYPE = 24,
   PARTS_TYPE = 16,
   PARTS_CONDITION = 17,
   PHOTOS = 3,
@@ -182,7 +183,10 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     location: editingAd?.location || user.location || '',
     phone: editingAd?.contactPhone || user.phone || '',
     boostPlan: 'gratis',
-    fipeCategory: '' as FipeVehicleType | ''
+    fipeCategory: '' as FipeVehicleType | '',
+    transactionType: editingAd?.transactionType || '',
+    steering: editingAd?.steering || '',
+    doors: editingAd?.doors || ''
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -326,7 +330,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     }
     if (!title || title.trim() === '') title = 'Anúncio sem título';
 
-    const adData = {
+    const adData: any = {
       title,
       price: (formData.price && formData.price > 0) ? formData.price : null,
       fipePrice: formData.fipePrice,
@@ -353,16 +357,25 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       partType: formData.partType,
       condition: formData.condition,
       additionalInfo: formData.additionalInfo,
-      boostPlan: 'gratis',
-      isFeatured: false,
-      boostConfig: null,
       contactPhone: formData.phone,
       isManualEntry: isManualEntry || false,
       brandName: formData.brandName,
-      modelName: formData.modelName
+      modelName: formData.modelName,
+      transactionType: formData.transactionType || null,
+      color: formData.color ? formData.color.toLowerCase() : null,
+      steering: formData.steering ? formData.steering.toLowerCase() : null,
+      doors: formData.doors ? Number(formData.doors) : null
     };
 
+    // Só adicionamos campos de destaque para NOVOS anúncios
+    if (!editingAd) {
+      adData.boostPlan = 'gratis';
+      adData.isFeatured = false;
+      adData.boostConfig = null;
+    }
+
     if (editingAd) {
+      console.log("[EDIT] Payload preparado (campos de destaque omitidos)");
       onFinish(adData);
       return;
     }
@@ -401,6 +414,10 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       case CreateStep.VEHICLE_TYPE: next = CreateStep.PHOTOS; break;
       case CreateStep.REAL_ESTATE_TYPE:
         if (!formData.realEstateType) return;
+        next = CreateStep.REAL_ESTATE_TRANSACTION_TYPE;
+        break;
+      case CreateStep.REAL_ESTATE_TRANSACTION_TYPE:
+        if (!formData.transactionType) return;
         next = CreateStep.PHOTOS;
         break;
       case CreateStep.PARTS_TYPE:
@@ -622,6 +639,35 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     </StepContainer>
   );
 
+  const renderRealEstateTransactionType = () => (
+    <StepContainer title="O que você deseja fazer?" progress={0.15} onNext={nextStep} nextDisabled={!formData.transactionType} onBack={goBack}>
+      <div className="flex flex-col gap-4">
+        {[
+          { id: 'sale', label: 'Vender', desc: 'Anunciar imóvel para venda', icon: <ArrowUp className="w-6 h-6" /> },
+          { id: 'rent', label: 'Alugar', desc: 'Anunciar imóvel para locação', icon: <Clock className="w-6 h-6" /> }
+        ].map(type => (
+          <button
+            key={type.id}
+            onClick={() => { setFormData(p => ({ ...p, transactionType: type.id })); nextStep(); }}
+            className={`flex items-center gap-4 p-5 border shadow-sm rounded-2xl transition-all active:scale-[0.99] ${formData.transactionType === type.id ? 'border-primary bg-blue-50/30' : 'bg-white border-gray-100 hover:border-primary hover:shadow-md'}`}
+          >
+            <div className={`p-3 rounded-xl ${formData.transactionType === type.id ? 'bg-primary text-white' : 'bg-blue-50 text-primary'}`}>{type.icon}</div>
+            <div className="flex-1 text-left">
+              <span className={`font-bold text-lg block ${formData.transactionType === type.id ? 'text-gray-900' : 'text-gray-800'}`}>{type.label}</span>
+              <span className="text-xs text-gray-500 font-medium">{type.desc}</span>
+            </div>
+            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.transactionType === type.id ? 'border-primary' : 'border-gray-200'}`}>
+              {formData.transactionType === type.id && <div className="w-3 h-3 bg-primary rounded-full" />}
+            </div>
+          </button>
+        ))}
+      </div>
+      {!formData.transactionType && (
+        <p className="mt-4 text-center text-sm text-gray-500 italic">Por favor, selecione uma opção para continuar.</p>
+      )}
+    </StepContainer>
+  );
+
   const renderRealEstateSpecs = () => {
     const canProceed = !!formData.area && !!formData.bedrooms && !!formData.bathrooms && !!formData.parking;
     return (
@@ -782,9 +828,75 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
             
             <div><label className="block text-sm font-bold text-gray-700 mb-2">Ano *</label><input type="text" inputMode="numeric" maxLength={4} value={formData.year} onChange={(e) => setFormData(p => ({ ...p, year: e.target.value.replace(/\D/g, '') }))} placeholder="Ex: 2020" className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all" /></div>
             
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
-              <div className="col-span-1"><label className="block text-sm font-bold text-gray-700 mb-2">Cor *</label><select value={formData.color} onChange={(e) => setFormData(p => ({ ...p, color: e.target.value }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"><option value="">Selecione</option><option value="Branco">Branco</option><option value="Preto">Preto</option><option value="Prata">Prata</option><option value="Cinza">Cinza</option><option value="Vermelho">Vermelho</option><option value="Azul">Azul</option><option value="Verde">Verde</option><option value="Amarelo">Amarelo</option><option value="Marrom">Marrom</option><option value="Bege">Bege</option><option value="Outros">Outros</option></select></div>
-              <div className="col-span-1"><label className="block text-sm font-bold text-gray-700 mb-2">Câmbio *</label><select value={formData.gearbox} onChange={(e) => setFormData(p => ({ ...p, gearbox: e.target.value }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all"><option value="">Selecione</option><option value="Manual">Manual</option><option value="Automático">Automático</option></select></div>
+            <div className="pt-4 border-t border-gray-100">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Cor *</label>
+                  <select 
+                    value={formData.color} 
+                    onChange={(e) => setFormData(p => ({ ...p, color: e.target.value }))} 
+                    className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                  >
+                    <option value="">Selecione</option>
+                    <option value="Branco">Branco</option>
+                    <option value="Preto">Preto</option>
+                    <option value="Prata">Prata</option>
+                    <option value="Cinza">Cinza</option>
+                    <option value="Vermelho">Vermelho</option>
+                    <option value="Azul">Azul</option>
+                    <option value="Verde">Verde</option>
+                    <option value="Amarelo">Amarelo</option>
+                    <option value="Marrom">Marrom</option>
+                    <option value="Bege">Bege</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Câmbio *</label>
+                  <select 
+                    value={formData.gearbox} 
+                    onChange={(e) => setFormData(p => ({ ...p, gearbox: e.target.value }))} 
+                    className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all"
+                  >
+                    <option value="">Selecione</option>
+                    <option value="Manual">Manual</option>
+                    <option value="Automático">Automático</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Novos campos opcionais (Exceto para Motos) */}
+              {formData.vehicleType !== 'Moto' && formData.fipeCategory !== 'motos' && (
+                <div className="grid grid-cols-2 gap-4 mt-4 animate-in fade-in slide-in-from-top-2">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Direção</label>
+                    <select 
+                      value={formData.steering} 
+                      onChange={(e) => setFormData(p => ({ ...p, steering: e.target.value }))} 
+                      className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="Hidráulica">Hidráulica</option>
+                      <option value="Elétrica">Elétrica</option>
+                      <option value="Mecânica">Mecânica</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Portas</label>
+                    <select 
+                      value={formData.doors} 
+                      onChange={(e) => setFormData(p => ({ ...p, doors: e.target.value }))} 
+                      className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="2">2 Portas</option>
+                      <option value="3">3 Portas</option>
+                      <option value="4">4 Portas</option>
+                      <option value="5">5 Portas</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </StepContainer>
@@ -815,9 +927,75 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
           )}
           
           {(formData.fipePrice > 0 || editingAd) && !isManualEntry && (
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100 animate-in fade-in">
-              <div className="col-span-1"><label className="block text-sm font-bold text-gray-700 mb-2">Cor *</label><select value={formData.color} onChange={(e) => setFormData(p => ({ ...p, color: e.target.value }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"><option value="">Selecione</option><option value="Branco">Branco</option><option value="Preto">Preto</option><option value="Prata">Prata</option><option value="Cinza">Cinza</option><option value="Vermelho">Vermelho</option><option value="Azul">Azul</option><option value="Verde">Verde</option><option value="Amarelo">Amarelo</option><option value="Marrom">Marrom</option><option value="Bege">Bege</option><option value="Outros">Outros</option></select></div>
-              <div className="col-span-1"><label className="block text-sm font-bold text-gray-700 mb-2">Câmbio *</label><select value={formData.gearbox} onChange={(e) => setFormData(p => ({ ...p, gearbox: e.target.value }))} className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all"><option value="">Selecione</option><option value="Manual">Manual</option><option value="Automático">Automático</option></select></div>
+            <div className="pt-4 border-t border-gray-100 animate-in fade-in">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Cor *</label>
+                  <select 
+                    value={formData.color} 
+                    onChange={(e) => setFormData(p => ({ ...p, color: e.target.value }))} 
+                    className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                  >
+                    <option value="">Selecione</option>
+                    <option value="Branco">Branco</option>
+                    <option value="Preto">Preto</option>
+                    <option value="Prata">Prata</option>
+                    <option value="Cinza">Cinza</option>
+                    <option value="Vermelho">Vermelho</option>
+                    <option value="Azul">Azul</option>
+                    <option value="Verde">Verde</option>
+                    <option value="Amarelo">Amarelo</option>
+                    <option value="Marrom">Marrom</option>
+                    <option value="Bege">Bege</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Câmbio *</label>
+                  <select 
+                    value={formData.gearbox} 
+                    onChange={(e) => setFormData(p => ({ ...p, gearbox: e.target.value }))} 
+                    className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                  >
+                    <option value="">Selecione</option>
+                    <option value="Manual">Manual</option>
+                    <option value="Automático">Automático</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Novos campos opcionais (Fluxo FIPE) */}
+              {formData.vehicleType !== 'Moto' && formData.fipeCategory !== 'motos' && (
+                <div className="grid grid-cols-2 gap-4 mt-4 animate-in fade-in slide-in-from-top-2">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Direção</label>
+                    <select 
+                      value={formData.steering} 
+                      onChange={(e) => setFormData(p => ({ ...p, steering: e.target.value }))} 
+                      className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="Hidráulica">Hidráulica</option>
+                      <option value="Elétrica">Elétrica</option>
+                      <option value="Mecânica">Mecânica</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Portas</label>
+                    <select 
+                      value={formData.doors} 
+                      onChange={(e) => setFormData(p => ({ ...p, doors: e.target.value }))} 
+                      className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="2">2 Portas</option>
+                      <option value="3">3 Portas</option>
+                      <option value="4">4 Portas</option>
+                      <option value="5">5 Portas</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1023,6 +1201,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       {step === CreateStep.CATEGORY && renderCategory()}
       {step === CreateStep.VEHICLE_TYPE && renderVehicleType()}
       {step === CreateStep.REAL_ESTATE_TYPE && renderRealEstateType()}
+      {step === CreateStep.REAL_ESTATE_TRANSACTION_TYPE && renderRealEstateTransactionType()}
       {step === CreateStep.PARTS_TYPE && renderPartsType()}
       {step === CreateStep.PARTS_CONDITION && renderPartsCondition()}
       {step === CreateStep.PHOTOS && renderPhotos()}

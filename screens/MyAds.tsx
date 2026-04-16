@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAppState } from '../hooks/useAppState';
 import { Plus, MoreVertical, Trash2, Edit2, X, AlertTriangle, Clock, TrendingUp, Calendar, Zap, Lock, Info, Rocket } from 'lucide-react';
 import { Header, PriceTag, HighlightRibbon } from '../components/Shared';
@@ -28,6 +29,20 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
     }
   }, [initialTab]);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{ x: number, y: number, openUp: boolean }>({ x: 0, y: 0, openUp: false });
+
+  // Close menu on scroll or click outside
+  useEffect(() => {
+    const handleClose = () => setActiveMenuId(null);
+    if (activeMenuId) {
+      window.addEventListener('click', handleClose);
+      window.addEventListener('scroll', handleClose, true);
+    }
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('scroll', handleClose, true);
+    };
+  }, [activeMenuId]);
 
   // States for Modals
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -42,10 +57,22 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
 
   const pendingCount = ads.filter(ad => ad.status === AdStatus.PENDING || ad.status === AdStatus.REJECTED).length;
 
-  const toggleMenu = (id: string) => {
+  const toggleMenu = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     if (activeMenuId === id) {
       setActiveMenuId(null);
     } else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+
+      // Se estiver nos últimos 250px da tela, abre para cima
+      const shouldOpenUp = rect.bottom > windowHeight - 250;
+
+      setMenuCoords({
+        x: rect.right,
+        y: shouldOpenUp ? rect.top : rect.bottom,
+        openUp: shouldOpenUp
+      });
       setActiveMenuId(id);
     }
   };
@@ -179,8 +206,7 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
               <div className="relative">
                 <button
                   onClick={(e) => {
-                    e.stopPropagation();
-                    toggleMenu(ad.id);
+                    toggleMenu(ad.id, e);
                   }}
                   className="p-1 rounded-full hover:bg-gray-100 transition-colors"
                 >
@@ -191,8 +217,18 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                   )}
                 </button>
 
-                {activeMenuId === ad.id && (
-                  <div className="absolute right-0 top-10 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-gray-100 w-48 overflow-hidden z-[100] animate-in fade-in zoom-in duration-200 py-1.5">
+                {activeMenuId === ad.id && createPortal(
+                  <div 
+                    style={{ 
+                      position: 'fixed', 
+                      top: menuCoords.y, 
+                      left: menuCoords.x,
+                      transform: `translateX(-100%) ${menuCoords.openUp ? 'translateY(-8px) translateY(-100%)' : 'translateY(8px)'}`,
+                      zIndex: 2000 
+                    }}
+                    className="bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-gray-100 w-48 overflow-hidden animate-in fade-in zoom-in duration-200 py-1.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -253,7 +289,8 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                       <Trash2 className="w-4 h-4" />
                       Excluir
                     </button>
-                  </div>
+                  </div>,
+                  document.body
                 )}
               </div>
             </div>
@@ -381,7 +418,7 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                 <p>
                   Este anúncio está com destaque ativo até <strong>{new Date(editAd.turbo_expires_at || editAd.boostConfig!.expiresAt).toLocaleDateString('pt-BR')}</strong>.
                   <br /><br />
-                  Se continuar, o <strong>destaque será removido</strong> e o anúncio voltará ao normal para edição.
+                  Seu anúncio será <strong>reavaliado após a edição</strong>, mas seu destaque continuará ativo.
                   <br /><br />
                   Deseja continuar?
                 </p>
@@ -389,7 +426,7 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                 <p>
                   Você pode alterar as informações do anúncio.
                   <br /><br />
-                  As alterações passarão por uma nova análise de até <strong>24 horas</strong>.
+                  Seu anúncio passará por uma <strong>nova análise</strong> de até 24 horas.
                 </p>
               )}
             </div>

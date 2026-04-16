@@ -343,13 +343,18 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 </div>
                 <div className="flex items-center gap-2 ml-auto">
                     <button 
-                        onClick={() => setShowRulesModal(true)}
-                        className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 active:scale-90 transition-all border border-blue-100"
+                        onClick={handleDebugAdFlow}
+                        className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 active:scale-90 transition-all border border-gray-100"
+                        title="Debug Ad Flow"
                     >
-                        <Info className="w-5 h-5" />
+                        <Bug className="w-5 h-5" />
                     </button>
-                    <button onClick={() => setShowDebug(!showDebug)} className="p-2 text-gray-300 hover:text-gray-900">
-                      <Bug className="w-4 h-4" />
+                    <button 
+                        onClick={() => setShowRulesModal(true)}
+                        className="h-10 px-3 rounded-xl bg-blue-600 flex items-center gap-2 text-white active:scale-95 transition-all shadow-lg shadow-blue-500/30 border border-blue-500"
+                    >
+                        <Info className="w-4 h-4 fill-white/20" />
+                        <span className="text-[10px] font-black uppercase tracking-tight">Como funciona?</span>
                     </button>
                 </div>
             </header>
@@ -375,6 +380,13 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                             <p className="text-sm text-gray-500 font-bold leading-relaxed max-w-[240px] mx-auto">
                                 Assista vídeos curtos para destacar seu anúncio no topo.
                             </p>
+                            
+                            <button 
+                                onClick={() => setShowRulesModal(true)}
+                                className="mt-2 text-[10px] text-blue-600 font-black uppercase tracking-widest hover:underline flex items-center justify-center gap-1"
+                            >
+                                <Info className="w-3 h-3" /> Ver regras do Turbo
+                            </button>
 
                             <div className="mt-10 relative z-10">
                                 <div className="flex justify-between items-end mb-3 px-1">
@@ -430,8 +442,8 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
             {/* MODAL DE REGRAS */}
             {showRulesModal && (
-                <div className="absolute inset-0 z-[150] bg-gray-900/60 backdrop-blur-md flex items-end animate-in fade-in duration-300">
-                    <div className="w-full bg-white rounded-t-[3rem] p-6 pb-10 animate-in slide-in-from-bottom duration-500 shadow-2xl max-h-[92vh] overflow-y-auto">
+                <div className="absolute inset-0 z-[2000] bg-gray-900/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="w-full bg-white rounded-[2.5rem] p-8 animate-in zoom-in duration-500 shadow-2xl max-h-[85vh] overflow-y-auto relative">
                         <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-6"></div>
                         
                         <div className="flex items-center gap-4 mb-6">
@@ -481,7 +493,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
 
             {/* OVERLAY DE PROCESSAMENTO */}
             {isFinalizing && !showSuccess && (
-                <div className="absolute inset-0 z-[100] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+                <div className="absolute inset-0 z-[1500] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
                     <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6">
                         <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
                     </div>
@@ -500,7 +512,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         setIsFinalizing(false);
                         finalizingRef.current = false;
                     }}
-                    className="absolute inset-0 z-[110] bg-blue-600 flex flex-col items-center justify-center p-8 text-center animate-in zoom-in duration-500 cursor-pointer"
+                    className="absolute inset-0 z-[1600] bg-blue-600 flex flex-col items-center justify-center p-8 text-center animate-in zoom-in duration-500 cursor-pointer"
                 >
                     <div className="w-24 h-24 bg-white/20 rounded-[2.5rem] flex items-center justify-center mb-8 animate-bounce">
                         <CheckCircle className="w-14 h-14 text-white" />
