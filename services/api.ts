@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AdStatus, User, ReportItem, MessageItem, ChatMessage, HighlightPlan } from '../types';
 import { debugLogger } from '../utils/DebugLogger';
+import { captureError, addBreadcrumb } from './sentry';
 
 // NOTE: These should be in .env
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim();
@@ -125,7 +126,8 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         isOwner: isOwner,
         isInFair: ad.is_in_fair || false, // Mapeando novo campo do banco
         turbo_expires_at: ad.turbo_expires_at,
-        last_turbo_at: ad.last_turbo_at
+        last_turbo_at: ad.last_turbo_at,
+        detalhes: detalhes
     };
 
     if (category === 'imoveis') {
@@ -214,6 +216,21 @@ export const api = {
     },
 
     /**
+     * Clear all security logs (Admin only)
+     */
+    clearSecurityLogs: async () => {
+        return await api.safeRequest(async (token) => {
+            const { data, error } = await supabase.functions.invoke('admin_clear_logs', {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            if (error) throw error;
+            return data;
+        });
+    },
+
+    /**
      * Get validated access token, refreshing if needed.
      */
     getAuthToken: async (): Promise<string | null> => {
@@ -272,37 +289,106 @@ export const api = {
 
     /**
      * Generic wrapper to handle JWT/401 errors and retry once.
+     *
+     * Ordem correta (auditada):
+     *   1. Tenta a requisição com o token atual
+     *   2. Se 401/JWT → tenta refresh SILENCIOSO (sem logar no Sentry)
+     *   3. Se refresh falhou → ENTÃO loga no Sentry
+     *   4. Se refresh OK → retry com token novo
+     *   5. Se retry falhou → loga no Sentry
      */
-    safeRequest: async <T>(fn: (token: string) => Promise<T>): Promise<T> => {
+    safeRequest: async <T>(fn: (token: string) => Promise<T>, _endpoint?: string): Promise<T> => {
         const token = await api.getAuthToken();
-        if (!token) throw new Error('NOT_AUTHENTICATED');
+        if (!token) {
+            // ⏳ Tenta refresh antes de desistir
+            const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError || !refreshed.session) {
+                // 🚨 Sentry APENAS se o refresh também falhou — não é ruído de JWT expirado normal
+                captureError(new Error('safeRequest: NOT_AUTHENTICATED (refresh falhou)'), {
+                    tags: { flow: 'auth', endpoint: _endpoint || 'unknown', type: 'no_session_after_refresh' },
+                    level: 'warning',
+                });
+                throw new Error('NOT_AUTHENTICATED');
+            }
+            // Refresh funcionou — continua com o token novo
+            try {
+                return await fn(refreshed.session.access_token);
+            } catch (retryError: any) {
+                captureError(retryError, {
+                    tags: { flow: 'auth', endpoint: _endpoint || 'unknown', type: 'retry_after_cold_refresh_failed' },
+                    level: 'error',
+                });
+                throw retryError;
+            }
+        }
 
         try {
             console.log("[api.safeRequest] Executing initial request...");
             return await fn(token);
         } catch (error: any) {
             const errorStr = String(error?.message || error);
-            const isAuthError = error?.status === 401 || 
-                               errorStr.includes('JWT') || 
+            const isAuthError = error?.status === 401 ||
+                               errorStr.includes('JWT') ||
                                errorStr.includes('invalid_token') ||
                                errorStr.includes('JWT_EXPIRED');
 
             if (isAuthError) {
                 console.warn("[api.safeRequest] Auth error detected, refreshing and retrying once...");
+                // ⏳ FASE 1: Tentativa de refresh silenciosa — NÃO loga no Sentry ainda
                 const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-                
+
                 if (refreshError || !refreshed.session) {
-                   console.error("[api.safeRequest] Refresh failed:", refreshError);
-                   throw error;
+                    console.error("[api.safeRequest] Refresh failed:", refreshError);
+                    // 🚨 FASE 2: Sentry só agora — refresh também falhou
+                    captureError(refreshError || new Error('JWT refresh failed'), {
+                        tags: {
+                            flow: 'auth',
+                            type: 'jwt_refresh_failed',
+                            endpoint: _endpoint || 'unknown',
+                        },
+                        level: 'error',
+                    });
+                    throw error;
                 }
-                
+
                 console.log("[api.safeRequest] Retrying with fresh token...");
-                return await fn(refreshed.session.access_token);
+                // Retry com token novo — se falhar novamente, propaga e cai no catch abaixo
+                try {
+                    return await fn(refreshed.session.access_token);
+                } catch (retryError: any) {
+                    // 🚨 Retry também falhou — log definitivo
+                    captureError(retryError, {
+                        tags: {
+                            flow: 'auth',
+                            type: 'retry_after_refresh_failed',
+                            endpoint: _endpoint || 'unknown',
+                        },
+                        level: 'error',
+                    });
+                    throw retryError;
+                }
             }
 
             // Monitoramento de 403 (Acesso Negado)
             if (error?.status === 403) {
                 api.reportSecurityEvent('UNAUTHORIZED_ACCESS', 'medium', { reason: '403 Forbidden', message: error.message });
+                captureError(error, {
+                    tags: { flow: 'security', status_code: '403', endpoint: _endpoint || 'unknown' },
+                    level: 'warning',
+                });
+            }
+
+            // 🚨 Erro inesperado (500, DB, etc.)
+            if (error?.status >= 500 || error?.code?.startsWith('PG')) {
+                captureError(error, {
+                    tags: {
+                        flow: 'api',
+                        status_code: String(error?.status || 'DB_ERROR'),
+                        endpoint: _endpoint || 'unknown',
+                    },
+                    level: 'error',
+                    extra: { error_code: error?.code, message: error?.message },
+                });
             }
 
             throw error;
@@ -346,9 +432,9 @@ export const api = {
                 vehicleType: adData.vehicleType,
                 fuel: adData.fuel,
                 gearbox: adData.gearbox,
-                color: adData.color,
-                steering: adData.steering,
-                doors: adData.doors,
+                color: adData.color ? adData.color.toLowerCase() : null,
+                steering: adData.steering ? adData.steering.toLowerCase() : null,
+                doors: adData.doors ? Number(adData.doors) : null,
                 plate: adData.plate,
                 fipePrice: adData.fipePrice,
                 brandName: adData.brandName,
@@ -912,7 +998,9 @@ export const api = {
                 vehicleType: adData.vehicleType,
                 fuel: adData.fuel,
                 gearbox: adData.gearbox,
-                color: adData.color,
+                color: adData.color ? adData.color.toLowerCase() : null,
+                steering: adData.steering ? adData.steering.toLowerCase() : null,
+                doors: adData.doors ? Number(adData.doors) : null,
                 plate: adData.plate,
                 fipePrice: adData.fipePrice,
                 brandName: adData.brandName,

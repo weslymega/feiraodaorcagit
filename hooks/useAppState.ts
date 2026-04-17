@@ -14,6 +14,7 @@ import {
   TERMS_VERSION
 } from '../constants';
 import AdManager from '../services/AdManager';
+import { setSentryUser } from '../services/sentry';
 
 const adManager = AdManager.getInstance();
 
@@ -250,6 +251,8 @@ export const useAppState = () => {
         setProfileLoaded(false);
         setCurrentScreen(Screen.LOGIN);
         setIsAppReady(true);
+        // Limpa o contexto de usuário no Sentry — NUNCA usar await
+        setSentryUser(null);
         return;
       }
 
@@ -328,6 +331,7 @@ export const useAppState = () => {
               console.log("🚫 [Auth] Conta excluída detectada. Deslogando...");
               await supabase.auth.signOut();
               setUser(null);
+              setSentryUser(null);
               setCurrentScreen(Screen.LOGIN);
               alert("Esta conta foi excluída e não pode mais ser acessada.");
               return;
@@ -336,6 +340,9 @@ export const useAppState = () => {
             setUser(prev => prev ? ({ ...prev, ...freshProfile }) : null);
             setProfileLoaded(true);
             setRetryProfileCount(0); // Reset on success
+            // Associa o UUID ao contexto do Sentry — sem PII, apenas ID interno
+            // NUNCA usar await — fire and forget
+            setSentryUser(freshProfile.id);
             
             // --- VALIDAÇÃO FINAL (Fonte da Verdade: Supabase) ---
             // Verifica tanto o campo legado quanto o novo com versionamento

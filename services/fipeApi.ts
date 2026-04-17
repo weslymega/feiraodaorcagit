@@ -196,8 +196,8 @@ const fetchListWithCache = async (
 };
 
 export const fipeApi = {
-  getBrands: async (type: FipeVehicleType = 'carros'): Promise<Brand[]> => {
-    const key = `${type}_brands`;
+  getBrands: async (type: FipeVehicleType = 'carros', prefix?: string): Promise<Brand[]> => {
+    const key = prefix ? `${prefix}_${type}_brands` : `${type}_brands`;
     return fetchListWithCache(
       key,
       'brands',
@@ -213,8 +213,8 @@ export const fipeApi = {
     );
   },
 
-  getModels: async (type: FipeVehicleType, brandId: string): Promise<Model[]> => {
-    const key = `${type}_models_${brandId}`;
+  getModels: async (type: FipeVehicleType, brandId: string, prefix?: string): Promise<Model[]> => {
+    const key = prefix ? `${prefix}_${type}_models_${brandId}` : `${type}_models_${brandId}`;
     return fetchListWithCache(
       key,
       'models',
@@ -228,8 +228,8 @@ export const fipeApi = {
     );
   },
 
-  getYears: async (type: FipeVehicleType, brandId: string, modelId: string): Promise<Year[]> => {
-    const key = `${type}_years_${brandId}_${modelId}`;
+  getYears: async (type: FipeVehicleType, brandId: string, modelId: string, prefix?: string): Promise<Year[]> => {
+    const key = prefix ? `${prefix}_${type}_years_${brandId}_${modelId}` : `${type}_years_${brandId}_${modelId}`;
     return fetchListWithCache(
       key,
       'years',
@@ -243,8 +243,8 @@ export const fipeApi = {
     );
   },
 
-  getDetail: async (type: FipeVehicleType, brandId: string, modelId: string, yearId: string): Promise<FipeDetail | null> => {
-    const key = `fipe_detail_${type}_${brandId}_${modelId}_${yearId}`;
+  getDetail: async (type: FipeVehicleType, brandId: string, modelId: string, yearId: string, prefix?: string): Promise<FipeDetail | null> => {
+    const key = prefix ? `${prefix}_fipe_detail_${type}_${brandId}_${modelId}_${yearId}` : `fipe_detail_${type}_${brandId}_${modelId}_${yearId}`;
     
     // Check traditional fipe_cache for details
     try {

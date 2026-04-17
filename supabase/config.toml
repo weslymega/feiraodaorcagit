@@ -15,6 +15,9 @@ verify_jwt = false
 [functions.admin_get_stats]
 verify_jwt = false
 
+[functions.admin_clear_logs]
+verify_jwt = false
+
 # ─── User / Payment Functions ────────────────────────────────────────────────
 # verify_jwt removed: Gateway valida JWT. Função ainda verifica ownership.
 [functions.create-highlight-payment]
@@ -30,4 +33,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.apply-turbo-reward]
+verify_jwt = false
+
+[functions.create_ad]
+verify_jwt = false
+
+[functions.log_security_event]
 verify_jwt = false

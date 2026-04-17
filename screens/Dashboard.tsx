@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Search, MapPin, Bell, Car, Home, ChevronRight, Wrench, Smartphone, ArrowRight, Sparkles, Star, Map, Camera
+  Search, MapPin, Bell, Car, Home, ChevronRight, Wrench, Smartphone, ArrowRight, Sparkles, Star, Map, Camera, BarChart2
 } from 'lucide-react';
 import { Screen, User, AdItem, DashboardPromotion } from '../types';
 import { POPULAR_REAL_ESTATE, POPULAR_SERVICES, POPULAR_CARS, APP_LOGOS, PROMO_BANNERS, CATEGORY_ICONS } from '../constants';
@@ -524,7 +524,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
         onViewAll={onOpenTrending}
       />
 
-      {/* 8. Market Price Section (FIPE) */}
+      {/* 8. FIPE Explorer CTA Card (NEW) */}
+      <div className="px-5 mb-8">
+        <button 
+          onClick={() => onNavigate(Screen.FIPE_EXPLORER)}
+          className="w-full bg-gradient-to-br from-primary to-blue-700 rounded-[32px] p-6 shadow-xl shadow-blue-900/10 flex items-center justify-between group active:scale-[0.98] transition-all relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+          <div className="flex items-center gap-4 relative z-10 text-left">
+            <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+              <BarChart2 className="w-8 h-8 text-white" />
+            </div>
+            <div>
+               <h3 className="text-white font-black text-xl leading-tight">Tabela FIPE</h3>
+               <p className="text-blue-100 text-xs font-bold leading-tight mt-1">Consulte preços oficiais agora</p>
+            </div>
+          </div>
+          <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover:bg-white/20 transition-all">
+             <ChevronRight className="w-6 h-6 text-white" />
+          </div>
+        </button>
+      </div>
+
+      {/* 9. Market Price Section (FIPE) */}
       <MarketPriceSection
         items={marketPrices}
         isLoading={loadingPrices}

@@ -23,6 +23,7 @@ interface VehicleDetailsProps {
   onReport?: (report: ReportItem) => void;
   onBlockUser?: (userId: string) => void;
   onPrint?: () => void;
+  fairActive?: boolean;
 }
 
 // Helper component for specs
@@ -34,11 +35,18 @@ const SpecItem: React.FC<{ label: string; value: string | number }> = ({ label, 
 );
 
 
-export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null }> = ({ ad, onBack, onStartChat, isFavorite, onToggleFavorite, onToggleFairPresence, onViewProfile, onReport, onBlockUser, onPrint, user }) => {
+export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null }> = ({ 
+  ad, onBack, onStartChat, isFavorite, onToggleFavorite, 
+  onToggleFairPresence, onViewProfile, onReport, onBlockUser, 
+  onPrint, user, fairActive = true 
+}) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'informative' | 'error' } | null>(null);
+
+  // Computed State for Fair Presence (Architectural requirement: Global + Local)
+  const isActiveInFair = fairActive && (ad.isInFair || ad.fairPresence?.active);
 
   // Robust Image Handling
   const safeImages = (ad.images && ad.images.length > 0)
@@ -247,7 +255,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
             </div>
           )}
 
-          {(ad.isInFair || ad.fairPresence?.active) && !ad.isOwner && (
+          {isActiveInFair && !ad.isOwner && (
             <div className="mb-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-4 shadow-lg shadow-green-200 text-white flex items-center justify-between animate-in zoom-in duration-300">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm relative">
@@ -265,16 +273,40 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
           )}
 
           {ad.isOwner && (
-            <div className={`mb-6 rounded-2xl p-4 border-2 transition-all ${ad.isInFair || ad.fairPresence?.active ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-dashed border-gray-300'}`}>
+            <div className={`mb-6 rounded-2xl p-4 border-2 transition-all ${isActiveInFair ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-dashed border-gray-300'}`}>
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <Map className={`w-5 h-5 ${ad.isInFair || ad.fairPresence?.active ? 'text-green-600' : 'text-gray-400'}`} />
-                  <h3 className={`font-bold ${ad.isInFair || ad.fairPresence?.active ? 'text-green-800' : 'text-gray-600'}`}>{ad.isInFair || ad.fairPresence?.active ? 'Você está na feira!' : 'Vai à feira hoje?'}</h3>
+                  <Map className={`w-5 h-5 ${isActiveInFair ? 'text-green-600' : 'text-gray-400'}`} />
+                  <h3 className={`font-bold ${isActiveInFair ? 'text-green-800' : 'text-gray-600'}`}>
+                    {fairActive 
+                      ? (isActiveInFair ? 'Você está na feira!' : 'Vai à feira hoje?') 
+                      : 'Feira indisponível no momento'}
+                  </h3>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={ad.isInFair || ad.fairPresence?.active || false} onChange={onToggleFairPresence} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label>
+                <label className={`relative inline-flex items-center ${!fairActive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={isActiveInFair} 
+                    onChange={onToggleFairPresence} 
+                    disabled={!fairActive}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                </label>
               </div>
-              <p className="text-xs text-gray-500 mb-2">{ad.isInFair || ad.fairPresence?.active ? 'Seu veículo está destacado para compradores próximos. O status desativará automaticamente em:' : 'Ative para avisar aos compradores que o veículo está disponível para visitação presencial agora. (Disponível todo domingo)'}</p>
-              {(ad.isInFair || ad.fairPresence?.active) && (<div className="flex items-center gap-2 bg-green-100 w-fit px-3 py-1 rounded-lg"><Clock className="w-3 h-3 text-green-700" /><span className="text-xs font-bold text-green-800">{timeLeft || "6h 00m restantes"}</span></div>)}
+              <p className="text-xs text-gray-500 mb-2">
+                {!fairActive 
+                  ? "O administrador desativou a seção da feira globalmente. Seu status será preservado para quando a feira retornar."
+                  : (isActiveInFair 
+                      ? 'Seu veículo está destacado para compradores próximos. O status desativará automaticamente em:' 
+                      : 'Ative para avisar aos compradores que o veículo está disponível para visitação presencial agora. (Disponível todo domingo)')}
+              </p>
+              {isActiveInFair && (
+                <div className="flex items-center gap-2 bg-green-100 w-fit px-3 py-1 rounded-lg">
+                  <Clock className="w-3 h-3 text-green-700" />
+                  <span className="text-xs font-bold text-green-800">{timeLeft || "6h 00m restantes"}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -343,14 +375,14 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
               <SpecItem label="KM" value={ad.mileage !== undefined ? `${Number(ad.mileage).toLocaleString('pt-BR')} km` : 'N/A'} />
               <SpecItem label="Câmbio" value={ad.gearbox || "Manual"} />
               <SpecItem label="Combustível" value={ad.fuel || "Flex"} />
-              <SpecItem label="Cor" value={ad.color ? (ad.color.charAt(0).toUpperCase() + ad.color.slice(1)) : "Não informada"} />
-              {ad.steering && (
+              <SpecItem label="Cor" value={ad.detalhes?.color ? (ad.detalhes.color.charAt(0).toUpperCase() + ad.detalhes.color.slice(1)) : "Não informada"} />
+              {ad.detalhes?.steering && (
                 <SpecItem 
                   label="Direção" 
-                  value={ad.steering.charAt(0).toUpperCase() + ad.steering.slice(1).replace('au', 'áu').replace('et', 'ét')} 
+                  value={ad.detalhes.steering.charAt(0).toUpperCase() + ad.detalhes.steering.slice(1).replace('au', 'áu').replace('et', 'ét')} 
                 />
               )}
-              {ad.doors && <SpecItem label="Portas" value={`${ad.doors} Portas`} />}
+              {ad.detalhes?.doors && <SpecItem label="Portas" value={`${ad.detalhes.doors} Portas`} />}
               <SpecItem label="Motor" value={ad.engine || "1.0"} />
               <SpecItem label="Final da Placa" value={ad.plate ? ad.plate.slice(-1) : "?"} />
             </div>

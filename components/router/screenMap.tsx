@@ -58,6 +58,7 @@ import { FairList } from '../../screens/FairList';
 import { PrintPreview } from '../../screens/PrintPreview';
 import { PublicProfile } from '../../screens/PublicProfile';
 import { AdminPanel } from '../../screens/AdminPanel';
+const FipeExplorer = withLazy(React.lazy(() => import('../../screens/FipeExplorer').then(m => ({ default: m.FipeExplorer }))));
 import { AdminUsers } from '../../screens/AdminUsers';
 import { AdminVehicleAds } from '../../screens/AdminVehicleAds';
 import { AdminRealEstateAds } from '../../screens/AdminRealEstateAds';
@@ -320,6 +321,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                         onBlockUser={actions.handleBlockUser}
                         onPrint={() => navigateTo(Screen.PRINT_PREVIEW)}
                         user={user}
+                        fairActive={fairActive}
                     />
                 </ErrorBoundary>
             );
@@ -560,6 +562,9 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                     />
                 ) : <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />
             );
+
+        case Screen.FIPE_EXPLORER:
+            return <FipeExplorer onBack={goBackToDashboard} />;
 
         default:
             return <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => navigateTo(Screen.TERMS_OF_USE)} onViewPrivacy={() => navigateTo(Screen.PRIVACY_POLICY)} />;

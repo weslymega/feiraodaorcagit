@@ -15,6 +15,16 @@ import { api } from '../services/api';
 import { APP_URL } from '../constants';
 
 
+// Applies Brazilian phone mask to a raw or already-masked phone string.
+// Always strips non-digits first to prevent duplication when initializing
+// from a value that may already be formatted.
+const applyPhoneMask = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '').substring(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.substring(0, 2)}) ${digits.substring(2)}`;
+  return `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}`;
+};
+
 interface CreateAdProps {
   onBack: () => void;
   onFinish: (adData: Partial<AdItem>, createdAd?: AdItem) => void;
@@ -48,6 +58,20 @@ const ACTION_BTN_CLASS = "bg-primary hover:bg-primary-dark text-white font-bold 
 
 const CAR_FEATURES = ["Airbag", "Ar condicionado", "Alarme", "Bancos de couro", "Câmera de ré", "Sensor de ré", "Som", "Teto solar", "Vidro elétrico", "Trava elétrica"];
 const MOTO_FEATURES = ["ABS", "Computador de bordo", "Escapamento esportivo", "Bolsa / Baú / Bauleto", "Contra peso no guidon", "Alarme", "Amortecedor de direção", "Faróis de neblina", "GPS", "Som"];
+
+const COLORS = [
+  "preto",
+  "branco",
+  "prata",
+  "cinza",
+  "vermelho",
+  "azul",
+  "verde",
+  "amarelo",
+  "marrom",
+  "bege",
+  "outros"
+];
 
 interface StepContainerProps {
   title: string;
@@ -159,9 +183,9 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     year: editingAd?.year?.toString() || '',
     fuel: editingAd?.fuel || '',
     gearbox: editingAd?.gearbox || '',
-    color: editingAd?.color || '',
-    doors: editingAd?.doors || '',
-    steering: editingAd?.steering || '',
+    color: editingAd?.detalhes?.color || '',
+    doors: editingAd?.detalhes?.doors ?? null,
+    steering: editingAd?.detalhes?.steering || '',
     engine: editingAd?.engine || '',
     mileage: editingAd?.mileage?.toString() || '',
     fipePrice: editingAd?.fipePrice || 0,
@@ -181,12 +205,10 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     acceptsTrade: false,
     cep: editingAd?.cep || (user.cep || ''),
     location: editingAd?.location || user.location || '',
-    phone: editingAd?.contactPhone || user.phone || '',
+    phone: applyPhoneMask(editingAd?.contactPhone || user.phone || ''),
     boostPlan: 'gratis',
     fipeCategory: '' as FipeVehicleType | '',
-    transactionType: editingAd?.transactionType || '',
-    steering: editingAd?.steering || '',
-    doors: editingAd?.doors || ''
+    transactionType: editingAd?.transactionType || ''
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -838,17 +860,9 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
                     className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
                   >
                     <option value="">Selecione</option>
-                    <option value="Branco">Branco</option>
-                    <option value="Preto">Preto</option>
-                    <option value="Prata">Prata</option>
-                    <option value="Cinza">Cinza</option>
-                    <option value="Vermelho">Vermelho</option>
-                    <option value="Azul">Azul</option>
-                    <option value="Verde">Verde</option>
-                    <option value="Amarelo">Amarelo</option>
-                    <option value="Marrom">Marrom</option>
-                    <option value="Bege">Bege</option>
-                    <option value="Outros">Outros</option>
+                    {COLORS.map(c => (
+                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -876,16 +890,16 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
                       className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
                     >
                       <option value="">Selecione</option>
-                      <option value="Hidráulica">Hidráulica</option>
-                      <option value="Elétrica">Elétrica</option>
-                      <option value="Mecânica">Mecânica</option>
+                      <option value="hidraulica">Hidráulica</option>
+                      <option value="eletrica">Elétrica</option>
+                      <option value="mecanica">Mecânica</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Portas</label>
                     <select 
-                      value={formData.doors} 
-                      onChange={(e) => setFormData(p => ({ ...p, doors: e.target.value }))} 
+                      value={formData.doors || ''} 
+                      onChange={(e) => setFormData(p => ({ ...p, doors: e.target.value ? Number(e.target.value) : null }))} 
                       className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
                     >
                       <option value="">Selecione</option>
@@ -937,17 +951,9 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
                     className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
                   >
                     <option value="">Selecione</option>
-                    <option value="Branco">Branco</option>
-                    <option value="Preto">Preto</option>
-                    <option value="Prata">Prata</option>
-                    <option value="Cinza">Cinza</option>
-                    <option value="Vermelho">Vermelho</option>
-                    <option value="Azul">Azul</option>
-                    <option value="Verde">Verde</option>
-                    <option value="Amarelo">Amarelo</option>
-                    <option value="Marrom">Marrom</option>
-                    <option value="Bege">Bege</option>
-                    <option value="Outros">Outros</option>
+                    {COLORS.map(c => (
+                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -955,7 +961,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
                   <select 
                     value={formData.gearbox} 
                     onChange={(e) => setFormData(p => ({ ...p, gearbox: e.target.value }))} 
-                    className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                    className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all"
                   >
                     <option value="">Selecione</option>
                     <option value="Manual">Manual</option>
@@ -964,7 +970,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
                 </div>
               </div>
 
-              {/* Novos campos opcionais (Fluxo FIPE) */}
+              {/* Novos campos opcionais (Exceto para Motos) */}
               {formData.vehicleType !== 'Moto' && formData.fipeCategory !== 'motos' && (
                 <div className="grid grid-cols-2 gap-4 mt-4 animate-in fade-in slide-in-from-top-2">
                   <div>
@@ -975,16 +981,16 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
                       className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
                     >
                       <option value="">Selecione</option>
-                      <option value="Hidráulica">Hidráulica</option>
-                      <option value="Elétrica">Elétrica</option>
-                      <option value="Mecânica">Mecânica</option>
+                      <option value="hidraulica">Hidráulica</option>
+                      <option value="eletrica">Elétrica</option>
+                      <option value="mecanica">Mecânica</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Portas</label>
                     <select 
-                      value={formData.doors} 
-                      onChange={(e) => setFormData(p => ({ ...p, doors: e.target.value }))} 
+                      value={formData.doors || ''} 
+                      onChange={(e) => setFormData(p => ({ ...p, doors: e.target.value ? Number(e.target.value) : null }))} 
                       className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
                     >
                       <option value="">Selecione</option>
@@ -1160,18 +1166,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 11) value = value.substring(0, 11);
-
-    let formatted = value;
-    if (value.length > 2) {
-      formatted = `(${value.substring(0, 2)}) `;
-      if (value.length > 7) {
-        formatted += `${value.substring(2, 7)}-${value.substring(7)}`;
-      } else {
-        formatted += value.substring(2);
-      }
-    }
+    const formatted = applyPhoneMask(e.target.value);
     setFormData(p => ({ ...p, phone: formatted }));
   };
 
@@ -1184,7 +1179,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
         <div className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 relative"><label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">CEP</label><div className="relative"><input type="text" value={formData.cep} onChange={handleCepChange} placeholder="00000-000" className="w-full bg-white border border-gray-200 rounded-xl p-3 font-medium text-gray-900" inputMode="numeric" maxLength={9} />{isLoadingCep && <div className="absolute right-3 top-3"><Loader2 className="w-5 h-5 text-primary animate-spin" /></div>}</div></div>
           {formData.location && (<div className="p-4 bg-green-50 rounded-2xl border border-green-100"><div className="flex items-start gap-3"><div className="bg-white p-2 rounded-full shadow-sm text-green-600"><MapPin className="w-5 h-5" /></div><div><p className="text-xs text-green-700 font-bold uppercase mb-0.5">Endereço Identificado</p><p className="font-bold text-gray-900 leading-tight mb-1">{addressDetails.logradouro || formData.location}</p>{addressDetails.bairro && <p className="text-sm text-gray-700">{addressDetails.bairro} - {addressDetails.localidade}, {addressDetails.uf}</p>}</div></div></div>)}
-          <div className="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"><div className="bg-green-50 p-2 rounded-full"><Phone className="w-5 h-5 text-green-600" /></div><div className="flex-1"><p className="text-xs text-gray-400 font-bold uppercase mb-1">Celular / WhatsApp *</p><input type="tel" placeholder="(11) 99999-9999" value={formData.phone} onChange={handlePhoneChange} className="w-full font-bold text-gray-800 outline-none text-xl" maxLength={15} /></div></div>
+          <div className="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"><div className="bg-green-50 p-2 rounded-full"><Phone className="w-5 h-5 text-green-600" /></div><div className="flex-1"><p className="text-xs text-gray-400 font-bold uppercase mb-1">Celular / WhatsApp *</p><input type="tel" placeholder="(11) 99999-9999" value={formData.phone} onChange={handlePhoneChange} className="w-full font-bold text-gray-800 outline-none text-xl" maxLength={15} autoComplete="off" autoCorrect="off" spellCheck={false} /></div></div>
         </div>
       </StepContainer>
     );

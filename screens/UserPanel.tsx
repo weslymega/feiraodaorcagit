@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Heart, Tag, Settings, MapPin, ShieldCheck, User, Wrench } from 'lucide-react';
+import { Heart, Tag, Settings, MapPin, ShieldCheck, User, Wrench, BarChart2 } from 'lucide-react';
 import { Screen, User as UserType } from '../types';
 import { CardButton } from '../components/Shared';
 import { APP_LOGOS } from '../constants';
@@ -96,6 +96,12 @@ export const UserPanel: React.FC<UserPanelProps> = ({ user, onNavigate, onLogout
               label="Configurações & Segurança"
               bgIcon="bg-blue-50"
               onClick={() => onNavigate(Screen.SETTINGS)}
+            />
+            <CardButton
+              icon={<BarChart2 className="w-5 h-5 text-primary" />}
+              label="Consultar Tabela FIPE"
+              bgIcon="bg-blue-50"
+              onClick={() => onNavigate(Screen.FIPE_EXPLORER)}
             />
           </div>
         </div>

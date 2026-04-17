@@ -19,6 +19,7 @@
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/haptics": "^8.0.1",
     "@capacitor/share": "^8.0.1",
+    "@sentry/react": "^10.49.0",
     "@supabase/supabase-js": "^2.90.1",
     "browser-image-compression": "^2.0.2",
     "lucide-react": "^0.555.0",

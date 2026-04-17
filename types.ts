@@ -57,7 +57,8 @@ export enum Screen {
   RESET_PASSWORD = 'RESET_PASSWORD',
   ACCEPT_TERMS = 'ACCEPT_TERMS',
   BLOCKED_USERS = 'BLOCKED_USERS',
-  PRINT_PREVIEW = 'PRINT_PREVIEW'
+  PRINT_PREVIEW = 'PRINT_PREVIEW',
+  FIPE_EXPLORER = 'FIPE_EXPLORER'
 }
 
 export interface User {
@@ -160,6 +161,7 @@ export interface AdItem {
   doors?: string;
   steering?: string;
   engine?: string;
+  detalhes?: any;
 
   // Real Estate Specifics
   realEstateType?: string; // e.g., 'Apartamento', 'Casa', 'Comercial'

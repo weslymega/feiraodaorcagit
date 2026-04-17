@@ -49,7 +49,9 @@ const COLORS = [
   { name: 'Azul', hex: '#3B82F6' },
   { name: 'Verde', hex: '#22C55E' },
   { name: 'Amarelo', hex: '#EAB308' },
-  { name: 'Outra', hex: 'transparent', icon: true }
+  { name: 'Marrom', hex: '#8B4513' },
+  { name: 'Bege', hex: '#F5F5DC' },
+  { name: 'Outros', hex: 'transparent', icon: true }
 ];
 
 const FUEL_OPTIONS = ['Flex', 'Gasolina', 'Diesel', 'Elétrico', 'Híbrido'];
@@ -75,7 +77,13 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   // Filter Modal State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [initialFilters, setInitialFilters] = useState<any>(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+
+  const handleCancelFilters = () => {
+    if (initialFilters) setFilters(initialFilters);
+    setIsFilterOpen(false);
+  };
 
   // FIPE API Data States
   const [fipeBrands, setFipeBrands] = useState<Brand[]>([]);
@@ -94,6 +102,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     maxYear: '',
     maxMileage: '',
     transmission: '',
+    steering: '',
     fuel: '',
     color: ''
   });
@@ -172,13 +181,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
   }, []);
 
   // Limpeza de filtros ao sair da tela (Equivalente ao useFocusEffect)
-  useEffect(() => {
-    return () => {
-      if (onClearFilter) {
-        onClearFilter();
-      }
-    };
-  }, [onClearFilter]);
+  // Nota: movido para baixo de clearFilters para poder acessá-lo.
 
   // Load Brands when vehicle type (selectedGroup) changes
   useEffect(() => {
@@ -259,11 +262,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       setFilters(prev => ({ ...prev, [field]: '' }));
       return;
     }
-    const numberValue = Number(cleanValue) / 100;
-    const formatted = numberValue.toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+    const numberValue = Number(cleanValue);
+    const formatted = numberValue.toLocaleString('pt-BR');
     setFilters(prev => ({ ...prev, [field]: formatted }));
     setHasUserInteracted(true);
   };
@@ -314,6 +314,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       filters.maxYear ||
       filters.maxMileage ||
       filters.transmission ||
+      filters.steering ||
       filters.fuel ||
       filters.color;
 
@@ -435,10 +436,14 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       if (filterMaxMileage > 0 && (ad.mileage || 0) > filterMaxMileage) return false;
 
       if (filters.transmission && ad.gearbox !== filters.transmission) return false;
+      if (filters.steering) {
+        const adSteering = (ad.detalhes?.steering || "").toLowerCase();
+        if (adSteering !== filters.steering) return false;
+      }
       if (filters.fuel && ad.fuel !== filters.fuel) return false;
       if (filters.color) {
-        const adColor = (ad.color || ad.detalhes?.color || "").toLowerCase();
-        if (!adColor.includes(filters.color.toLowerCase())) return false;
+        const adColor = (ad.detalhes?.color || "").toLowerCase();
+        if (adColor !== filters.color.toLowerCase()) return false;
       }
 
       return true;
@@ -483,15 +488,16 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
   // Filters that are counted for the badge (excluding Brand/Model since they are visible)
   const activeFiltersCount = useMemo(() => [
     filters.minPrice, filters.maxPrice, filters.minYear, filters.maxYear,
-    filters.maxMileage, filters.transmission, filters.fuel, filters.color
+    filters.maxMileage, filters.transmission, filters.steering, filters.fuel, filters.color
   ].filter(Boolean).length, [filters]);
 
   const clearFilters = React.useCallback(() => {
     setFilters({
       brand: '', baseModel: '', version: '',
       minPrice: '', maxPrice: '', minYear: '', maxYear: '',
-      maxMileage: '', transmission: '', fuel: '', color: ''
+      maxMileage: '', transmission: '', steering: '', fuel: '', color: ''
     });
+    setInitialFilters(null);
     setSearchTerm('');
     // Reseta debounce p/ limpar tela
     setDebouncedSearch('');
@@ -501,6 +507,13 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     if (onClearFilter) onClearFilter();
   }, [onClearFilter]);
 
+  // Executa clearFilters ao desmontar o componente (sair da tela)
+  useEffect(() => {
+    return () => {
+      clearFilters();
+    };
+  }, [clearFilters]);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-[110px]">
       <Header
@@ -508,7 +521,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
         onBack={onBack}
         rightElement={
           <button
-            onClick={() => setIsFilterOpen(true)}
+            onClick={() => {
+              setInitialFilters(filters);
+              setIsFilterOpen(true);
+            }}
             className={`px-4 py-2 rounded-full transition-colors flex items-center gap-2 ${activeFiltersCount > 0
               ? 'bg-primary text-white shadow-md'
               : 'bg-white text-primary border border-primary/20 hover:bg-blue-50'
@@ -737,7 +753,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       {/* FILTER MODAL (Bottom Sheet) - Reduced Content */}
       {isFilterOpen && (
         <div className="fixed inset-0 z-[5000] flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsFilterOpen(false)} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={handleCancelFilters} />
 
           <div 
             className="bg-white w-full max-w-md rounded-t-[30px] shadow-2xl relative animate-slide-in-from-bottom flex flex-col max-h-[85vh] transition-all duration-300"
@@ -751,7 +767,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                   <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">{filteredAds.length}</span>
                 )}
               </div>
-              <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+              <button onClick={handleCancelFilters} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
@@ -888,6 +904,35 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                 </div>
               </section>
 
+              {/* Direção */}
+              <section>
+                <label className="text-sm font-bold text-gray-700 mb-3 block">Direção</label>
+                <div className="flex bg-gray-100 p-1 rounded-xl">
+                  {[
+                    { id: 'hidraulica', label: 'Hidráulica' }, 
+                    { id: 'eletrica', label: 'Elétrica' }, 
+                    { id: 'mecanica', label: 'Mecânica' }
+                  ].map(type => {
+                    const isSelected = filters.steering === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        onClick={() => {
+                          setFilters(p => ({ ...p, steering: isSelected ? '' : type.id }));
+                          setHasUserInteracted(true);
+                        }}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${isSelected
+                          ? 'bg-white text-primary shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                      >
+                        {type.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
               {/* Cor */}
               <section>
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
@@ -933,7 +978,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                 Limpar
               </button>
               <button
-                onClick={() => setIsFilterOpen(false)}
+                onClick={() => {
+                  setInitialFilters(null);
+                  setIsFilterOpen(false);
+                }}
                 className="flex-1 py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-transform flex items-center justify-center gap-2"
               >
                 {hasUserInteracted 

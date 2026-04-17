@@ -1,6 +1,7 @@
 import { api, supabase } from './api';
 import { TurboPlan, TurboSession } from '../types';
 import { debugLogger } from '../utils/DebugLogger';
+import { captureError, addBreadcrumb } from './sentry';
 
 const FUNCTION_URL = 'https://xkkjjvrucnlilegwnoey.supabase.co/functions/v1/apply-turbo-reward';
 
@@ -20,6 +21,10 @@ export const turboService = {
      * @returns O objeto de resposta padronizado CreateTurboSessionResponse
      */
     createTurboSession: async (adId: string, turboType: TurboPlan): Promise<CreateTurboSessionResponse> => {
+        // 📖 BREADCRUMB: Usuário escolheu o plano Turbo — ANTES do vídeo AdMob
+        // NÃO adicionar breadcrumbs dentro do ciclo de vídeo
+        addBreadcrumb('turbo_session_requested', { adId, turboType }, 'info');
+
         try {
             const token = await api.getValidToken();
 
@@ -32,8 +37,6 @@ export const turboService = {
                 throw new Error(error.message || 'Falha na comunicação com a Edge Function.');
             }
 
-            // Converte o possível formato de data que retorne do servidor no padrão esperado.
-            // E assegura que a checagem falha com a reposta formatada unificada:
             if (!data?.success && data?.error) {
                 return {
                     success: false,
@@ -49,6 +52,12 @@ export const turboService = {
             };
         } catch (err: any) {
             console.error('[turboService] createTurboSession Error:', err);
+            // 🚨 Sentry: falha ao criar sessão Turbo (Edge Function indisponível ou erro de server)
+            captureError(err, {
+                tags: { flow: 'turbo', endpoint: 'create-turbo-session', turbo_type: turboType },
+                extra: { adId },
+                level: 'error',
+            });
             return {
                 success: false,
                 sessionId: '',
@@ -71,12 +80,24 @@ export const turboService = {
             const { data: sessionData } = await supabase.auth.getSession();
             const token = sessionData?.session?.access_token;
 
-            if (!token) throw new Error("TOKEN AUSENTE");
+            if (!token) {
+                // 🚨 Sentry: sem token APÓS refresh — caso crítico
+                captureError(new Error('applyTurboReward: TOKEN AUSENTE após refresh'), {
+                    tags: { flow: 'turbo', endpoint: 'apply-turbo-reward', type: 'missing_token' },
+                    extra: { adId },
+                    level: 'fatal',
+                });
+                throw new Error("TOKEN AUSENTE");
+            }
 
             debugLogger.log("🔑 TOKEN OK (VALIDADO)");
+
+            // 📖 BREADCRUMB: Chamada à Edge Function — DEPOIS que o vídeo terminou
+            // Este breadcrumb está FORA do ciclo do AdMob — é seguro adicioná-lo aqui
+            addBreadcrumb('turbo_reward_api_call', { adId }, 'info');
+
             debugLogger.log('📡 Chamando Edge Function apply-turbo-reward');
 
-            // Usamos o invoke mas capturamos o erro de forma mais detalhada
             const response = await supabase.functions.invoke(
                 "apply-turbo-reward",
                 {
@@ -85,16 +106,25 @@ export const turboService = {
             );
 
             if (response.error) {
-                // Tenta extrair o corpo do erro se disponível
                 let errorBody: any = null;
                 try {
-                    // Em algumas versões do SDK, o erro contém o texto original
                     errorBody = response.error instanceof Error ? response.error.message : JSON.stringify(response.error);
                 } catch (e) { }
 
                 debugLogger.log(`❌ ERRO FUNCTION: ${response.error.message || 'Erro desconhecido'}`);
                 if (errorBody) debugLogger.log(`📦 DETALHES DO ERRO: ${errorBody}`);
-                
+
+                // 🚨 Sentry: falha confirmada na Edge Function de recompensa
+                captureError(response.error, {
+                    tags: {
+                        flow: 'turbo',
+                        endpoint: 'apply-turbo-reward',
+                        type: 'edge_function_error',
+                    },
+                    extra: { adId, errorBody },
+                    level: 'error',
+                });
+
                 throw new Error(response.error.message || "FALHA_EDGE_FUNCTION");
             }
 
@@ -110,11 +140,19 @@ export const turboService = {
             };
         } catch (err: any) {
             console.error('[turboService] applyTurboReward Error:', err);
-            
-            // Log final para o AdDebug
+
             const diagnostic = err.message || 'Erro desconhecido';
             debugLogger.log(`❌ ERRO FINAL: ${diagnostic}`);
-            
+
+            // Captura apenas se não foi capturado ainda (evita duplicidade)
+            if (!err.message?.includes('TOKEN AUSENTE') && !err.message?.includes('FALHA_EDGE_FUNCTION')) {
+                captureError(err, {
+                    tags: { flow: 'turbo', endpoint: 'apply-turbo-reward', type: 'unexpected' },
+                    extra: { adId, diagnostic },
+                    level: 'error',
+                });
+            }
+
             return {
                 success: false,
                 error: diagnostic
