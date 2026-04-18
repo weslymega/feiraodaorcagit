@@ -40,7 +40,7 @@ class AdManager {
     // Diagnostic State
     private adError: { type: string; details: any; timestamp: string } | null = null;
     private adErrorListeners: ((error: any) => void)[] = [];
-    private readonly VERSION_INFO = { name: "1.1.9", code: 20 };
+    private readonly VERSION_INFO = { name: "1.2.0", code: 21 };
 
     // Banner & Concurrency State
     private isBannerShowing: boolean = false;
