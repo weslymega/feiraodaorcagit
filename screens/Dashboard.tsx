@@ -524,25 +524,50 @@ export const Dashboard: React.FC<DashboardProps> = ({
         onViewAll={onOpenTrending}
       />
 
-      {/* 8. FIPE Explorer CTA Card (NEW) */}
-      <div className="px-5 mb-8">
+      {/* 8. FIPE Explorer CTA Card (Branded Brasília Edition) */}
+      <div className="px-5 mb-10">
         <button 
           onClick={() => onNavigate(Screen.FIPE_EXPLORER)}
-          className="w-full bg-gradient-to-br from-primary to-blue-700 rounded-[32px] p-6 shadow-xl shadow-blue-900/10 flex items-center justify-between group active:scale-[0.98] transition-all relative overflow-hidden"
+          className="w-full h-40 rounded-[2.5rem] shadow-2xl shadow-primary/30 flex items-center justify-between group active:scale-[0.98] transition-all relative overflow-hidden border border-white/20"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-          <div className="flex items-center gap-4 relative z-10 text-left">
-            <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
-              <BarChart2 className="w-8 h-8 text-white" />
+          {/* Branded Background Image - Using Official Orca Blue / Ipê Yellow Palette */}
+          <div className="absolute inset-0 z-0">
+            <img 
+              src="/assets/ponte_jk_v3.png" 
+              alt="Ponte JK Branded" 
+              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+            />
+            {/* Gradient Overlays using Brand Colors */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/50 to-transparent z-10"></div>
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
+          </div>
+
+          {/* Branded Glowing Accent Lines */}
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent z-20"></div>
+          <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/30 to-transparent z-20"></div>
+
+          <div className="flex items-center gap-6 relative z-30 ml-8 text-left">
+            <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20 shadow-2xl group-hover:bg-white/20 transition-all duration-500">
+              <BarChart2 className="w-9 h-9 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
             </div>
-            <div>
-               <h3 className="text-white font-black text-xl leading-tight">Tabela FIPE</h3>
-               <p className="text-blue-100 text-xs font-bold leading-tight mt-1">Consulte preços oficiais agora</p>
+            <div className="flex flex-col">
+               <div className="flex items-center gap-2">
+                 <h3 className="text-white font-black text-2xl tracking-tight leading-none uppercase">Tabela FIPE</h3>
+                 <Sparkles className="w-5 h-5 text-accent animate-pulse" />
+               </div>
+               <p className="text-white/80 text-[11px] font-black uppercase tracking-[0.3em] mt-3 flex items-center gap-2.5">
+                 <span className="w-6 h-[3px] bg-accent rounded-full shadow-[0_0_12px_rgba(234,179,8,0.8)]"></span>
+                 Brasília • Oficial
+               </p>
             </div>
           </div>
-          <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover:bg-white/20 transition-all">
-             <ChevronRight className="w-6 h-6 text-white" />
+
+          <div className="mr-8 w-14 h-14 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover:bg-accent group-hover:border-accent group-hover:translate-x-2 transition-all duration-500 shadow-xl group-hover:shadow-accent/40">
+             <ArrowRight className="w-8 h-8 text-white group-hover:text-primary transition-colors" />
           </div>
+
+          {/* Interactive Light Sweep Effect */}
+          <div className="absolute inset-0 z-40 pointer-events-none bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer"></div>
         </button>
       </div>
 
