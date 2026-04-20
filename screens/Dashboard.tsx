@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { AnimatedAvatar } from '../components/AnimatedAvatar';
 import {
   Search, MapPin, Bell, Car, Home, ChevronRight, Wrench, Smartphone, ArrowRight, Sparkles, Star, Map, Camera, BarChart2
 } from 'lucide-react';
@@ -14,6 +15,7 @@ interface DashboardProps {
   user: User;
   onNavigate: (screen: Screen) => void;
   onLogout: () => void;
+  onViewProfile: () => void;
   onAdClick?: (ad: AdItem) => void;
   adsAtFair?: AdItem[]; // Veículos na feira
   featuredAds?: AdItem[]; // Veículos em destaque (Dinâmico)
@@ -175,6 +177,8 @@ import { MarketPriceItem } from '../types';
 export const Dashboard: React.FC<DashboardProps> = ({
   user,
   onNavigate,
+  onLogout,
+  onViewProfile,
   onAdClick,
   adsAtFair,
   featuredAds,
@@ -282,16 +286,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
             />
           </div>
 
-          {/* Notification Button */}
-          <button
-            onClick={() => onNavigate(Screen.NOTIFICATIONS)}
-            className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <Bell className="w-6 h-6 text-gray-700" />
-            {hasNotifications && (
-              <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-            )}
-          </button>
+          {/* Notification & Profile Button Container */}
+          <div className="flex items-center gap-1">
+            {/* User Profile Quick Access */}
+            <button
+              onClick={onViewProfile}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              title="Ver meu Perfil Público"
+            >
+              <AnimatedAvatar 
+                avatarId={user.avatar_id} 
+                avatarUrl={user.avatarUrl} 
+                name={user.name}
+                mode="hover" 
+                size={34} 
+              />
+            </button>
+
+            {/* Notification Button */}
+            <button
+              onClick={() => onNavigate(Screen.NOTIFICATIONS)}
+              className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <Bell className="w-6 h-6 text-gray-700" />
+              {hasNotifications && (
+                <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Search Bar Container */}

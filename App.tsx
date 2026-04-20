@@ -8,6 +8,7 @@ import { Toast } from './components/Shared';
 
 import { App as CapApp } from '@capacitor/app';
 import { api } from './services/api';
+import { FirebaseService } from './services/firebaseService';
 
 const App: React.FC = () => {
   const state = useAppState();
@@ -57,6 +58,39 @@ const App: React.FC = () => {
       appUrlListener.then(l => l.remove());
     };
   }, [state.isAppReady, state.sessionReady, actions]);
+
+  // --- FIREBASE MONITORING ---
+  useEffect(() => {
+    if (state.currentScreen) {
+      FirebaseService.trackScreen(state.currentScreen);
+    }
+  }, [state.currentScreen]);
+
+  useEffect(() => {
+    if (state.user?.id) {
+      FirebaseService.setUserId(state.user.id);
+    }
+  }, [state.user?.id]);
+
+  // --- HARDENING: MONITOR DE SELF-HEALING (Sincronização de Anúncios) ---
+  useEffect(() => {
+    if (!state.sessionReady) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      state.activeLocksRef.current.forEach((lock, adId) => {
+        // Se o lock persistir por mais de 10 segundos sem ACK do Realtime, algo falhou.
+        // Forçamos um refetch para garantir consistência absoluta com o banco.
+        if (now - lock.startTime > 10000) {
+          console.warn(`[Self-Healing] Sincronização estagnada para ${adId}. Recuperando via Refetch...`);
+          // Note: O lock é removido dentro do refetchAd após sucesso.
+          actions.refetchAd(adId);
+        }
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [state.sessionReady, actions]);
 
   // --- CONTROLE DE LOADING GLOBAL EXPLÍCITO (FULLSCREEN & EXCLUSIVO) ---
   // Racional: Não bloqueamos rotas híbridas (Termos/Privacidade) se já tivermos sessão básica,

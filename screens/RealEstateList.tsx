@@ -12,6 +12,7 @@ import AdManager from '../services/AdManager';
 const adManager = AdManager.getInstance();
 import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../utils/boostRibbon';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
+import { api, USE_NEW_API } from '../services/api';
 
 interface RealEstateListProps {
   ads: AdItem[];
@@ -73,6 +74,55 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
     maxArea: '',
     amenities: [] as string[]
   });
+
+  // --- NOVA LÓGICA DE PAGINAÇÃO (FASE 7) ---
+  const [pagedAds, setPagedAds] = useState<AdItem[]>([]);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const ITEMS_PER_PAGE = 12;
+
+  // Carregamento de Dados (Backend-side)
+  const loadMoreData = async (reset = false) => {
+    if (!USE_NEW_API || loading || (!hasMore && !reset)) return;
+
+    setLoading(true);
+    const nextOffset = reset ? 0 : page * ITEMS_PER_PAGE;
+
+    try {
+      const results = await api.getAdsList({
+        limit: ITEMS_PER_PAGE,
+        offset: nextOffset,
+        category: 'imoveis',
+        searchTerm: searchTerm,
+        filters: {
+          ...filters,
+          transactionType: transactionType !== 'all' ? transactionType : undefined,
+          realEstateType: selectedPropertyType !== 'todos' ? selectedPropertyType : undefined
+        }
+      });
+
+      if (results.length < ITEMS_PER_PAGE) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+
+      setPagedAds(prev => reset ? results : [...prev, ...results]);
+      setPage(prev => reset ? 1 : prev + 1);
+    } catch (error) {
+      console.error("❌ Erro ao carregar imóveis:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Trigger: Quando os filtros mudam, resetamos a lista
+  useEffect(() => {
+    if (USE_NEW_API) {
+      loadMoreData(true);
+    }
+  }, [searchTerm, transactionType, selectedPropertyType, filters]);
 
 
   // Handle Filter Context
@@ -204,7 +254,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
     return filtered;
   }, [ads, transactionType, searchTerm, filters, selectedPropertyType, isTrending]);
 
-  const feedItems = filteredAds;
+  const feedItems = USE_NEW_API ? pagedAds : filteredAds;
 
   const searchSuggestions = useMemo(() => {
     if (searchTerm.length < 2) return [];
@@ -434,13 +484,14 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       {/* Results List */}
       <div className="px-4 flex flex-col gap-4">
         <p className="text-sm font-bold text-gray-700 ml-1 mb-0">
-          {ads === undefined ? 'Buscando imóveis...' : `${filteredAds.length} imóveis encontrados`}
+          {loading && feedItems.length === 0 ? 'Buscando imóveis...' : `${USE_NEW_API && hasMore ? 'Mais de ' : ''}${feedItems.length} imóveis encontrados`}
         </p>
 
-        {ads === undefined ? (
+        {loading && feedItems.length === 0 ? (
           [1, 2, 3].map(i => <AdCardSkeleton key={i} variant="vertical" />)
         ) : feedItems.length > 0 ? (
-          feedItems.map((item) => {
+          <>
+            {feedItems.map((item) => {
             // Se for um slot de anúncio (Regra #3)
 
             const ad = item;
@@ -511,8 +562,30 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                 </div>
               </div>
             );
-          })
-        ) : (
+          })}
+
+          {/* Botão Carregar Mais (Infinite Scroll Manual) */}
+          {USE_NEW_API && hasMore && (
+            <button
+              onClick={() => loadMoreData()}
+              disabled={loading}
+              className="w-full py-4 bg-white border border-gray-200 rounded-2xl text-primary font-bold text-sm shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 mb-4"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  Carregando...
+                </>
+              ) : (
+                <>
+                  Carregar mais imóveis
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          )}
+        </>
+      ) : (
           <div className="col-span-1 sm:col-span-2 py-12 flex flex-col items-center justify-center text-center px-6 animate-in fade-in duration-500">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <Search className="w-10 h-10 text-gray-300" />

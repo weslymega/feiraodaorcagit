@@ -40,6 +40,10 @@ export const useAppState = () => {
   // Temporary Filter Context
   const [filterContext, setFilterContext] = useState<FilterContext | null>(null);
 
+  // --- HARDENING: SISTEMA DE SINCRONIZAÇÃO DETERMINÍSTICA ---
+  const activeLocksRef = useRef<Map<string, { expectedUpdateAt: string, startTime: number }>>(new Map());
+  const ENABLE_REALTIME_TURBO_SYNC = true;
+
   // Initialize state - CLEAN SLATE (No Mocks)
   // CRITICAL: Default to null until session is confirmed
   const [user, setUser] = useState<User | null>(null);
@@ -128,26 +132,78 @@ export const useAppState = () => {
     };
   }, []);
 
-  // 1.2 Subscription Realtime para Status de Anúncios (Sincronização do Feed)
+  // 1.2 Subscription Realtime para Status de Anúncios (Sincronização do Feed & ACK Flow)
   useEffect(() => {
-    console.log("📡 Subscribing to Anuncios Realtime (Status Sync)...");
+    if (!ENABLE_REALTIME_TURBO_SYNC) return;
+
+    console.log("📡 Subscribing to Anuncios Realtime (Hardened Sync & ACK Flow)...");
 
     const channel = (supabase as any)
       .channel('public:anuncios_status')
       .on('postgres_changes', {
-        event: 'UPDATE', // Monitorar mudanças de status
+        event: 'UPDATE', 
         schema: 'public',
         table: 'anuncios'
       }, (payload: any) => {
-        const adId = payload.new.id;
-        const newStatus = String(payload.new.status || '').toLowerCase();
+        const newAd = payload.new;
+        const adId = newAd.id;
         
-        // Regra: Se o anúncio não for mais 'active' ou 'ativo', removemos do feed local
-        const isActive = newStatus === 'active' || newStatus === 'ativo';
+        // 1. VERSIONAMENTO LÓGICO: Verificar se o evento é mais recente que o esperado
+        const currentLock = activeLocksRef.current.get(adId);
+        
+        if (currentLock) {
+          const incomingTS = new Date(newAd.updated_at || 0).getTime();
+          const expectedTS = new Date(currentLock.expectedUpdateAt || 0).getTime();
+
+          if (incomingTS < expectedTS) {
+            console.log(`[Sync-Hardening] ⏳ Evento Realtime ignorado para ${adId}: Evento antigo recebido.`);
+            return;
+          }
+
+          if (incomingTS === expectedTS) {
+            console.log(`[Sync-Hardening] ✅ ACK Confirmado via Realtime para ${adId}. Liberando lock.`);
+            activeLocksRef.current.delete(adId);
+          } else if (incomingTS > expectedTS) {
+            console.log(`[Sync-Hardening] 🚀 Mudança externa mais recente detectada para ${adId}. Liberando lock.`);
+            activeLocksRef.current.delete(adId);
+          }
+        }
+
+        // 2. ATUALIZAÇÃO DETERMINÍSTICA (Substituição Completa)
+        // Mapeamos os dados brutos do Supabase para o nosso AdItem usando os padrões do api.ts
+        // Nota: Idealmente o api.ts teria um export do mapAdData público
+        const adStatus = String(newAd.status || '').toLowerCase();
+        const isActive = adStatus === 'active' || adStatus === 'ativo';
 
         if (!isActive) {
-          console.log(`🚫 Anúncio ${adId} não é mais ativo (${newStatus}). Removendo do feed.`);
+          console.log(`🚫 Anúncio ${adId} não é mais ativo. Removendo do feed.`);
           setRealAds((prev: AdItem[]) => (prev || []).filter(ad => ad.id !== adId));
+          setMyAds((prev: AdItem[]) => prev.map(ad => ad.id === adId ? { ...ad, status: AdStatus.INACTIVE } : ad));
+        } else {
+          // Update genérico para manter sincronismo de turbo e outros campos
+          const updateItem = (item: AdItem) => {
+            if (item.id !== adId) return item;
+
+            // Diff Check SIMPLIFICADO para evitar re-render se nada mudou
+            const hasChanges = item.status !== (newAd.status || item.status) || 
+                               item.turbo_progress !== (newAd.turbo_progress ?? item.turbo_progress) ||
+                               item.turbo_expires_at !== (newAd.turbo_expires_at ?? item.turbo_expires_at);
+
+            if (!hasChanges) return item;
+
+            return {
+              ...item,
+              status: (newAd.status ? (AdStatus as any)[newAd.status.toUpperCase()] : item.status) || item.status,
+              turbo_progress: newAd.turbo_progress ?? item.turbo_progress,
+              turbo_expires_at: newAd.turbo_expires_at ?? item.turbo_expires_at,
+              is_turbo_active: !!newAd.turbo_expires_at && new Date(newAd.turbo_expires_at) > new Date(),
+              lastUpdateSource: 'realtime',
+              syncVersion: newAd.updated_at
+            };
+          };
+
+          setRealAds((prev: AdItem[] = []) => prev.map(updateItem));
+          setMyAds((prev: AdItem[] = []) => prev.map(updateItem));
         }
       })
       .subscribe();
@@ -517,6 +573,10 @@ export const useAppState = () => {
     pendingHighlightAd, setPendingHighlightAd,
     blockedByMe, setBlockedByMe,
     blockedByOthers, setBlockedByOthers,
-    isBlockedBetween
+    isBlockedBetween,
+
+    // Hardening Sync
+    activeLocksRef,
+    ENABLE_REALTIME_TURBO_SYNC
   };
 };

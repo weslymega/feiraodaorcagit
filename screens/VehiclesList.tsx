@@ -14,6 +14,7 @@ import { getVehiclesWithFallback } from '../utils/adSelector';
 import { getBoostRibbon, getBoostPriority, getBoostBorderClass } from '../utils/boostRibbon';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
 import AdManager from '../services/AdManager';
+import { api, USE_NEW_API } from '../services/api';
 
 const adManager = AdManager.getInstance();
 
@@ -66,6 +67,16 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
   const [isRecentFilterActive, setIsRecentFilterActive] = useState(false);
 
+  // --- [NEW API - FASE 3/4] Data Management ---
+  const [pagedAds, setPagedAds] = useState<AdItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const ITEMS_PER_PAGE = 20;
+
+  // Global Lock for pagination to avoid duplicated requests
+  const isFetchingRef = React.useRef(false);
+
   // Efeito Debounce para evitar recalculo a cada letra digitada
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -74,6 +85,77 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
     return () => clearTimeout(timeout);
   }, [searchTerm]);
+
+  // --- [NEW API - FASE 3] Fetching Logic ---
+  const loadInitialData = async () => {
+    if (!USE_NEW_API) return;
+    
+    setIsLoading(true);
+    setCurrentPage(0);
+    setHasMore(true);
+    
+    try {
+      const results = await api.getAdsList({
+        limit: ITEMS_PER_PAGE,
+        offset: 0,
+        category: 'veiculos',
+        searchTerm: debouncedSearch,
+        filters: {
+           brand: filters.brand,
+           baseModel: filters.baseModel,
+           // Outros filtros serão adicionados na Fase 4/6 conforme estabilidade
+        }
+      });
+      
+      setPagedAds(results);
+      setHasMore(results.length === ITEMS_PER_PAGE);
+    } catch (err) {
+      console.error("❌ Erro ao carregar veículos (Nova API):", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (USE_NEW_API) {
+      loadInitialData();
+    }
+  }, [debouncedSearch, filters.brand, filters.baseModel, selectedGroup, isRecentFilterActive]);
+
+  const loadMoreData = async () => {
+    if (!USE_NEW_API || isLoading || !hasMore || isFetchingRef.current) return;
+    
+    isFetchingRef.current = true;
+    setIsLoading(true);
+    const nextOffset = (currentPage + 1) * ITEMS_PER_PAGE;
+    
+    try {
+      console.log(`📡 [API NEW] loadMoreData: Offset ${nextOffset}`);
+      const results = await api.getAdsList({
+        limit: ITEMS_PER_PAGE,
+        offset: nextOffset,
+        category: 'veiculos',
+        searchTerm: debouncedSearch,
+        filters: {
+           brand: filters.brand,
+           baseModel: filters.baseModel
+        }
+      });
+      
+      if (results.length > 0) {
+        setPagedAds(prev => [...prev, ...results]);
+        setCurrentPage(prev => prev + 1);
+        setHasMore(results.length === ITEMS_PER_PAGE);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("❌ Erro ao carregar mais veículos:", err);
+    } finally {
+      setIsLoading(false);
+      isFetchingRef.current = false;
+    }
+  };
 
   // Filter Modal State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -300,6 +382,11 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
 
   const filteredAds = useMemo(() => {
+    // Se a nova API estiver ativa, retornamos os anúncios paginados sem filtros redundantes no JS
+    if (USE_NEW_API) {
+      return pagedAds;
+    }
+
     const activeSearchContent = debouncedSearch || searchTerm;
 
     // Verificamos se há algum filtro específico ativo (exceto "todos" no grupo)
@@ -749,6 +836,26 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
           </div>
         )}
       </div>
+
+      {/* Load More Button (Phase 4) */}
+      {USE_NEW_API && hasMore && pagedAds.length > 0 && (
+        <div className="py-8 flex justify-center">
+          <button
+            onClick={loadMoreData}
+            disabled={isLoading}
+            className="px-8 py-3 bg-white border border-primary/20 text-primary rounded-2xl font-bold shadow-sm hover:bg-blue-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Carregando...
+              </>
+            ) : (
+              'Carregar mais anúncios'
+            )}
+          </button>
+        </div>
+      )}
 
       {/* FILTER MODAL (Bottom Sheet) - Reduced Content */}
       {isFilterOpen && (

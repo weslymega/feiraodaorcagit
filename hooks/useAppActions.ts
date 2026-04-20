@@ -734,6 +734,21 @@ export const useAppActions = (state: AppState) => {
         }
     };
 
+    const handleViewMyPublicProfile = () => {
+        if (!user) return;
+        setViewingProfile({
+            ...user,
+            rating: 5.0,
+            joinDate: user.joinDate || "Recente",
+            verified: true,
+            location: user.location || "Localização não informada",
+            bio: user.bio || "Usuário do Feirão da Orca",
+            avatar_id: user.avatar_id // Mantido no banco para compatibilidade futura
+        });
+        setPreviousScreen(currentScreen);
+        setCurrentScreen(Screen.PUBLIC_PROFILE);
+    };
+
     const handleCreateAdFinish = async (adData: Partial<AdItem>, createdAd?: AdItem) => {
         try {
             if (adToEdit) {
@@ -1416,6 +1431,56 @@ export const useAppActions = (state: AppState) => {
         handleUpdatePrivacySettings,
         handleChangePassword,
 
+        handleSyncAdUpdate: (newAd: AdItem, source: 'manual' | 'realtime') => {
+            const adId = newAd.id;
+
+            if (source === 'manual') {
+                console.log(`[Sync-Hardening] Registrando lock manual para ${adId}. Esperando timestamp: ${newAd.syncVersion || 'N/A'}`);
+                state.activeLocksRef.current.set(adId, {
+                    expectedUpdateAt: newAd.syncVersion || '',
+                    startTime: Date.now()
+                });
+            }
+
+            const updateItem = (item: AdItem) => {
+                if (item.id !== adId) return item;
+
+                const hasChanges = item.status !== newAd.status || 
+                                 item.turbo_progress !== newAd.turbo_progress ||
+                                 item.turbo_expires_at !== newAd.turbo_expires_at;
+
+                // No realtime, se não houver mudança, mantemos o objeto original para economizar re-render
+                if (!hasChanges && source === 'realtime') return item;
+
+                return {
+                    ...item,
+                    ...newAd,
+                    lastUpdateSource: source,
+                    syncVersion: newAd.syncVersion || item.syncVersion || newAd.updatedAt
+                };
+            };
+
+            setMyAds((prev: AdItem[] = []) => prev.map(updateItem));
+            setRealAds((prev: AdItem[] = []) => prev.map(updateItem));
+        },
+
+        refetchAd: async (adId: string) => {
+            try {
+                console.log(`[Self-Healing] Sincronizando anúncio ${adId} com o banco...`);
+                // @ts-ignore - handleSyncAdUpdate já foi definida acima mas o linter pode reclamar do escopo se não exposto
+                const freshAd = await api.getAdById(adId);
+                if (freshAd) {
+                    const mappedAd = { ...freshAd, syncVersion: freshAd.updatedAt };
+                    // Atualiza via realtime para ignorar locks se existirem
+                    // @ts-ignore
+                    handleSyncAdUpdate(mappedAd, 'realtime'); 
+                    state.activeLocksRef.current.delete(adId);
+                }
+            } catch (error) {
+                console.error(`[Self-Healing] Erro ao sincronizar anúncio ${adId}:`, error);
+            }
+        },
+
         handleSavePromotion,
         handleDeletePromotion,
         handleTogglePromotionActive,
@@ -1443,6 +1508,7 @@ export const useAppActions = (state: AppState) => {
         handleLoadConversations,
         handleBlockUser,
         handleUnblockUser,
+        handleViewMyPublicProfile,
         handleClearNotifications,
         handleAcceptTerms
     };

@@ -63,6 +63,7 @@ export enum Screen {
 
 export interface User {
   id?: string; // Adicionado ID opcional para facilitar gerenciamento
+  avatar_id?: string; // Novo campo para avatares animados do sistema
   activePlan?: 'free' | 'Simples' | 'Premium' | 'Topo'; // Plano do usuário
   monthlyUsage?: { month: string; count: number }; // Controle de uso mensal (YYYY-MM)
   name: string;
@@ -195,6 +196,10 @@ export interface AdItem {
   turbo_expires_at?: string;
   is_turbo_active?: boolean;
   turbo_progress?: number;
+
+  // Sync Control (Hardening)
+  lastUpdateSource?: 'manual' | 'realtime';
+  syncVersion?: string; // Represeta o updatedAt do banco para controle de concorrência
 }
 
 export interface MessageItem {
@@ -202,6 +207,7 @@ export interface MessageItem {
   otherUserId: string; // ID of the other participant for chat detail fetching
   senderName: string;
   avatarUrl: string;
+  avatar_id?: string;
   lastMessage: string;
   time: string;
   unreadCount: number;

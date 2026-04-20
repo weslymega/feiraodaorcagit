@@ -47,8 +47,8 @@ serve(async (req) => {
         }
 
         // 3. Extrair Inputs
-        const { sessionId } = await req.json();
-        console.log("SESSION ID RECEIVED:", sessionId);
+        const { sessionId, rewardId } = await req.json();
+        console.log(`[STEP 4] sessionId: ${sessionId}, rewardId: ${rewardId}`);
 
         if (!sessionId) {
             return jsonResponse({ success: false, error: 'sessionId é obrigatório' }, 400);
@@ -69,6 +69,26 @@ serve(async (req) => {
         if (session.user_id !== user.id) {
             console.error(`[increment-turbo-step] FRAUDE: User ${user.id} tentou acessar sessão de ${session.user_id}`);
             return jsonResponse({ success: false, error: 'Acesso negado' }, 403);
+        }
+
+        // 🛡️ 4.0 IDEMPOTÊNCIA: Verificar se este rewardId já foi processado
+        if (rewardId) {
+            const { data: existingClaim } = await supabaseAdmin
+                .from('ad_reward_claims')
+                .select('id')
+                .eq('reward_id', rewardId)
+                .maybeSingle();
+
+            if (existingClaim) {
+                console.log(`[IDEMPOTENCY] Reward ${rewardId} já processado.`);
+                return jsonResponse({
+                    success: true,
+                    current_step: session.current_step,
+                    required_steps: session.required_steps,
+                    turbo_activated: session.status === 'completed',
+                    message: "IDEMPOTENT_SUCCESS"
+                });
+            }
         }
 
         // 🛡️ 4.1 Proteção de Expiração
@@ -221,7 +241,16 @@ serve(async (req) => {
             console.log(`[increment-turbo-step] Sessão ${sessionId} ativada com sucesso para o anúncio ${updatedSession.ad_id}`);
         }
 
-        // 7. Retorno Padronizado
+        // 🛡️ 8. REGISTRAR CLAIM DE IDEMPOTÊNCIA
+        if (rewardId) {
+            await supabaseAdmin.from('ad_reward_claims').insert({
+                reward_id: rewardId,
+                user_id: user.id,
+                ad_id: updatedSession.ad_id
+            });
+        }
+
+        // 9. Retorno Padronizado
         return jsonResponse({
             success: true,
             current_step: updatedSession.current_step,

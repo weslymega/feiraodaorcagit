@@ -72,9 +72,9 @@ export const turboService = {
      * @param adId - O UUID do anúncio
      * @returns Objeto de resposta com sucesso e novos dados do turbo
      */
-    applyTurboReward: async (adId: string): Promise<{ success: boolean; error?: string; turbo_type?: string; turbo_progress?: number; turbo_expires_at?: string }> => {
+    applyTurboReward: async (adId: string, rewardId?: string): Promise<{ success: boolean; error?: string; turbo_type?: string; turbo_progress?: number; turbo_expires_at?: string }> => {
         try {
-            debugLogger.log("📡 Iniciando applyTurboReward...");
+            debugLogger.log(`📡 Iniciando applyTurboReward (ID: ${rewardId})...`);
 
             await supabase.auth.refreshSession();
             const { data: sessionData } = await supabase.auth.getSession();
@@ -84,7 +84,7 @@ export const turboService = {
                 // 🚨 Sentry: sem token APÓS refresh — caso crítico
                 captureError(new Error('applyTurboReward: TOKEN AUSENTE após refresh'), {
                     tags: { flow: 'turbo', endpoint: 'apply-turbo-reward', type: 'missing_token' },
-                    extra: { adId },
+                    extra: { adId, rewardId },
                     level: 'fatal',
                 });
                 throw new Error("TOKEN AUSENTE");
@@ -94,14 +94,14 @@ export const turboService = {
 
             // 📖 BREADCRUMB: Chamada à Edge Function — DEPOIS que o vídeo terminou
             // Este breadcrumb está FORA do ciclo do AdMob — é seguro adicioná-lo aqui
-            addBreadcrumb('turbo_reward_api_call', { adId }, 'info');
+            addBreadcrumb('turbo_reward_api_call', { adId, rewardId }, 'info');
 
             debugLogger.log('📡 Chamando Edge Function apply-turbo-reward');
 
             const response = await supabase.functions.invoke(
                 "apply-turbo-reward",
                 {
-                    body: { adId },
+                    body: { adId, rewardId },
                 }
             );
 

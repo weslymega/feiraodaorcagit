@@ -7,8 +7,9 @@ import { PARTS_SERVICES_PROMO_BANNERS } from '../constants';
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
-import { getBoostPriority, getBoostRibbon, getBoostBorderClass } from '../utils/boostRibbon';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
+import { api, USE_NEW_API } from '../services/api';
+import { ArrowRight } from 'lucide-react';
 import AdManager from '../services/AdManager';
 
 const adManager = AdManager.getInstance();
@@ -59,6 +60,55 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
     conditions: [] as string[],
     categories: [] as string[] // Categorias selecionadas no Modal
   });
+  
+  // --- NOVA LÓGICA DE PAGINAÇÃO (FASE 7) ---
+  const [pagedAds, setPagedAds] = useState<AdItem[]>([]);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const ITEMS_PER_PAGE = 20;
+
+  // Carregamento de Dados (Backend-side)
+  const loadMoreData = async (reset = false) => {
+    if (!USE_NEW_API || loading || (!hasMore && !reset)) return;
+
+    setLoading(true);
+    const nextOffset = reset ? 0 : page * ITEMS_PER_PAGE;
+
+    try {
+      // Parts & Services lista ambas as categorias
+      const results = await api.getAdsList({
+        limit: ITEMS_PER_PAGE,
+        offset: nextOffset,
+        category: ['pecas', 'servicos'] as any, // Array de categorias
+        searchTerm: searchTerm,
+        filters: {
+          ...filters,
+          selectedGroup: selectedGroup !== 'todos' ? selectedGroup : undefined
+        }
+      });
+
+      if (results.length < ITEMS_PER_PAGE) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+
+      setPagedAds(prev => reset ? results : [...prev, ...results]);
+      setPage(prev => reset ? 1 : prev + 1);
+    } catch (error) {
+      console.error("❌ Erro ao carregar peças e serviços:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Trigger: Quando os filtros mudam, resetamos a lista
+  useEffect(() => {
+    if (USE_NEW_API) {
+      loadMoreData(true);
+    }
+  }, [searchTerm, selectedGroup, filters]);
 
 
 
@@ -170,7 +220,7 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
     });
   }, [ads, selectedGroup, searchTerm, filters]);
 
-  const feedItems = filteredAds;
+  const feedItems = USE_NEW_API ? pagedAds : filteredAds;
 
   const isPromotionVisible = (promo: PartsServicesPromotion) => {
     const today = new Date();
@@ -316,10 +366,11 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
 
       {/* Results */}
       <div className="px-4 flex flex-col gap-4 relative z-0">
-        {ads === undefined ? (
+        {loading && feedItems.length === 0 ? (
           [1, 2, 3].map(i => <AdCardSkeleton key={i} variant="vertical" className="h-32" />)
         ) : feedItems.length > 0 ? (
-          feedItems.map((item) => {
+          <>
+            {feedItems.map((item) => {
             // Se for um slot de anúncio (Regra #3)
 
             const ad = item;
@@ -371,8 +422,30 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
                 </div>
               </div>
             );
-          })
-        ) : (
+          })}
+
+          {/* Botão Carregar Mais (Infinite Scroll Manual) */}
+          {USE_NEW_API && hasMore && (
+            <button
+              onClick={() => loadMoreData()}
+              disabled={loading}
+              className="w-full py-4 bg-white border border-gray-200 rounded-2xl text-purple-600 font-bold text-sm shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 mb-4"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                  Carregando...
+                </>
+              ) : (
+                <>
+                  Carregar mais itens
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          )}
+        </>
+      ) : (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <Wrench className="w-12 h-12 mb-2 text-gray-300" />
             <p>Nenhum serviço ou peça encontrada.</p>

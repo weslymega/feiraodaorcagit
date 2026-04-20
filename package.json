@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
+    "@capacitor-firebase/analytics": "^8.2.0",
+    "@capacitor-firebase/crashlytics": "^8.2.0",
+    "@capacitor-firebase/performance": "^8.2.0",
     "@capacitor/android": "^8.2.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^8.2.0",
@@ -22,6 +25,7 @@
     "@sentry/react": "^10.49.0",
     "@supabase/supabase-js": "^2.90.1",
     "browser-image-compression": "^2.0.2",
+    "jimp": "^0.16.13",
     "lucide-react": "^0.555.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.1",

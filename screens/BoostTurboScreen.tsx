@@ -8,6 +8,8 @@ import { Haptics, NotificationType } from '@capacitor/haptics';
 import AdManager from '../services/AdManager';
 import { turboService } from '../services/turboService';
 import { debugLogger } from '../utils/DebugLogger';
+import { useAppState } from '../hooks/useAppState';
+import { useAppActions } from '../hooks/useAppActions';
 import DebugPanel from '../components/DebugPanel';
 
 const adManager = AdManager.getInstance();
@@ -22,6 +24,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     const [loadingAd, setLoadingAd] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const state = useAppState();
+    const actions = useAppActions(state);
 
     // Estado da Sessão do Turbo e AdMob
     const [activeSession, setActiveSession] = useState<{ id: string, adId: string, requiredSteps: number, currentStep: number } | null>(null);
@@ -125,9 +130,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         finalizingRef.current = isFinalizing;
     }, [isFinalizing]);
 
-    const handleAdRewardedInternal = async (): Promise<void> => {
-        debugLogger.log("🔥 [BoostTurboScreen] EVENTO RECOMPENSA RECEBIDO!");
-        console.log("🔥 [BoostTurboScreen] AD REWARDED EVENT RECEIVED! Starting Supabase update...");
+    const handleAdRewardedInternal = async (rewardId?: string): Promise<void> => {
+        debugLogger.log(`🔥 [BoostTurboScreen] EVENTO RECOMPENSA RECEBIDO! (ID: ${rewardId})`);
+        console.log(`🔥 [BoostTurboScreen] AD REWARDED EVENT RECEIVED! (ID: ${rewardId})`);
         if (finalizingRef.current) {
             console.log("⚠️ [BoostTurboScreen] handleAdRewardedInternal ignored: already finalizing");
             return;
@@ -141,14 +146,25 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 debugLogger.log('📡 Chamando turboService.applyTurboReward');
                 setLocalProgress(prev => prev + 1);
 
-                const data = await turboService.applyTurboReward(selectedAdId);
+                const data = await turboService.applyTurboReward(selectedAdId, rewardId);
 
                 if (!data.success) {
                     throw new Error(data.error || 'Erro ao aplicar recompensa');
                 }
 
                 if (ad) {
-                    setAd({ ...ad, turbo_progress: data.turbo_progress, turbo_expires_at: data.turbo_expires_at, is_turbo_active: true });
+                    const updatedAd = { 
+                        ...ad, 
+                        turbo_progress: data.turbo_progress, 
+                        turbo_expires_at: data.turbo_expires_at, 
+                        is_turbo_active: true,
+                        // Consistência: Usamos o expires_at como parte da versão se o updated_at do banco não estiver disponível
+                        syncVersion: data.turbo_expires_at 
+                    };
+                    setAd(updatedAd);
+
+                    // --- HARDENING: Sincronização Global Determinística ---
+                    actions.handleSyncAdUpdate(updatedAd, 'manual');
                 }
                 
                 setLocalProgress(data.turbo_progress);
@@ -187,7 +203,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
             setLocalProgress(prev => prev + 1);
             const data = await api.safeRequest(async (token) => {
                 const { data, error: invokeError } = await supabase.functions.invoke('increment-turbo-step', {
-                    body: { sessionId: currentSession.id },
+                    body: { sessionId: currentSession.id, rewardId },
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (invokeError) throw invokeError;
@@ -243,10 +259,10 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
         adManager.onAdError((err) => { setAdError(err); setWatchingAd(false); });
         
         // --- ETAPA 3: REGISTRO DIRETO (SEM DEPENDER APENAS DE REF) ---
-        const callback = async () => {
-            console.log('🔥 RECOMPENSA NA UI (Callback Direto)');
+        const callback = async (rewardId?: string) => {
+            console.log(`🔥 RECOMPENSA NA UI (Callback Direto com ID: ${rewardId})`);
             try {
-                await handleAdRewardedInternal();
+                await handleAdRewardedInternal(rewardId);
             } catch (err) {
                 console.error('Erro ao processar callback de recompensa:', err);
             }

@@ -49,6 +49,7 @@ class AdManager {
     private isAppReady: boolean = false;
     private bannerPromise: Promise<void> = Promise.resolve();
     private isProcessingShow: boolean = false; 
+    private currentRewardId: string | null = null;
     private lastExecutionId: string = '';
     private isPreloading: boolean = false;
 
@@ -148,16 +149,21 @@ class AdManager {
             console.log(`[AD FLOW] Reward confirmado (Exec: ${this.lastExecutionId}):`, reward);
             this.clearTimeout();
 
-            console.log(`🚀 [AdManager] Executando ${this.onRewardedCallbacks.length} callbacks de recompensa registrados`);
+            console.log(`🚀 [AdManager] Executando ${this.onRewardedCallbacks.length} callbacks de recompensa registrados com ID: ${this.currentRewardId}`);
             await Promise.all(this.onRewardedCallbacks.map(async (cb, idx) => {
                 try {
                     debugLogger.log(`🚀 Executando callback #${idx}`);
-                    await cb();
+                    // Passamos o currentRewardId para o callback se ele aceitar argumentos
+                    // No Typescript, se o tipo for (), adicionar o argumento aqui não quebra o JS
+                    await (cb as any)(this.currentRewardId);
                     console.log(`[AD FLOW] Callback ${idx} success`);
                 } catch (e) {
                     console.error(`[AD FLOW] Callback ${idx} fail:`, e);
                 }
             }));
+            
+            // IMPORTANTE: Limpar o rewardId após o processamento para evitar reuso acidental
+            this.currentRewardId = null;
         };
 
         const handleDismiss = async () => {
@@ -305,8 +311,6 @@ class AdManager {
         this.lastExecutionId = executionId;
         console.log(`[AdDebug] [SHOW CALL] ID: ${executionId} | State: ${this.state}`);
 
-        // 🔍 REMOÇÃO TEMPORÁRIA DE TRAVAS INTERNAS PARA DEBUG
-        /*
         if (this.isProcessingShow) {
             console.warn(`🔥 [AdDebug] [BLOQUEIO] Ad show already in progress (Exec: ${executionId})`);
             return false;
@@ -316,7 +320,10 @@ class AdManager {
             console.warn(`🔥 [AdDebug] [BLOQUEIO] Already showing (Exec: ${executionId})`);
             return false;
         }
-        */
+
+        // --- GERAÇÃO DE TOKEN DE IDEMPOTÊNCIA PARA ESTA EXIBIÇÃO ---
+        this.currentRewardId = `rew-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+        console.log(`[AdDebug] Generated Reward ID: ${this.currentRewardId} (Exec: ${executionId})`);
 
         this.isProcessingShow = true;
 
@@ -426,10 +433,11 @@ class AdManager {
 
     public isAdReady(): boolean { return this.state === AdState.READY; }
     public onReady(cb: AdEventHandler) { this.onReadyCallbacks.push(cb); }
-    public onRewarded(cb: AdEventHandler) { 
-        console.log("📥 [AdManager] Novo callback de recompensa registrado.");
+    public onRewarded(cb: (rewardId?: string) => Promise<void> | void) { 
+        console.log("📥 [AdManager] Registro de callback de recompensa (Singleton Mode).");
         debugLogger.log('📥 Callback registrado no AdManager');
-        this.onRewardedCallbacks.push(cb); 
+        // Prevenir vazamento: apenas um listener ativo por vez no fluxo de recompensa
+        this.onRewardedCallbacks = [cb as any]; 
     }
     public onDismissed(cb: AdEventHandler) { this.onDismissedCallbacks.push(cb); }
     public onError(cb: AdErrorHandler) { this.onErrorCallbacks.push(cb); }

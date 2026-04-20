@@ -4,6 +4,7 @@ import { ChevronLeft, MapPin, Calendar, ShieldCheck, Heart, Clock, Search, Flag,
 import { PriceTag, Toast } from '../components/Shared';
 import { AdItem, User, ReportItem } from '../types';
 import { ReportModal } from '../components/ReportModal';
+import { AnimatedAvatar } from '../components/AnimatedAvatar';
 
 interface PublicProfileProps {
   user: User;
@@ -106,13 +107,13 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
         <div className="flex flex-col items-center px-6 -mt-2">
           <div className="relative mb-3">
             <div className="w-28 h-28 rounded-full p-1 bg-white shadow-lg flex items-center justify-center overflow-hidden">
-              {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.name} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gray-100 rounded-full flex items-center justify-center">
-                  <UserIcon className="w-12 h-12 text-gray-400" />
-                </div>
-              )}
+              <AnimatedAvatar 
+                avatarId={user.avatar_id} 
+                avatarUrl={user.avatarUrl} 
+                name={user.name}
+                mode="loop" 
+                size={112} 
+              />
             </div>
             {user.verified && (
               <div className="absolute bottom-1 right-1 bg-blue-500 text-white p-1.5 rounded-full border-2 border-white shadow-sm" title="Verificado">

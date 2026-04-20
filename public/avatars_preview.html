@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orca Avatars Preview (Waze Style)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            padding: 40px;
+        }
+        .avatar-card {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            transition: transform 0.2s;
+        }
+        .avatar-card:hover {
+            transform: translateY(-4px);
+        }
+        
+        /* Animation Logic (Simulating AnimatedAvatar.tsx) */
+        .avatar-sprite {
+            width: 128px;
+            height: 128px;
+            background-repeat: no-repeat;
+            background-size: 600% 100%; /* 6 frames */
+            background-position: 0 0;
+            image-rendering: pixelated; /* Optional: for crispness if desired */
+            border-radius: 50%;
+            background-color: #f1f5f9;
+            border: 4px solid white;
+            box-shadow: 0 0 0 1px #e2e8f0;
+        }
+
+        @keyframes playSprite {
+            from { background-position: 0 0; }
+            to { background-position: -768px 0; } /* 128px * 6 frames = 768px */
+        }
+
+        .animating {
+            animation: playSprite 0.8s steps(6) infinite;
+        }
+
+        .avatar-label {
+            font-weight: 900;
+            color: #1e293b;
+            font-size: 0.875rem;
+            text-align: center;
+        }
+        .avatar-desc {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-align: center;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-12 text-center">
+            <h1 class="text-4xl font-black text-slate-900 mb-2">Biblioteca de Avatares Orca</h1>
+            <p class="text-slate-500 font-medium">Estilo Waze Moods - 3D Render fofo e expressivo</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Buyer -->
+            <div class="avatar-card">
+                <div class="avatar-sprite animating" style="background-image: url('avatars/orca_buyer.png');"></div>
+                <div class="avatar-label">Comprador Confiante</div>
+                <div class="avatar-desc">Focado em fechar bons negócios com segurança.</div>
+            </div>
+
+            <!-- Seller -->
+            <div class="avatar-card">
+                <div class="avatar-sprite animating" style="background-image: url('avatars/orca_seller.png');"></div>
+                <div class="avatar-label">Vendedor Amigável</div>
+                <div class="avatar-desc">Sempre pronto para uma boa conversa e negociação.</div>
+            </div>
+
+            <!-- Hunter -->
+            <div class="avatar-card">
+                <div class="avatar-sprite animating" style="background-image: url('avatars/orca_hunter.png');"></div>
+                <div class="avatar-label">Caçador de Ofertas</div>
+                <div class="avatar-desc">O mestre em encontrar os melhores descontos.</div>
+            </div>
+
+            <!-- Enthusiast -->
+            <div class="avatar-card">
+                <div class="avatar-sprite animating" style="background-image: url('avatars/orca_enthusiast.png');"></div>
+                <div class="avatar-label">Entusiasta de Carros</div>
+                <div class="avatar-desc">Apaixonado por motores e detalhes técnicos.</div>
+            </div>
+
+            <!-- Pro -->
+            <div class="avatar-card">
+                <div class="avatar-sprite animating" style="background-image: url('avatars/orca_pro.png');"></div>
+                <div class="avatar-label">Profissional Sério</div>
+                <div class="avatar-desc">Ideal para concessionárias que buscam credibilidade.</div>
+            </div>
+
+            <!-- Neutral -->
+            <div class="avatar-card">
+                <div class="avatar-sprite animating" style="background-image: url('avatars/orca_neutral.png');"></div>
+                <div class="avatar-label">Usuário Neutro</div>
+                <div class="avatar-desc">A base da nossa comunidade, participando de tudo.</div>
+            </div>
+        </div>
+
+        <footer class="mt-16 pt-8 border-t border-slate-200 text-center text-slate-400 text-sm">
+            <p>&copy; 2026 Feirão da Orca - Assets Gerados por IA</p>
+        </footer>
+    </div>
+</body>
+</html>

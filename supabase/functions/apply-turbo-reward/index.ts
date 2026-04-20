@@ -57,8 +57,8 @@ serve(async (req) => {
 
         console.log("[STEP 3] USER:", user?.id);
 
-        const { adId } = await req.json();
-        console.log("[STEP 4] adId recebido:", adId);
+        const { adId, rewardId } = await req.json();
+        console.log(`[STEP 4] adId: ${adId}, rewardId: ${rewardId}`);
         if (!adId) {
             console.error('[ERRO INPUT] adId missing');
             return jsonResponse({ success: false, error: 'ETAPA_4_FALHOU' }, 400);
@@ -114,7 +114,8 @@ serve(async (req) => {
         console.log("[STEP 13] Atualizando anúncio (ADMIN RPC)...");
         const { data: result, error: rpcError } = await supabaseAdmin.rpc('apply_turbo_reward_atomic', { 
             ad_id: adId,
-            p_user_id: user.id
+            p_user_id: user.id,
+            p_reward_id: rewardId
         });
 
         if (rpcError || !result) {

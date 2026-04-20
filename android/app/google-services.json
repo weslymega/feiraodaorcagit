@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "120017327177",
+    "project_id": "feirao-da-orca",
+    "storage_bucket": "feirao-da-orca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:120017327177:android:eb2785c3b37183688a1b98",
+        "android_client_info": {
+          "package_name": "com.feiraodaorca.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDA9JdguVED_I8cEpnJeKWW40spSLE2pDM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

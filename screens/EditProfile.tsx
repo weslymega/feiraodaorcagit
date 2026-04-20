@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Save, Lock, Mail, Phone, MapPin, User as UserIcon, Loader2, Home } from 'lucide-react';
 import { Header } from '../components/Shared';
+import { AnimatedAvatar } from '../components/AnimatedAvatar';
 import { User } from '../types';
 
 interface EditProfileProps {
@@ -187,14 +188,15 @@ export const EditProfile: React.FC<EditProfileProps> = ({ user, onSave, onBack, 
             className="relative cursor-pointer group"
             onClick={triggerFileInput}
           >
-            <div className="w-28 h-28 rounded-full bg-white p-1 shadow-md group-hover:shadow-lg transition-all relative overflow-hidden">
-              <img
-                src={formData.avatarUrl}
-                alt="Profile"
-                className={`w-full h-full rounded-full object-cover group-hover:opacity-90 transition-opacity ${isProcessing ? 'opacity-50 blur-sm' : ''}`}
+            <div className="w-28 h-28 rounded-full bg-white p-1 shadow-md group-hover:shadow-lg transition-all relative overflow-hidden flex items-center justify-center">
+              <AnimatedAvatar 
+                avatarUrl={formData.avatarUrl} 
+                name={formData.name}
+                size={110} 
+                className={`group-hover:opacity-90 transition-opacity ${isProcessing ? 'opacity-50 blur-sm' : ''}`}
               />
               {isProcessing && (
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center bg-white/20">
                   <Loader2 className="w-8 h-8 text-primary animate-spin" />
                 </div>
               )}

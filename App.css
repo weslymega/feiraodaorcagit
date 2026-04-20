@@ -19,3 +19,18 @@
 .shimmer-overlay {
   will-change: transform;
 }
+
+/* 
+ * ARQUITETURA DE ANIMAÇÃO DE SPRITE (DEFINITIVA) 
+ * Utiliza background-position 100% com steps prefixados.
+ */
+@keyframes avatar-sprite {
+  from { background-position: 0% 0%; }
+  to { background-position: 100% 0%; }
+}
+
+.avatar-animating {
+  animation: avatar-sprite var(--sprite-speed, 0.8s) steps(var(--sprite-steps, 5)) infinite;
+  will-change: background-position;
+}
+

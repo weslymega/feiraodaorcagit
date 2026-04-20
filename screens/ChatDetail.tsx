@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Paperclip, Check, CheckCheck, ArrowLeft, Loader2, ChevronRight, UserX, ShieldAlert } from 'lucide-react';
 import { MessageItem, ChatMessage } from '../types';
 import { imageService } from '../services/imageService';
+import { AnimatedAvatar } from '../components/AnimatedAvatar';
 
 interface ChatDetailProps {
   chat: MessageItem;
@@ -170,7 +171,14 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
             onClick={onViewProfile}
           >
             <div className="relative">
-              <img src={chat.avatarUrl} alt={chat.senderName} className="w-10 h-10 rounded-full object-cover group-hover:opacity-90" />
+              <AnimatedAvatar 
+                avatarId={chat.avatar_id} 
+                avatarUrl={chat.avatarUrl} 
+                name={chat.senderName}
+                mode="loop" 
+                size={40}
+                className="group-hover:opacity-90 transition-opacity"
+              />
             </div>
             <div>
               <h1 className="font-bold text-gray-900 text-sm group-hover:text-primary transition-colors">

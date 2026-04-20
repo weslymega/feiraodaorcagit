@@ -11,6 +11,7 @@ import { api } from '../services/api';
 import { LocationSection } from '../components/LocationSection';
 import { DeepLinkButton } from '../components/ui/DeepLinkButton';
 import { downloadQR, shareAd } from '../utils/mobileActions';
+import { FirebaseService } from '../services/firebaseService';
 
 interface VehicleDetailsProps {
   ad: AdItem;
@@ -108,11 +109,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
 
   const handlePrintQR = () => {
     if (onPrint) {
+      FirebaseService.logEvent('ad_print_qr', { ad_id: ad.id });
       onPrint();
     }
   };
 
   const handleShareQR = () => {
+    FirebaseService.logEvent('ad_share', { ad_id: ad.id });
     shareAd({ 
       title: ad.title || 'Anúncio', 
       text: `Confira este veículo: ${ad.title}`, 
@@ -447,7 +450,10 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
         {(!ad.isOwner) && user && (
           <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 px-6 flex gap-3 items-center z-[200] max-w-md mx-auto rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
             <button
-              onClick={onStartChat}
+              onClick={() => {
+                FirebaseService.logEvent('ad_start_chat', { ad_id: ad.id });
+                onStartChat && onStartChat();
+              }}
               className="flex-1 bg-[#F1B911] hover:bg-[#D9A60D] text-white font-black py-4 rounded-2xl shadow-xl shadow-yellow-200/50 flex items-center justify-center gap-2 transition-all active:scale-[0.97]"
             >
               <MessageSquare className="w-5 h-5 fill-current" />

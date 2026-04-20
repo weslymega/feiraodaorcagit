@@ -22,6 +22,9 @@ export const supabase: SupabaseClient = createClient(finalUrl, SUPABASE_ANON_KEY
     }
 });
 
+// 🚩 FEATURE FLAG - CONTROLE DE MIGRAÇÃO DE DADOS (Fase 2)
+export const USE_NEW_API = true; // Definido como true para iniciar testes controlados
+
 /**
  * API Service Objects Interfaces
  */
@@ -550,6 +553,7 @@ export const api = {
             email: data.email,
             name: data.name || 'Usuário',
             avatarUrl: data.avatar_url || `https://ui-avatars.com/api/?name=${data.email}&background=random`,
+            avatar_id: data.avatar_id,
             balance: data.balance || 0,
             activePlan: data.active_plan || 'free',
             isAdmin: data.role === 'admin' || data.is_admin || false,
@@ -727,6 +731,7 @@ export const api = {
         if (userData.location !== undefined) updateData.location = userData.location;
         if (userData.bio !== undefined) updateData.bio = userData.bio;
         if (userData.cep !== undefined) updateData.cep = userData.cep;
+        if (userData.avatar_id !== undefined) updateData.avatar_id = userData.avatar_id;
 
         const { error } = await supabase
             .from('profiles')
@@ -763,7 +768,22 @@ export const api = {
             const { data: ad, error } = await supabase
                 .from('anuncios')
                 .select(`
-                    *, 
+                    id, 
+                    titulo, 
+                    descricao, 
+                    preco, 
+                    categoria, 
+                    imagens, 
+                    localizacao, 
+                    status, 
+                    boost_plan, 
+                    created_at, 
+                    updated_at, 
+                    user_id, 
+                    detalhes, 
+                    is_in_fair, 
+                    turbo_expires_at, 
+                    last_turbo_at,
                     public_profiles!user_id(id, name, avatar_url),
                     destaques_anuncios(
                         plano_id,
@@ -829,7 +849,23 @@ export const api = {
 
         const { data, error } = await supabase
             .from('favorites')
-            .select('ad_id, anuncios:ad_id(*, public_profiles!user_id(name, avatar_url))')
+            .select(`
+                ad_id, 
+                anuncios:ad_id(
+                    id, 
+                    titulo, 
+                    preco, 
+                    categoria, 
+                    imagens, 
+                    localizacao, 
+                    status, 
+                    boost_plan, 
+                    created_at, 
+                    detalhes, 
+                    user_id,
+                    public_profiles!user_id(name, avatar_url)
+                )
+            `)
             .eq('user_id', user.id);
 
         if (error) {
@@ -1246,6 +1282,123 @@ export const api = {
     /**
      * Get All Active Ads (Feed)
      */
+    },
+    
+    /**
+     * [NOVA API - FASE 1] Get Ads List com Select Leve e Filtros no servidor
+     * Substitui o download massivo pelo carregamento sob demanda.
+     */
+    getAdsList: async (params: { 
+        limit?: number, 
+        offset?: number, 
+        category?: string, 
+        searchTerm?: string,
+        filters?: any 
+    }) => {
+        const { limit = 20, offset = 0, category, searchTerm, filters } = params;
+        
+        try {
+            console.log(`📡 [API NEW] getAdsList: Limit ${limit}, Offset ${offset}, Search: "${searchTerm}"`);
+            
+            // 1. Base Query com Select Leve (Colunas essenciais para o card)
+            let query = supabase
+                .from('anuncios')
+                .select(`
+                    id, 
+                    titulo, 
+                    preco, 
+                    categoria, 
+                    imagens, 
+                    localizacao, 
+                    status, 
+                    boost_plan, 
+                    created_at, 
+                    detalhes, 
+                    turbo_expires_at, 
+                    last_turbo_at, 
+                    is_in_fair, 
+                    user_id,
+                    public_profiles!user_id(id, name, avatar_url)
+                `)
+                .eq('status', 'active');
+
+            // 2. Filtros no Servidor (Case Insensitive e Indexados)
+            if (category) {
+                if (Array.isArray(category)) {
+                    query = query.in('categoria', category);
+                } else {
+                    query = query.eq('categoria', category);
+                }
+            }
+
+            if (searchTerm) {
+                // Aproveita o índice de trigrama criado no SQL
+                query = query.ilike('titulo', `%${searchTerm}%`);
+            }
+
+            // Filtros Avançados (JSONB)
+            if (filters?.brand) {
+                query = query.filter('detalhes->>brandName', 'eq', filters.brand);
+            }
+            if (filters?.baseModel) {
+                query = query.filter('detalhes->>modelName', 'eq', filters.baseModel);
+            }
+
+            // 3. Paginação
+            query = query
+                .order('created_at', { ascending: false })
+                .range(offset, offset + limit - 1);
+
+            const { data, error } = await query;
+
+            if (error) throw error;
+            return (data || []).map((ad: any) => mapAdData(ad));
+        } catch (error) {
+            console.error('❌ Erro no getAdsList:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * [NOVA API - FASE 1] Busca detalhes completos de um anúncio específico
+     */
+    getAdDetails: async (adId: string) => {
+        try {
+            console.log(`📡 [API NEW] getAdDetails: ${adId}`);
+            const { data, error } = await supabase
+                .from('anuncios')
+                .select(`
+                    *, 
+                    public_profiles!user_id(id, name, avatar_url),
+                    destaques_anuncios(
+                        plano_id,
+                        result_ends_at:fim_em,
+                        status
+                    )
+                `)
+                .eq('id', adId)
+                .single();
+
+            if (error) throw error;
+            return mapAdData(data, false); // ownerName será preenchido pelo UI se necessário
+        } catch (error) {
+            console.error('❌ Erro no getAdDetails:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * [NOVA API - FASE 2] Função Roteadora para facilitar a migração
+     */
+    fetchAds: async (limit = 50, offset = 0, category?: string, searchTerm?: string, filters?: any) => {
+        if (!USE_NEW_API) {
+            // Modo antigo: Ignora offset e filtros, baixa tudo (limit alto)
+            return await api.getAds(500, 0, category); 
+        }
+        
+        return await api.getAdsList({ limit, offset, category, searchTerm, filters });
+    },
+
     getAds: async (limit = 50, offset = 0, category?: string) => {
         try {
             // USANDO RPC 'get_feed': Centraliza a lógica de Ranking (Turbo + Time Decay).
@@ -1302,8 +1455,20 @@ export const api = {
             const { data, error } = await supabase
                 .from('anuncios')
                 .select(`
-                    *, 
-                    turbo_expires_at,
+                    id, 
+                    titulo, 
+                    descricao, 
+                    preco, 
+                    categoria, 
+                    imagens, 
+                    localizacao, 
+                    status, 
+                    boost_plan, 
+                    created_at, 
+                    detalhes, 
+                    user_id, 
+                    is_in_fair, 
+                    turbo_expires_at, 
                     last_turbo_at,
                     public_profiles!user_id(name, avatar_url),
                     destaques_anuncios(
@@ -1372,28 +1537,47 @@ export const api = {
     /**
      * CHAT: Get Histórico de Mensagens
      */
-    getChatMessages: async (adId: string, otherUserId: string): Promise<ChatMessage[]> => {
+    getChatMessages: async (adId: string, otherUserId: string, limit = 20, offset = 0): Promise<ChatMessage[]> => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return [];
 
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('ad_id', adId)
-            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
-            .order('created_at', { ascending: true });
+        try {
+            console.log(`📡 [API NEW] getChatMessages: Ad ${adId}, With ${otherUserId}, Limit ${limit}, Offset ${offset}`);
+            
+            const { data, error } = await supabase
+                .from('messages')
+                .select(`
+                    id, 
+                    content, 
+                    image_url, 
+                    images, 
+                    sender_id, 
+                    created_at, 
+                    is_read
+                `)
+                .eq('ad_id', adId)
+                .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
+                .order('created_at', { ascending: false }) // Pegar as mais recentes primeiro
+                .range(offset, offset + limit - 1);
 
-        if (error) throw error;
+            if (error) throw error;
 
-        return (data || []).map(m => ({
-            id: m.id,
-            text: m.content || '',
-            imageUrl: m.image_url,
-            images: m.images || [], // Novo campo JSONB
-            isMine: m.sender_id === user.id,
-            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isRead: m.is_read
-        }));
+            // Reverte para o chat exibir em ordem cronológica (mais antigas em cima)
+            const mapped = (data || []).map(m => ({
+                id: m.id,
+                text: m.content || '',
+                imageUrl: m.image_url,
+                images: m.images || [],
+                isMine: m.sender_id === user.id,
+                time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isRead: m.is_read
+            }));
+
+            return mapped.reverse();
+        } catch (error) {
+            console.error('❌ Erro no getChatMessages:', error);
+            throw error;
+        }
     },
 
     /**
@@ -1445,8 +1629,15 @@ export const api = {
         const { data, error } = await supabase
             .from('messages')
             .select(`
-                *, 
-                ads:ad_id(titulo, imagens, preco), 
+                id, 
+                ad_id, 
+                sender_id, 
+                receiver_id, 
+                content, 
+                image_url, 
+                created_at, 
+                is_read,
+                ads:ad_id(id, titulo, imagens, preco), 
                 sender:public_profiles!sender_id(id, name, avatar_url), 
                 receiver:public_profiles!receiver_id(id, name, avatar_url)
             `)

@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { AnimatedAvatar } from '../components/AnimatedAvatar';
 import { MessageItem } from '../types';
 
 interface MessagesProps {
@@ -27,11 +27,13 @@ export const Messages: React.FC<MessagesProps> = ({ messages, onBack, onSelectCh
             }`}
           >
             <div className="relative">
-              <div className="w-14 h-14 rounded-2xl bg-gray-200 overflow-hidden shadow-sm">
-                <img
-                  src={msg.avatarUrl}
-                  alt={msg.senderName}
-                  className="w-full h-full object-cover"
+              <div className="w-14 h-14 rounded-2xl bg-gray-200 overflow-hidden shadow-sm flex items-center justify-center">
+                <AnimatedAvatar 
+                  avatarId={msg.avatar_id} 
+                  avatarUrl={msg.avatarUrl} 
+                  name={msg.senderName}
+                  mode="static" 
+                  size={56}
                 />
               </div>
               {msg.unreadCount > 0 && (

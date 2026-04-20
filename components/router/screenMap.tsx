@@ -160,6 +160,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                 user={user}
                 onNavigate={navigateTo}
                 onLogout={handleLogout}
+                onViewProfile={actions.handleViewMyPublicProfile}
                 onAdClick={handleAdClick}
                 adsAtFair={fairAds}
                 featuredAds={displayFeaturedAds}
@@ -200,6 +201,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                     user={user}
                     onNavigate={navigateTo}
                     onLogout={handleLogout}
+                    onViewProfile={actions.handleViewMyPublicProfile}
                     onAdClick={handleAdClick}
                     adsAtFair={fairAds}
                     featuredAds={displayFeaturedAds}
@@ -218,7 +220,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
             );
 
         case Screen.USER_PANEL:
-            return <UserPanel user={user!} onNavigate={navigateTo} onLogout={handleLogout} onToggleRole={handleToggleRole} />;
+            return <UserPanel user={user!} onNavigate={navigateTo} onLogout={handleLogout} onToggleRole={handleToggleRole} onUpdateUser={state.setUser} />;
         case Screen.EDIT_PROFILE:
             return <EditProfile user={user!} onSave={handleSaveProfile} onBack={goBackToPanel} onChangePassword={() => navigateTo(Screen.CHANGE_PASSWORD)} />;
         case Screen.MY_ADS:

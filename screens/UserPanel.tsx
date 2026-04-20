@@ -4,17 +4,21 @@ import { Heart, Tag, Settings, MapPin, ShieldCheck, User, Wrench, BarChart2 } fr
 import { Screen, User as UserType } from '../types';
 import { CardButton } from '../components/Shared';
 import { APP_LOGOS } from '../constants';
+import { AnimatedAvatar } from '../components/AnimatedAvatar';
+import { useState } from 'react';
 
 interface UserPanelProps {
   user: UserType;
   onNavigate: (screen: Screen) => void;
   onLogout: () => void;
   onToggleRole: () => void;
+  onUpdateUser: (updatedUser: UserType) => void;
 }
 
-export const UserPanel: React.FC<UserPanelProps> = ({ user, onNavigate, onLogout, onToggleRole }) => {
+export const UserPanel: React.FC<UserPanelProps> = ({ user, onNavigate, onLogout, onToggleRole, onUpdateUser }) => {
   return (
     <div className="min-h-screen bg-concrete-50 pb-24 animate-in slide-in-from-right duration-300">
+      {/* AvatarPicker desativado temporariamente conforme rollback controlado */}
 
       {/* Header Curvo Estilo Brasília */}
       <div className="bg-primary text-white pt-10 pb-16 px-6 rounded-b-[40px] shadow-xl relative overflow-hidden">
@@ -41,10 +45,22 @@ export const UserPanel: React.FC<UserPanelProps> = ({ user, onNavigate, onLogout
         </div>
 
         <div className="relative z-10 flex flex-col items-center">
-          <div className="w-24 h-24 rounded-full p-1 bg-white/20 backdrop-blur-sm mb-3 shadow-lg relative">
-            <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover rounded-full border-2 border-white" />
+          <div 
+            onClick={() => onNavigate(Screen.EDIT_PROFILE)}
+            className="w-24 h-24 rounded-full p-1 bg-white/20 backdrop-blur-sm mb-3 shadow-lg relative cursor-pointer group active:scale-95 transition-all text-center flex items-center justify-center"
+          >
+            <AnimatedAvatar 
+              avatarId={user.avatar_id} 
+              avatarUrl={user.avatarUrl} 
+              name={user.name}
+              size={88}
+              className="border-2 border-white rounded-full bg-white"
+            />
+            <div className="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-[10px] font-black uppercase text-white">Mudar</span>
+            </div>
             {user.isAdmin && (
-              <div className="absolute -bottom-2 bg-accent text-blue-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border border-white">
+              <div className="absolute -bottom-2 -right-2 bg-accent text-blue-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border border-white">
                 ADMIN
               </div>
             )}
@@ -52,12 +68,14 @@ export const UserPanel: React.FC<UserPanelProps> = ({ user, onNavigate, onLogout
           <h2 className="text-2xl font-bold text-white tracking-tight">{user.name}</h2>
           {/* <p className="text-blue-200 text-sm font-light mb-4">{user.email}</p> */}
 
-          <button
-            onClick={() => onNavigate(Screen.EDIT_PROFILE)}
-            className="px-6 py-2 bg-accent text-blue-900 rounded-full font-bold text-sm shadow-lg shadow-black/10 hover:bg-accent-hover transition-colors"
-          >
-            Editar Perfil
-          </button>
+          <div className="flex justify-center">
+            <button
+              onClick={() => onNavigate(Screen.EDIT_PROFILE)}
+              className="px-8 py-2 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-full font-bold text-sm shadow-black/10 hover:bg-white/20 transition-colors"
+            >
+              Editar Perfil
+            </button>
+          </div>
         </div>
       </div>
 
