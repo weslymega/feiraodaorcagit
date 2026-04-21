@@ -125,6 +125,12 @@ export interface FairPresence {
   expiresAt: string; // ISO Date string
 }
 
+export interface AdImage {
+  original: string;
+  optimized: string;
+  thumbnail: string;
+}
+
 export interface AdItem {
   id: string;
   userId: string; // ID do dono do anúncio
@@ -133,7 +139,9 @@ export interface AdItem {
   fipePrice?: number; // New Field for FIPE Reference
   location: string;
   image: string; // Capa (mantido para compatibilidade)
-  images?: string[]; // Lista completa de imagens
+  images?: string[]; // Lista completa de imagens (Originais)
+  media?: AdImage[]; // Novo: Lista estruturada (Thumbnails + Otimizadas)
+  thumbnail_url?: string | null; // Shortcut para o frontend
   status: AdStatus;
   date?: string;
   category?: 'veiculos' | 'imoveis' | 'servicos' | 'autos' | 'pecas' | 'produtos'; // Mantendo antigos por compatibilidade temporária se necessário, mas priorizando novos

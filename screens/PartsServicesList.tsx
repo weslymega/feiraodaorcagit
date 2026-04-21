@@ -8,9 +8,11 @@ import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { AdCardSkeleton } from '../components/skeletons/AdCardSkeleton';
 import { AdMobBanner } from '../components/ui/AdMobBanner';
+import { SmartImage } from '../components/ui/SmartImage';
 import { api, USE_NEW_API } from '../services/api';
 import { ArrowRight } from 'lucide-react';
 import AdManager from '../services/AdManager';
+import { getBoostBorderClass } from '../utils/boostRibbon';
 
 const adManager = AdManager.getInstance();
 
@@ -316,7 +318,12 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
                 className={`w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left ${index !== searchSuggestions.length - 1 ? 'border-b border-gray-50' : ''
                   }`}
               >
-                <img src={ad.image} alt={ad.title} className="w-10 h-10 rounded-lg object-cover bg-gray-100" />
+                <SmartImage 
+                  src={ad.image} 
+                  thumbnailSrc={ad.thumbnail_url}
+                  alt={ad.title} 
+                  className="w-10 h-10 rounded-lg object-cover bg-gray-100" 
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-gray-900 truncate">{ad.title}</p>
                   <p className="text-xs text-purple-600 font-medium">
@@ -385,7 +392,12 @@ export const PartsServicesList: React.FC<PartsServicesListProps> = ({ ads, onBac
                 className={`bg-white rounded-2xl shadow-sm border ${borderClass} overflow-hidden cursor-pointer active:scale-[0.99] transition-all flex h-32 animate-fadeIn relative`}
               >
                 <div className="w-32 h-full relative flex-shrink-0 overflow-hidden">
-                  <img src={ad.image} alt={ad.title} className="w-full h-full object-cover" />
+                  <SmartImage 
+                    src={ad.image} 
+                    thumbnailSrc={ad.thumbnail_url}
+                    alt={ad.title} 
+                    className="w-full h-full object-cover" 
+                  />
                   
                   <HighlightRibbon ad={ad} />
 

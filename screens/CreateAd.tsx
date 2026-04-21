@@ -386,7 +386,8 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       transactionType: formData.transactionType || null,
       color: formData.color ? formData.color.toLowerCase() : null,
       steering: formData.steering ? formData.steering.toLowerCase() : null,
-      doors: formData.doors ? Number(formData.doors) : null
+      doors: formData.doors ? Number(formData.doors) : null,
+      media: formData.media
     };
 
     // Só adicionamos campos de destaque para NOVOS anúncios
@@ -485,9 +486,9 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
     const files = e.target.files;
     if (files && files.length > 0) {
       const currentCount = formData.images.length;
-      const remainingSlots = 20 - currentCount;
+      const remainingSlots = 10 - currentCount;
       if (remainingSlots <= 0) {
-        alert("Limite máximo de fotos atingido.");
+        alert("Limite máximo de 10 fotos atingido.");
         return;
       }
 
@@ -523,33 +524,51 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
       }
 
       try {
-        const uploadedUrls: string[] = [];
+        const uploadedMedia: AdImage[] = [];
 
         // --- 2. PROCESSAMENTO SEQUENCIAL (Safe for Low-End Devices) ---
-        // Ao invés de Promise.all, processamos um por um para não estourar a memória RAM
         for (const file of filesToProcess) {
           try {
-            // A. Comprimir (Redimensionar para 1280px via imageService)
-            const compressed = await imageService.compress(file, 'ad');
+            // A. Gerar Versões de Mídia (Assíncrono)
+            // 1. Original (Mantemos o 1280px HQ como "original")
+            const originalFile = await imageService.compress(file, 'optimized'); 
+            
+            // 2. Optimized (Utilizamos uma qualidade menor se necessário, ou mesmo 1280px)
+            // Para simplificação e economia, usaremos a mesma versão otimizada aqui 
+            // ou poderíamos ter um perfil 'low'
+            const optimizedFile = originalFile; 
 
-            // B. Upload para Storage (organizado por userId no bucket ads-images)
-            const url = await imageService.upload(compressed, 'ads-images', user.id);
-            uploadedUrls.push(url);
+            // 3. Thumbnail (300px)
+            const thumbFile = await imageService.compress(file, 'thumb');
+
+            // B. Upload Sequencial
+            const folder = `${user.id}/${Date.now()}`;
+            
+            const [originalUrl, optimizedUrl, thumbUrl] = await Promise.all([
+              imageService.upload(originalFile, 'ads-images', `${folder}/original`),
+              imageService.upload(optimizedFile, 'ads-images', `${folder}/optimized`),
+              imageService.upload(thumbFile, 'ads-images', `${folder}/thumbs`)
+            ]);
+
+            uploadedMedia.push({
+              original: originalUrl,
+              optimized: optimizedUrl,
+              thumbnail: thumbUrl
+            });
 
           } catch (itemError: any) {
             console.error(`Erro ao processar "${file.name}":`, itemError);
-            if (itemError.message?.includes('413') || itemError.message?.includes('too large')) {
-              alert(`Erro: O servidor rejeitou "${file.name}" por ser muito grande.`);
-            } else {
-              alert(`Não foi possível enviar a foto "${file.name}".`);
-            }
+            alert(`Não foi possível enviar a foto "${file.name}".`);
           }
         }
 
-        if (uploadedUrls.length > 0) {
+        if (uploadedMedia.length > 0) {
           setFormData(prev => ({
             ...prev,
-            images: [...prev.images, ...uploadedUrls]
+            // Mantemos imagens (string[]) para compatibilidade interna do componente 
+            // que espera strings para o preview, e salvamos no media o objeto completo
+            images: [...prev.images, ...uploadedMedia.map(m => m.optimized)] as any,
+            media: [...(prev.media || []), ...uploadedMedia]
           }));
         }
       } catch (error) {
@@ -563,17 +582,30 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   };
 
   const removeImage = (indexToRemove: number) => {
-    setFormData(prev => ({ ...prev, images: prev.images.filter((_, index) => index !== indexToRemove) }));
+    setFormData(prev => ({ 
+      ...prev, 
+      images: prev.images.filter((_, index) => index !== indexToRemove),
+      media: prev.media?.filter((_, index) => index !== indexToRemove)
+    }));
   };
 
   const handleSetCover = (index: number) => {
     if (index === 0) return;
     setFormData(prev => {
       const newImages = [...prev.images];
-      const itemToMove = newImages[index];
+      const newMedia = prev.media ? [...prev.media] : [];
+      
+      const imgToMove = newImages[index];
       newImages.splice(index, 1);
-      newImages.unshift(itemToMove);
-      return { ...prev, images: newImages };
+      newImages.unshift(imgToMove);
+
+      if (newMedia.length > 0) {
+        const mediaToMove = newMedia[index];
+        newMedia.splice(index, 1);
+        newMedia.unshift(mediaToMove);
+      }
+
+      return { ...prev, images: newImages, media: newMedia };
     });
   };
 
@@ -810,7 +842,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
         </div>
         <div>
           <p className="text-sm font-bold text-gray-900 leading-tight">Anúncios com fotos têm mais chances de venda!</p>
-          <p className="text-xs text-gray-600 mt-1 font-medium">Você pode carregar até <span className="font-bold text-gray-900">20 fotos</span> e escolher qual será a capa do anúncio.</p>
+          <p className="text-xs text-gray-600 mt-1 font-medium">Você pode carregar até <span className="font-bold text-gray-900">10 fotos</span> e escolher qual será a capa do anúncio.</p>
         </div>
       </div>
 

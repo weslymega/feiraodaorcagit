@@ -22,8 +22,8 @@ export const supabase: SupabaseClient = createClient(finalUrl, SUPABASE_ANON_KEY
     }
 });
 
-// 🚩 FEATURE FLAG - CONTROLE DE MIGRAÇÃO DE DADOS (Fase 2)
-export const USE_NEW_API = true; // Definido como true para iniciar testes controlados
+// [FLAG MIGRATÓRIA FASE 1] Ativa o uso das novas rotas otimizadas
+export const USE_NEW_API = false;
 
 /**
  * API Service Objects Interfaces
@@ -99,6 +99,24 @@ const normalizeBoostPlan = (plan: string): string => {
 };
 
 /**
+ * Recursively removes sensitive or non-database fields from payloads
+ */
+const sanitizePayload = (obj: any): any => {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(sanitizePayload);
+
+    const forbidden = ['thumbnail_url', 'isFeatured', 'boost_plan', 'boostPlan', 'boostConfig', 'ownerName', 'ownerAvatar', 'isOwner', 'media', 'images_preview'];
+    const newObj: any = {};
+    
+    for (const key in obj) {
+        if (!forbidden.includes(key)) {
+            newObj[key] = sanitizePayload(obj[key]);
+        }
+    }
+    return newObj;
+};
+
+/**
  * Helper to map DB record (PT) to Item (EN) and clean strings
  */
 const mapAdData = (ad: any, isOwner: boolean = false) => {
@@ -107,7 +125,76 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
     const mappedStatus = DB_STATUS_TO_ADSTATUS[dbStatus] || AdStatus.PENDING;
 
     const category = cleanString(ad.categoria || ad.category);
-    const detalhes = ad.detalhes || {};
+    
+    // --- Safe Parse Detalhes (Fase 3.1) ---
+    const detailsRaw = ad.detalhes;
+    let detalhes: any = {};
+    if (typeof detailsRaw === 'string') {
+        try { detalhes = JSON.parse(detailsRaw); } catch(e) { detalhes = {}; }
+    } else {
+        detalhes = detailsRaw || {};
+    }
+
+    // --- Normalização Robusta de Mídia (Fase 3) ---
+    // 1. Coleta fontes possíveis: ad.imagens (coluna DB) ou detalhes.images (JSONB)
+    const rawImagesSources = [
+        ad.imagens,
+        detalhes.images,
+        detalhes.media,
+        ad.image ? [ad.image] : []
+    ];
+
+    // LOG DE DEBUG (TEMPORÁRIO) - Estrutura completa para auditoria
+    console.log('IMAGEM DEBUG:', { 
+        id: ad.id, 
+        details_images: detalhes.images, 
+        imagens: ad.imagens,
+        thumbnail_col: ad.thumbnail_url 
+    });
+
+    let combinedRaw: any[] = [];
+    for (const source of rawImagesSources) {
+        if (Array.isArray(source) && source.length > 0) {
+            combinedRaw = source;
+            break; 
+        }
+    }
+
+    // 2. Normaliza para estrutura AdImage[]
+    const normalizedMedia: AdImage[] = combinedRaw.map(item => {
+        // Correção crítica: Se for string, pode ser um JSON stringified (ex: na coluna imagens text[])
+        if (typeof item === 'string') {
+            try {
+                const parsed = JSON.parse(item);
+                if (parsed && typeof parsed === 'object') {
+                    item = parsed; // Substitui pela versão objeto
+                }
+            } catch (e) {
+                // Não é JSON, continua como string normal (URL)
+            }
+        }
+
+        if (typeof item === 'string') {
+            return {
+                original: item,
+                optimized: item,
+                thumbnail: item
+            };
+        }
+        if (item && typeof item === 'object') {
+            return {
+                original: item.original || item.optimized || item.thumbnail || '',
+                optimized: item.optimized || item.original || item.thumbnail || '',
+                thumbnail: item.thumbnail || item.optimized || item.original || ''
+            };
+        }
+        return null;
+    }).filter(Boolean) as AdImage[];
+
+    const images: string[] = normalizedMedia.map(m => m.optimized);
+
+    // 3. Shortcut Thumbnail (Capas) - Derivado, nunca do Banco
+    const thumbnail_url = normalizedMedia[0]?.thumbnail || null;
 
     const baseData = {
         id: ad.id,
@@ -115,8 +202,10 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         description: cleanString(ad.descricao || ad.descrição || ad.description),
         price: Number(ad.preco || ad.price || 0),
         category: category || 'outros',
-        image: (ad.imagens?.[0] || ad.image || 'https://placehold.co/600x400?text=Sem+Foto'),
-        images: Array.isArray(ad.imagens) ? ad.imagens : (ad.image ? [ad.image] : []),
+        image: normalizedMedia[0]?.optimized || 'https://placehold.co/600x400?text=Sem+Foto',
+        images: images,
+        media: normalizedMedia, // Novo campo estruturado para o frontend
+        thumbnail_url: thumbnail_url, // Shortcut para listas (CAMPO DERIVADO)
         location: cleanString(ad.localizacao || ad.location) || 'Brasil',
         status: mappedStatus,
         boostPlan: normalizeBoostPlan(cleanString(ad.boost_plan || ad.boostPlan)),
@@ -127,7 +216,7 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         ownerAvatar: ad.public_profiles?.avatar_url || ad.profiles?.avatar_url || null,
         additionalInfo: detalhes.additionalInfo || ad.additionalInfo || [],
         isOwner: isOwner,
-        isInFair: ad.is_in_fair || false, // Mapeando novo campo do banco
+        isInFair: ad.is_in_fair || false,
         turbo_expires_at: ad.turbo_expires_at,
         last_turbo_at: ad.last_turbo_at,
         detalhes: detalhes
@@ -451,51 +540,30 @@ export const api = {
             };
         }
 
-        try {
-            // Build the payload for the Edge Function with both languages to ensure compatibility
-            const edgePayload = {
-                ...adData,
-                titulo: adData.title, // Sync explicit DB column names
-                imagens: (adData.images && adData.images.length > 0) ? adData.images : (adData.image ? [adData.image] : []),
-                category,
-                detalhes: details,
-            };
+        // --- Persistência de Imagens em Detalhes (Fase 3) ---
+        // Garantimos que detalhes.images contenha a mídia estruturada
+        const mediaStructured = (adData.media && adData.media.length > 0) ? adData.media : [];
+        details.images = mediaStructured;
 
-            const { data, error } = await supabase.functions.invoke('create_ad', {
-                body: edgePayload
-            });
+        // Build the payload for the Edge Function
+        const edgePayload = sanitizePayload({
+            ...adData,
+            imagens: mediaStructured.length > 0 ? mediaStructured : (adData.images || []),
+            category,
+            detalhes: details,
+        });
 
-            if (error) {
-                console.warn('Edge Function failed, using direct insert:', error.message);
-                throw error;
-            }
+        const { data, error } = await supabase.functions.invoke('create_ad', {
+            body: edgePayload
+        });
 
-            return mapAdData(data, true);
-        } catch (edgeFunctionError) {
-            // Fallback: Direct insert to database using strict DB names
-            console.log('📝 Usando inserção direta no banco (Edge Function não disponível)');
-
-            const { data: ad, error: insertError } = await supabase
-                .from('anuncios')
-                .insert({
-                    user_id: session.user.id,
-                    titulo: adData.title || 'Anúncio sem título',
-                    descricao: adData.description || '',
-                    preco: adData.price || 0,
-                    categoria: category,
-                    status: STATUS_DB_MAP[AdStatus.PENDING],
-                    imagens: (adData.images && adData.images.length > 0) ? adData.images : (adData.image ? [adData.image] : []),
-                    localizacao: adData.location || 'Brasil',
-                    detalhes: details,
-                    boost_plan: adData.boostPlan || 'gratis'
-                })
-                .select()
-                .single();
-
-            if (insertError) throw insertError;
-
-            return mapAdData(ad, true);
+        if (error) {
+            console.error('Edge Function failed:', error);
+            // Parse network/edge error gracefully
+            throw error;
         }
+
+        return mapAdData(data, true);
     },
 
     /**
@@ -1050,20 +1118,22 @@ export const api = {
             };
         }
 
-        // 1. Prepare update payload
-        const updatePayload: any = {
+        // --- Persistência de Imagens em Detalhes (Fase 3) ---
+        const mediaStructured = (adData.media && adData.media.length > 0) ? adData.media : [];
+        details.images = mediaStructured;
+
+        // 1. Prepare and sanitize update payload
+        const updatePayload = sanitizePayload({
             titulo: adData.title,
             descricao: adData.description,
             preco: adData.price,
             categoria: category,
-            imagens: adData.images,
+            imagens: mediaStructured.length > 0 ? mediaStructured : (adData.images || []),
             localizacao: adData.location,
             detalhes: details,
-            updated_at: new Date().toISOString()
-        };
-
-        // 2. CRITICAL SECURITY: Ignore status from payload and force 'pending'
-        updatePayload.status = 'pending';
+            updated_at: new Date().toISOString(),
+            status: 'pending' // Force re-moderation on edit
+        });
 
         // 3. HARDENING: Blindagem Global contra alteração de campos de Destaque/Turbo
         // Estes campos são protegidos por trigger no banco, mas aqui evitamos até a tentativa de envio.
@@ -1074,23 +1144,17 @@ export const api = {
             'is_turbo',
             'turbo_weight',
             'turbo_progress',
-            'boost_plan'
+            'boost_plan',
+            'boost_plan_id' // Adicional
         ];
 
-        let removedFields: string[] = [];
         FORBIDDEN_FIELDS.forEach(field => {
-            // Verifica tanto no adData original quanto no updatePayload final
-            if (field in adData || field in updatePayload) {
+            if (field in updatePayload) {
                 delete updatePayload[field];
-                removedFields.push(field);
             }
         });
 
-        if (removedFields.length > 0) {
-            console.warn(`[SECURITY] Campos proibidos removidos do payload de update: ${removedFields.join(', ')}`);
-        }
-
-        console.log("[EDIT] Payload enviado (sem turbo)");
+        console.log("[EDIT] Payload sanitizado enviado");
 
         const { error } = await supabase
             .from('anuncios')
@@ -1280,11 +1344,6 @@ export const api = {
     },
 
     /**
-     * Get All Active Ads (Feed)
-     */
-    },
-    
-    /**
      * [NOVA API - FASE 1] Get Ads List com Select Leve e Filtros no servidor
      * Substitui o download massivo pelo carregamento sob demanda.
      */
@@ -1326,6 +1385,8 @@ export const api = {
             if (category) {
                 if (Array.isArray(category)) {
                     query = query.in('categoria', category);
+                } else if (category === 'veiculos' || category === 'autos') {
+                    query = query.in('categoria', ['veiculos', 'autos']);
                 } else {
                     query = query.eq('categoria', category);
                 }

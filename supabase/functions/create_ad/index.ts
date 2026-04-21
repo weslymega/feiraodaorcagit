@@ -38,36 +38,6 @@ Deno.serve(async (req) => {
         const body = await req.json();
         console.log(`[CreateAd] Request from user ${user.id}`);
 
-        // 🔍 Buscar plano do usuário (using adminClient)
-        const { data: profile } = await adminClient
-            .from("profiles")
-            .select("active_plan")
-            .eq("id", user.id)
-            .single();
-
-        const activePlan = profile?.active_plan ?? "free";
-
-        // 🔢 Contar anúncios do mês
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
-
-        const { count } = await adminClient
-            .from("anuncios")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", user.id)
-            .gte("created_at", startOfMonth.toISOString())
-            .neq("status", "rejected");
-
-        if (activePlan === "free" && (count ?? 0) >= 3) {
-            return new Response(
-                JSON.stringify({
-                    error: "LIMIT_REACHED",
-                    message: "Limite mensal de anúncios do plano gratuito atingido."
-                }),
-                { status: 403, headers: corsHeaders }
-            );
-        }
 
         // ✅ Extração robusta de dados
         const titulo = body.titulo || body.title || 'Anúncio sem título';

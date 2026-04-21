@@ -443,7 +443,12 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                 className={`w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left ${index !== searchSuggestions.length - 1 ? 'border-b border-gray-50' : ''
                   }`}
               >
-                <img src={ad.image} alt={ad.title} className="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
+                <SmartImage 
+                  src={ad.image} 
+                  thumbnailSrc={ad.thumbnail_url}
+                  alt={ad.title} 
+                  className="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0" 
+                />
                 <div className="flex-1 min-w-0 text-xs">
                   <p className="font-bold text-gray-900 truncate">{ad.title}</p>
                   <p className="text-primary font-medium">
@@ -508,6 +513,7 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
                 <div className="relative h-56 w-full overflow-hidden">
                   <SmartImage
                     src={ad.image}
+                    thumbnailSrc={ad.thumbnail_url}
                     alt={ad.title}
                     className="w-full h-full object-cover"
                     skeletonClassName="h-56 w-full"

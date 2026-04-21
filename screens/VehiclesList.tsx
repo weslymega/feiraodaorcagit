@@ -62,6 +62,22 @@ const YEARS = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => 2026 - i);
 
 
 export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdClick, favorites, onToggleFavorite, filterContext, onClearFilter, promotions = [], onNavigate, user, currentScreen }) => {
+  // Filter Values
+  const [filters, setFilters] = useState({
+    brand: '',
+    baseModel: '', // Primeiro nome (Ex: Onix)
+    version: '',   // Nome completo (Ex: Onix Hatch LT 1.0)
+    minPrice: '',
+    maxPrice: '',
+    minYear: '',
+    maxYear: '',
+    maxMileage: '',
+    transmission: '',
+    steering: '',
+    fuel: '',
+    color: ''
+  });
+
   const [selectedGroup, setSelectedGroup] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
@@ -103,7 +119,6 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
         filters: {
            brand: filters.brand,
            baseModel: filters.baseModel,
-           // Outros filtros serão adicionados na Fase 4/6 conforme estabilidade
         }
       });
       
@@ -162,32 +177,11 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
   const [initialFilters, setInitialFilters] = useState<any>(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
-  const handleCancelFilters = () => {
-    if (initialFilters) setFilters(initialFilters);
-    setIsFilterOpen(false);
-  };
-
   // FIPE API Data States
   const [fipeBrands, setFipeBrands] = useState<Brand[]>([]);
   const [fipeModels, setFipeModels] = useState<Model[]>([]);
   const [isLoadingBrands, setIsLoadingBrands] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
-
-  // Filter Values
-  const [filters, setFilters] = useState({
-    brand: '',
-    baseModel: '', // Primeiro nome (Ex: Onix)
-    version: '',   // Nome completo (Ex: Onix Hatch LT 1.0)
-    minPrice: '',
-    maxPrice: '',
-    minYear: '',
-    maxYear: '',
-    maxMileage: '',
-    transmission: '',
-    steering: '',
-    fuel: '',
-    color: ''
-  });
 
 
 
@@ -594,6 +588,13 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     if (onClearFilter) onClearFilter();
   }, [onClearFilter]);
 
+  const handleCancelFilters = () => {
+    if (initialFilters) {
+      setFilters(initialFilters);
+    }
+    setIsFilterOpen(false);
+  };
+
   // Executa clearFilters ao desmontar o componente (sair da tela)
   useEffect(() => {
     return () => {
@@ -653,7 +654,12 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                 className={`w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left ${index !== searchSuggestions.length - 1 ? 'border-b border-gray-50' : ''
                   }`}
               >
-                <img src={ad.image} alt={ad.title} className="w-10 h-10 rounded-lg object-cover bg-gray-100" />
+                <SmartImage 
+                  src={ad.image} 
+                  thumbnailSrc={ad.thumbnail_url}
+                  alt={ad.title} 
+                  className="w-10 h-10 rounded-lg object-cover bg-gray-100" 
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-gray-900 truncate">{ad.title}</p>
                   <p className="text-xs text-primary font-medium">
@@ -780,6 +786,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                 <div className="relative h-48 w-full">
                   <SmartImage
                     src={ad.image}
+                    thumbnailSrc={ad.thumbnail_url}
                     alt={ad.title}
                     className="w-full h-full object-cover"
                     skeletonClassName="h-48 w-full"
