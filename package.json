@@ -1,8 +1,8 @@
 {
   "name": "feiraodaorca95",
   "private": true,
-  "version": "1.2.4",
-  "versionCode": 25,
+  "version": "1.2.5",
+  "versionCode": 26,
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000 --strictPort",
@@ -22,7 +22,7 @@
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/haptics": "^8.0.1",
     "@capacitor/share": "^8.0.1",
-    "firebase": "^11.3.1",
+    "firebase": "^12.12.1",
     "@sentry/react": "^10.49.0",
     "@supabase/supabase-js": "^2.90.1",
     "browser-image-compression": "^2.0.2",
