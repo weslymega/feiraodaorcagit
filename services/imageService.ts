@@ -1,101 +1,79 @@
 import { supabase } from './api';
+import imageCompression from 'browser-image-compression';
 
-// --- NATIVE CANVAS COMPRESSION (BROWSER-IMAGE-COMPRESSION ALTERNATIVE) ---
+// --- IMAGE OPTIMIZATION SERVICE (HARDENED) ---
 /**
  * Image Service
  * Handles compression and upload to Supabase Storage
  */
 export const imageService = {
     /**
-     * Compresses an image based on the target type using native Canvas
+     * Compresses an image based on the target type using browser-image-compression
      * @param file The original File object
-     * @param type 'optimized' (1280px, 75%) or 'thumb' (300px, 70% 4:3)
+     * @param type 'optimized' (1200px, 300KB), 'thumb' (300px, 80KB) or 'chat' (800px, 150KB)
      */
-    async compress(file: File, type: 'optimized' | 'thumb'): Promise<File> {
-        return new Promise((resolve) => {
-            // Use setTimeout to ensure we don't block the UI thread immediately
-            setTimeout(() => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target?.result as string;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        let targetWidth: number;
-                        let targetHeight: number;
-                        let quality: number;
-                        let cropArea = { offsetX: 0, offsetY: 0, width: img.width, height: img.height };
-
-                        if (type === 'thumb') {
-                            // 4:3 Crop
-                            targetWidth = 300;
-                            targetHeight = 225;
-                            quality = 0.7;
-
-                            const targetRatio = 4 / 3;
-                            const currentRatio = img.width / img.height;
-
-                            if (currentRatio > targetRatio) {
-                                cropArea.width = img.height * targetRatio;
-                                cropArea.offsetX = (img.width - cropArea.width) / 2;
-                            } else if (currentRatio < targetRatio) {
-                                cropArea.height = img.width / targetRatio;
-                                cropArea.offsetY = (img.height - cropArea.height) / 2;
-                            }
-                        } else {
-                            // Optimized (Standard)
-                            const maxSide = 1280;
-                            quality = 0.75;
-                            
-                            if (img.width > img.height) {
-                                targetWidth = Math.min(img.width, maxSide);
-                                targetHeight = (img.height * targetWidth) / img.width;
-                            } else {
-                                targetHeight = Math.min(img.height, maxSide);
-                                targetWidth = (img.width * targetHeight) / img.height;
-                            }
-                        }
-
-                        canvas.width = targetWidth;
-                        canvas.height = targetHeight;
-                        const ctx = canvas.getContext('2d');
-                        if (ctx) {
-                            ctx.imageSmoothingEnabled = true;
-                            ctx.imageSmoothingQuality = 'high';
-                            ctx.drawImage(
-                                img, 
-                                cropArea.offsetX, cropArea.offsetY, cropArea.width, cropArea.height, 
-                                0, 0, targetWidth, targetHeight
-                            );
-                        }
-
-                        // Try WebP, fallback to JPEG
-                        const tryCompression = (format: 'image/webp' | 'image/jpeg') => {
-                            canvas.toBlob((blob) => {
-                                if (blob) {
-                                    const ext = format === 'image/webp' ? '.webp' : '.jpg';
-                                    const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + `_${type}${ext}`, {
-                                        type: format,
-                                        lastModified: Date.now(),
-                                    });
-                                    resolve(compressedFile);
-                                } else if (format === 'image/webp') {
-                                    // If webp fails, try jpeg
-                                    tryCompression('image/jpeg');
-                                } else {
-                                    resolve(file); // Final fallback
-                                }
-                            }, format, quality);
-                        };
-
-                        tryCompression('image/webp');
-                    };
-                    img.onerror = () => resolve(file);
-                };
-                reader.onerror = () => resolve(file);
-            }, 0);
+    async compress(file: File, type: 'optimized' | 'thumb' | 'chat'): Promise<File> {
+        const start = Date.now();
+        console.log(`[imageService] Starting compression for ${file.name} (${type})`, { 
+            originalSize: `${(file.size / 1024).toFixed(2)}KB`,
+            type: file.type 
         });
+
+        try {
+            // Configurações baseadas no feedback da auditoria
+            let maxSizeMB = 0.3;
+            let maxWidthOrHeight = 1200;
+
+            if (type === 'thumb') {
+                maxSizeMB = 0.08;
+                maxWidthOrHeight = 300;
+            } else if (type === 'chat') {
+                maxSizeMB = 0.15; // 150KB para chat é suficiente e mais rápido
+                maxWidthOrHeight = 800;
+            }
+
+            const options = {
+                maxSizeMB,
+                maxWidthOrHeight,
+                useWebWorker: true,
+                fileType: 'image/webp' as any,
+                initialQuality: 0.75,
+                alwaysKeepResolution: false,
+            };
+
+            // 1. Processamento principal
+            let compressedFile = await imageCompression(file, options);
+
+            // 2. Validação Pós-Compressão (Integridade)
+            if (!compressedFile || compressedFile.size === 0) {
+                throw new Error("Compresão resultou em arquivo inválido ou vazio.");
+            }
+
+            // 3. Fallback Seguro (Se WebP falhar ou for recusado pelo navegador)
+            // Nota: browser-image-compression já lida com fallbacks internos, 
+            // mas adicionamos uma camada de log estruturado.
+            
+            const duration = Date.now() - start;
+            console.log(`[imageService] Compression success: ${compressedFile.name}`, {
+                finalSize: `${(compressedFile.size / 1024).toFixed(2)}KB`,
+                reduction: `${((1 - (compressedFile.size / file.size)) * 100).toFixed(2)}%`,
+                duration: `${duration}ms`
+            });
+
+            return compressedFile;
+
+        } catch (error) {
+            console.error(`[imageService] Compression FAILED for ${file.name}:`, error);
+            
+            // Regra de Trava de 5MB para Fallback Original
+            if (file.size > 5 * 1024 * 1024) {
+                console.error("[imageService] Fallback blocked: Original file exceeds 5MB limit.");
+                throw new Error(`Arquivo original (${(file.size / (1024 * 1024)).toFixed(1)}MB) muito grande para upload sem compressão.`);
+            }
+
+            console.warn("[imageService] Returning original file as fallback (Under 5MB safety limit).");
+            return file;
+        }
     },
 
     /**

@@ -100,7 +100,8 @@ export enum AdStatus {
   SOLD = 'Vendido',
   BOUGHT = 'Comprado',
   PENDING = 'Pendente',   // Novo status
-  REJECTED = 'Rejeitado'  // Novo status
+  REJECTED = 'Rejeitado', // Novo status
+  EXPIRED = 'Expirado'    // Novo status (Automático após 30 dias)
 }
 
 export enum TurboPlan {

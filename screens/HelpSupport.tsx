@@ -9,7 +9,7 @@ interface HelpSupportProps {
 
 export const HelpSupport: React.FC<HelpSupportProps> = ({ onBack }) => {
   return (
-    <div className="min-h-screen bg-gray-50 pb-6 animate-in slide-in-from-right duration-300">
+    <div className="min-h-screen bg-gray-50 pb-32 animate-in slide-in-from-right duration-300">
       <Header title="Ajuda e Suporte" onBack={onBack} />
 
       <div className="p-6">
@@ -34,7 +34,7 @@ export const HelpSupport: React.FC<HelpSupportProps> = ({ onBack }) => {
 
           <div className="flex flex-col gap-4">
             <button 
-              onClick={() => window.location.href = "tel:+5561983227344"}
+              onClick={() => window.location.href = "tel:+5561999992842"}
               className="w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-purple-100 flex items-center justify-center gap-3 active:scale-[0.98] transition-all hover:bg-primary/90"
             >
               <div className="bg-white/20 p-1.5 rounded-lg">
@@ -44,7 +44,7 @@ export const HelpSupport: React.FC<HelpSupportProps> = ({ onBack }) => {
             </button>
 
             <button 
-              onClick={() => window.open("https://wa.me/5561983227344?text=Olá,%20preciso%20de%20ajuda", "_blank")}
+              onClick={() => window.open("https://wa.me/5561999992842?text=Olá,%20preciso%20de%20ajuda", "_blank")}
               className="w-full bg-[#25D366] text-white py-4 rounded-2xl font-bold shadow-lg shadow-green-100 flex items-center justify-center gap-3 active:scale-[0.98] transition-all hover:bg-[#20ba5a]"
             >
               <div className="bg-white/20 p-1.5 rounded-lg">

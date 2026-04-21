@@ -26,12 +26,22 @@ export const SmartImage: React.FC<SmartImageProps> = ({
         const img = new Image();
         img.src = src;
         img.onload = () => setIsLoaded(true);
-        img.onerror = () => setError(true);
+        img.onerror = (err) => {
+            console.error('❌ [SmartImage] Error loading main image:', src, {
+                error: err,
+                timestamp: new Date().toISOString(),
+                ua: navigator.userAgent
+            });
+            setError(true);
+        };
         
         if (thumbnailSrc) {
             const thumb = new Image();
             thumb.src = thumbnailSrc;
             thumb.onload = () => setIsThumbLoaded(true);
+            thumb.onerror = (err) => {
+                console.warn('⚠️ [SmartImage] Error loading thumbnail:', thumbnailSrc, err);
+            };
         }
     }, [src, thumbnailSrc]);
 

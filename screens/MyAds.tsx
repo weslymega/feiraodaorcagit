@@ -51,11 +51,11 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
   // Group Pending with Active in the tab logic, but they are technically distinct states
   const filteredAds = ads.filter(ad => {
     if (activeTab === 'ativos') return ad.status === AdStatus.ACTIVE;
-    if (activeTab === 'pendentes') return ad.status === AdStatus.PENDING || ad.status === AdStatus.REJECTED;
+    if (activeTab === 'pendentes') return ad.status === AdStatus.PENDING || ad.status === AdStatus.REJECTED || ad.status === AdStatus.EXPIRED;
     return false;
   });
 
-  const pendingCount = ads.filter(ad => ad.status === AdStatus.PENDING || ad.status === AdStatus.REJECTED).length;
+  const pendingCount = ads.filter(ad => ad.status === AdStatus.PENDING || ad.status === AdStatus.REJECTED || ad.status === AdStatus.EXPIRED).length;
 
   const toggleMenu = (id: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -107,12 +107,23 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
     }
   };
 
-  // Helper to calculate days remaining
-  const getDaysRemaining = (expiryDate?: string) => {
-    if (!expiryDate) return 0;
-    const end = new Date(expiryDate);
+  // Helper to calculate days remaining for ad expiration (30 days cycle)
+  const getAdDaysRemaining = (createdAt?: string) => {
+    if (!createdAt) return 0;
+    const created = new Date(createdAt);
+    const expiryDate = new Date(created.getTime() + (30 * 24 * 60 * 60 * 1000));
     const now = new Date();
-    const diff = end.getTime() - now.getTime();
+    const diff = expiryDate.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diff / (1000 * 3600 * 24)));
+  };
+
+  // Helper to calculate days until permanent deletion (35 days cycle)
+  const getDeletionDaysRemaining = (createdAt?: string) => {
+    if (!createdAt) return 0;
+    const created = new Date(createdAt);
+    const deletionDate = new Date(created.getTime() + (35 * 24 * 60 * 60 * 1000));
+    const now = new Date();
+    const diff = deletionDate.getTime() - now.getTime();
     return Math.max(0, Math.ceil(diff / (1000 * 3600 * 24)));
   };
 
@@ -188,7 +199,8 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1 ${ad.status === AdStatus.ACTIVE ? 'bg-green-100 text-green-700' :
                   ad.status === AdStatus.PENDING ? 'bg-orange-100 text-orange-700' :
                     ad.status === AdStatus.REJECTED ? 'bg-red-100 text-red-700' :
-                      'bg-gray-100 text-gray-500'
+                      ad.status === AdStatus.EXPIRED ? 'bg-gray-200 text-gray-700' :
+                        'bg-gray-100 text-gray-500'
                   }`}>
                   {ad.status === AdStatus.PENDING && <Clock className="w-3 h-3" />}
                   {ad.status === AdStatus.REJECTED && <AlertTriangle className="w-3 h-3" />}
@@ -305,16 +317,33 @@ export const MyAds: React.FC<MyAdsProps> = ({ ads, onBack, onDelete, onEdit, onC
                 {ad.status === AdStatus.PENDING && (
                   <p className="text-orange-500 text-xs mt-2 font-medium animate-pulse">Aguardando revisão da equipe.</p>
                 )}
+                {ad.status === AdStatus.EXPIRED && (
+                  <div className="mt-2 bg-gray-100 p-2 rounded-lg border border-gray-200">
+                    <p className="text-gray-600 text-[10px] font-bold flex items-center gap-1 uppercase">
+                      <Trash2 className="w-3 h-3" /> Exclusão definitiva em {getDeletionDaysRemaining(ad.createdAt)} dias
+                    </p>
+                  </div>
+                )}
               </div>
               <img src={ad.image} alt={ad.title} className="w-28 h-20 object-cover rounded-lg bg-gray-100" />
             </div>
+
+            {/* --- AD EXPIRATION INDICATOR --- */}
+            {ad.status === AdStatus.ACTIVE && (
+               <div className="mt-1 flex items-center gap-1.5 py-1 px-2 bg-blue-50/50 rounded-lg w-fit border border-blue-100/30">
+                 <Clock className="w-3 h-3 text-blue-400" />
+                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-tight">
+                   Expira em {getAdDaysRemaining(ad.createdAt)} dias
+                 </span>
+               </div>
+            )}
 
             {/* --- BOOST STATUS INFO SECTION --- */}
             {ad.isFeatured && ad.boostConfig && ad.status === AdStatus.ACTIVE && (
               <div className="mt-2 bg-gray-50 rounded-xl p-3 border border-gray-100 text-xs flex flex-col gap-2">
                 <div className="flex justify-between items-center text-gray-600">
-                  <span className="flex items-center gap-1.5 font-medium"><Calendar className="w-3.5 h-3.5 text-primary" /> Expira em:</span>
-                  <span className="font-bold text-gray-800">{getDaysRemaining(ad.boostConfig.expiresAt)} dias</span>
+                  <span className="flex items-center gap-1.5 font-medium"><Calendar className="w-3.5 h-3.5 text-primary" /> Boost expira em:</span>
+                  <span className="font-bold text-gray-800">{getAdDaysRemaining(ad.boostConfig.expiresAt)} dias</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                   <div className="bg-accent h-full rounded-full" style={{ width: `${(getDaysRemaining(ad.boostConfig.expiresAt) / (ad.boostConfig.totalBumps * 3)) * 100}%` }}></div>

@@ -100,8 +100,10 @@ export const useAppActions = (state: AppState) => {
     // --- AUTH ACTIONS ---
     const handleAcceptTerms = async () => {
         try {
+            console.log("💾 [Auth] Iniciando persistência do aceite de termos...");
             // STEP 1: Update DB with versioning
             await api.updateTermsAcceptance(TERMS_VERSION);
+            console.log("✅ [Auth] Aceite registrado no banco com sucesso.");
             
             // STEP 2: Update Local Persistence (Immediate access even on reload)
             localStorage.setItem("termsAccepted", "true");
@@ -120,10 +122,10 @@ export const useAppActions = (state: AppState) => {
             // STEP 4: Navigate only after state is updated
             setCurrentScreen(Screen.DASHBOARD);
             setToast({ message: "Termos aceitos com sucesso! Bem-vindo.", type: 'success' });
-        } catch (error) {
-            console.error("❌ Erro ao aceitar termos:", error);
+        } catch (error: any) {
+            console.error("❌ [Auth] Erro crítico ao persistir aceite no banco:", error.message || error);
             // Non-blocking error: allow user to try again
-            setToast({ message: "Erro ao registrar aceite. Por favor, verifique sua conexão e tente novamente.", type: 'error' });
+            setToast({ message: "Erro ao registrar aceite no servidor. Verifique sua conexão.", type: 'error' });
         }
     };
 
@@ -289,6 +291,11 @@ export const useAppActions = (state: AppState) => {
             localStorage.removeItem("termsVersion");
             localStorage.clear(); // Clear all to be safe
 
+            // 1.1 Force Reset Browser URL (Avoid redirection loops from PublicRouteHandler)
+            if (typeof window !== 'undefined') {
+                window.history.replaceState({}, '', '/');
+            }
+
             // 2. Supabase SignOut
             await supabase.auth.signOut();
 
@@ -370,7 +377,20 @@ export const useAppActions = (state: AppState) => {
             }
         } catch (error: any) {
             console.error("Erro registro:", error);
-            setToast({ message: "Erro ao criar conta: " + error.message, type: 'error' });
+            
+            let friendlyMessage = "Erro ao criar conta. Tente novamente.";
+            
+            if (error.message?.includes("User already registered") || error.code === 'user_already_exists') {
+                friendlyMessage = "Este e-mail já está cadastrado. Tente fazer login ou recuperar sua senha.";
+            } else if (error.message?.includes("Password should be") || error.code === 'weak_password') {
+                friendlyMessage = "A senha é muito fraca. Tente uma senha mais curta com letras e números.";
+            } else if (error.message?.includes("Invalid email")) {
+                friendlyMessage = "O e-mail informado não é válido.";
+            } else {
+                friendlyMessage = error.message || friendlyMessage;
+            }
+
+            setToast({ message: friendlyMessage, type: 'error' });
             setAuthLoading(false);
         } finally {
             setAuthLoading(false);

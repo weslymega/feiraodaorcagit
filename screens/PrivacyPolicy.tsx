@@ -12,7 +12,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
         <div className="min-h-screen h-screen overflow-y-auto bg-gray-50 flex flex-col">
             <Header title="Política de Privacidade" onBack={onBack} />
 
-            <div className="flex-1 px-4 pt-6 pb-12">
+            <div className="flex-1 px-4 pt-6 pb-32">
 
                 {/* Intro */}
                 <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 mb-6">
@@ -158,13 +158,13 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                             </a>
                             
                             <a 
-                                href="https://wa.me/5561983227344"
+                                href="https://wa.me/5561999992842"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-full flex items-center justify-center gap-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 px-6 py-4 rounded-2xl font-bold transition-all border border-[#25D366]/20 active:scale-[0.98] text-[#25D366]"
                             >
                                 <MessageCircle className="w-5 h-5" />
-                                <span className="text-[14px]">(61) 98322-7344</span>
+                                <span className="text-[14px]">(61) 99999-2842</span>
                             </a>
                         </div>
                     </section>

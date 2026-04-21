@@ -53,7 +53,8 @@ export const STATUS_DB_MAP = {
     [AdStatus.REJECTED]: 'rejected',
     [AdStatus.SOLD]: 'sold',
     [AdStatus.INACTIVE]: 'paused',
-    [AdStatus.BOUGHT]: 'bought'
+    [AdStatus.BOUGHT]: 'bought',
+    [AdStatus.EXPIRED]: 'expired'
 };
 
 const DB_STATUS_TO_ADSTATUS: Record<string, AdStatus> = {
@@ -71,7 +72,9 @@ const DB_STATUS_TO_ADSTATUS: Record<string, AdStatus> = {
     'archived': AdStatus.INACTIVE, // UI mapping for archived
     'arquivado': AdStatus.INACTIVE,
     'bought': AdStatus.BOUGHT,
-    'comprado': AdStatus.BOUGHT
+    'comprado': AdStatus.BOUGHT,
+    'expired': AdStatus.EXPIRED,
+    'expirado': AdStatus.EXPIRED
 };
 
 /**
@@ -154,8 +157,13 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
 
     let combinedRaw: any[] = [];
     for (const source of rawImagesSources) {
-        if (Array.isArray(source) && source.length > 0) {
-            combinedRaw = source;
+        let sourceArr = source;
+        if (typeof source === 'string' && source.trim().startsWith('[')) {
+            try { sourceArr = JSON.parse(source); } catch (e) { sourceArr = source; }
+        }
+        
+        if (Array.isArray(sourceArr) && sourceArr.length > 0) {
+            combinedRaw = sourceArr;
             break; 
         }
     }
@@ -633,8 +641,8 @@ export const api = {
             showOnlineStatus: data.show_online_status ?? true,
             readReceipts: data.read_receipts ?? true,
             lastActiveAt: data.last_active_at,
-            acceptedTerms: data.accepted_terms || data.terms_accepted || false,
-            acceptedAt: data.accepted_at || data.terms_accepted_at,
+            acceptedTerms: data.terms_accepted || false,
+            acceptedAt: data.terms_accepted_at,
             termsAccepted: data.terms_accepted || false,
             termsAcceptedAt: data.terms_accepted_at,
             termsVersion: data.terms_version,
@@ -684,8 +692,6 @@ export const api = {
         const { error } = await supabase
             .from('profiles')
             .update({
-                accepted_terms: true,
-                accepted_at: new Date().toISOString(),
                 terms_accepted: true,
                 terms_accepted_at: new Date().toISOString(),
                 terms_version: version

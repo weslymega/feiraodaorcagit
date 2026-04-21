@@ -82,13 +82,22 @@ export const PublicRouteHandler: React.FC<PublicRouteHandlerProps> = ({ onAdFoun
   useEffect(() => {
     if (!currentScreen) return;
 
-    if (currentScreen === Screen.PRIVACY_POLICY && window.location.pathname !== '/privacidade') {
+    const path = window.location.pathname;
+
+    if (currentScreen === Screen.PRIVACY_POLICY && path !== '/privacidade') {
       console.log("🔗 [URL Sync] Updating URL to /privacidade");
       window.history.pushState({}, '', '/privacidade');
     } 
-    else if (currentScreen === Screen.TERMS_OF_USE && window.location.pathname !== '/termos') {
+    else if (currentScreen === Screen.TERMS_OF_USE && path !== '/termos') {
       console.log("🔗 [URL Sync] Updating URL to /termos");
       window.history.pushState({}, '', '/termos');
+    }
+    // New: Clear legal routes when navigating back to main app
+    else if (path === '/privacidade' || path === '/termos') {
+      if (currentScreen !== Screen.PRIVACY_POLICY && currentScreen !== Screen.TERMS_OF_USE) {
+        console.log("🔗 [URL Sync] Resetting URL to home root");
+        window.history.replaceState({}, '', '/');
+      }
     }
   }, [currentScreen]);
 

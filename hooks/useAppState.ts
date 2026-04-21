@@ -400,21 +400,33 @@ export const useAppState = () => {
             // NUNCA usar await — fire and forget
             setSentryUser(freshProfile.id);
             
-            // --- VALIDAÇÃO FINAL (Fonte da Verdade: Supabase) ---
-            // Verifica tanto o campo legado quanto o novo com versionamento
-            const hasAcceptedCurrentVersion = (freshProfile.termsAccepted || freshProfile.acceptedTerms) && 
-                                              freshProfile.termsVersion === TERMS_VERSION;
+            // --- VALIDAÇÃO DE TERMOS (Resiliência & Sincronização) ---
+            const dbAccepted = (freshProfile.termsAccepted || freshProfile.acceptedTerms);
+            const dbVersionMatch = freshProfile.termsVersion === TERMS_VERSION;
+            
+            const localAccepted = localStorage.getItem("termsAccepted") === "true";
+            const localVersionMatch = localStorage.getItem("termsVersion") === TERMS_VERSION;
 
-            if (!hasAcceptedCurrentVersion) {
-              console.log("⚠️ [Auth] Aceite de termos ausente ou versão obsoleta no DB. Redirecionando...");
-              // Limpa otimização local se o DB diz que não vale
+            // Log de Inconsistência (Requisito 5)
+            if (localAccepted && localVersionMatch && (!dbAccepted || !dbVersionMatch)) {
+              console.warn(`⚠️ [Auth] Inconsistência: LocalStorage (v2) OK, mas DB (${freshProfile.termsVersion || 'null'}) desatualizado. Aplicando Grace Period.`);
+            }
+
+            // Regra de Redirecionamento: SÓ redireciona se AMBAS as fontes falharem
+            // Isso evita o loop caso o banco demore para refletir a atualização
+            const hasValidity = (dbAccepted && dbVersionMatch) || (localAccepted && localVersionMatch);
+
+            if (!hasValidity) {
+              console.log("🚫 [Auth] Nenhum aceite válido encontrado (DB ou Local). Redirecionando para Aceite de Termos...");
               localStorage.removeItem("termsAccepted");
               localStorage.removeItem("termsVersion");
               setCurrentScreen(Screen.ACCEPT_TERMS);
             } else {
-              // Sincroniza Local Storage com o DB (Garante persistência para reabertura)
-              localStorage.setItem("termsAccepted", "true");
-              localStorage.setItem("termsVersion", TERMS_VERSION);
+              // Sincronização Silenciosa: Se o DB está ok, garante que o local também esteja
+              if (dbAccepted && dbVersionMatch) {
+                localStorage.setItem("termsAccepted", "true");
+                localStorage.setItem("termsVersion", TERMS_VERSION);
+              }
             }
           } else {
             // Profile not found yet (race condition with trigger)

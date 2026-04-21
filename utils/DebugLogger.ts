@@ -9,7 +9,10 @@ class DebugLogger {
     const logMsg = `[${timestamp}] ${message}`;
 
     // Também enviamos para o console para não perder logs no Logcat se necessário
-    console.log(logMsg);
+    // Silenciado em produção para evitar vazamento de informações no Logcat
+    if (import.meta.env.DEV || import.meta.env.MODE === 'development') {
+      console.log(logMsg);
+    }
 
     this.logs.push(logMsg);
 

@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Save, Lock, Mail, Phone, MapPin, User as UserIcon, Loader2, Home } from 'lucide-react';
 import { Header } from '../components/Shared';
 import { AnimatedAvatar } from '../components/AnimatedAvatar';
+import { imageService } from '../services/imageService';
 import { User } from '../types';
 
 interface EditProfileProps {
@@ -106,50 +107,24 @@ export const EditProfile: React.FC<EditProfileProps> = ({ user, onSave, onBack, 
     }
   };
 
-  // --- COMPRESSÃO DE IMAGEM ---
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 300; // Avatar não precisa ser maior que 300px
-          const scaleSize = MAX_WIDTH / img.width;
-
-          if (scaleSize < 1) {
-            canvas.width = MAX_WIDTH;
-            canvas.height = img.height * scaleSize;
-          } else {
-            canvas.width = img.width;
-            canvas.height = img.height;
-          }
-
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          // Compress to JPEG quality 0.7
-          resolve(canvas.toDataURL('image/jpeg', 0.7));
-        };
-        img.onerror = (error) => reject(error);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setIsProcessing(true);
       try {
-        const compressedBase64 = await compressImage(file);
-        setFormData(prev => ({ ...prev, avatarUrl: compressedBase64 }));
+        // Usamos o serviço unificado (tipo thumb: 300px, 80KB, WebP)
+        const compressedFile = await imageService.compress(file, 'thumb');
+        
+        // Convertemos para base64 para o preview/upload (conforme lógica atual do EditProfile)
+        const reader = new FileReader();
+        reader.readAsDataURL(compressedFile);
+        reader.onloadend = () => {
+          setFormData(prev => ({ ...prev, avatarUrl: reader.result as string }));
+          setIsProcessing(false);
+        };
       } catch (error) {
-        console.error("Erro ao processar imagem", error);
-        alert("Erro ao carregar imagem. Tente uma menor.");
-      } finally {
+        console.error("Erro ao processar avatar", error);
+        alert("Erro ao carregar imagem. Tente uma menor ou outro formato.");
         setIsProcessing(false);
       }
     }

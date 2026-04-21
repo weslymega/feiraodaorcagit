@@ -133,6 +133,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   const [step, setStep] = useState<CreateStep>(initialStep);
   const [history, setHistory] = useState<CreateStep[]>([initialStep]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [adTitle, setAdTitle] = useState('');
@@ -496,7 +497,8 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
       // --- 1. VALIDAÇÃO IMEDIATA (Performance/Security) ---
       const filesToProcess: File[] = [];
-      const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+      const MAX_SOURCE_SIZE = 10 * 1024 * 1024; // 10MB (Permite fotos de iPhone/Android modernas serem comprimidas)
+      const MAX_FALLBACK_SIZE = 5 * 1024 * 1024; // 5MB (Trava de segurança se a compressão falhar)
       const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
       for (let i = 0; i < Math.min(files.length, remainingSlots); i++) {
@@ -508,9 +510,9 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
           continue;
         }
 
-        // Validar tamanho original (Proteger contra arquivos gigantes que travam o canvas)
-        if (file.size > MAX_SIZE) {
-          alert(`A imagem "${file.name}" é muito grande. O limite máximo permitido é 5MB.`);
+        // Validar tamanho original (Proteger contra arquivos gigantes que travam o compressor)
+        if (file.size > MAX_SOURCE_SIZE) {
+          alert(`A imagem "${file.name}" é muito grande. O limite máximo permitido para otimização é 10MB.`);
           continue;
         }
 
@@ -527,21 +529,24 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
         const uploadedMedia: AdImage[] = [];
 
         // --- 2. PROCESSAMENTO SEQUENCIAL (Safe for Low-End Devices) ---
+        let count = 0;
         for (const file of filesToProcess) {
+          count++;
+          setUploadMessage(`Processando ${count} de ${filesToProcess.length} imagens...`);
+          
           try {
             // A. Gerar Versões de Mídia (Assíncrono)
-            // 1. Original (Mantemos o 1280px HQ como "original")
+            // 1. Original (Mantemos o 1200px conforme novo plano)
             const originalFile = await imageService.compress(file, 'optimized'); 
             
-            // 2. Optimized (Utilizamos uma qualidade menor se necessário, ou mesmo 1280px)
-            // Para simplificação e economia, usaremos a mesma versão otimizada aqui 
-            // ou poderíamos ter um perfil 'low'
+            // 2. Optimized (Garantido pelo service estar em 300KB)
             const optimizedFile = originalFile; 
 
-            // 3. Thumbnail (300px)
+            // 3. Thumbnail (Garantido pelo service estar em 80KB)
             const thumbFile = await imageService.compress(file, 'thumb');
 
             // B. Upload Sequencial
+            setUploadMessage(`Enviando ${count} de ${filesToProcess.length}...`);
             const folder = `${user.id}/${Date.now()}`;
             
             const [originalUrl, optimizedUrl, thumbUrl] = await Promise.all([
@@ -558,7 +563,7 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
           } catch (itemError: any) {
             console.error(`Erro ao processar "${file.name}":`, itemError);
-            alert(`Não foi possível enviar a foto "${file.name}".`);
+            alert(`Não foi possível enviar a foto "${file.name}": ${itemError.message || 'Erro desconhecido'}`);
           }
         }
 
@@ -1219,6 +1224,26 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
 
   return (
     <div className="flex flex-col h-full bg-white relative">
+      {isUploading && (
+        <div className="absolute inset-0 z-[2000] bg-white/90 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full flex flex-col items-center gap-5 animate-in fade-in zoom-in duration-300 border border-gray-100">
+            <div className="relative">
+              <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="font-bold text-gray-900 text-xl mb-2">Otimizando Fotos</h3>
+              <p className="text-gray-500 font-medium leading-relaxed">{uploadMessage}</p>
+            </div>
+            <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden shadow-inner">
+              <div className="h-full bg-primary animate-pulse w-full shadow-lg"></div>
+            </div>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Não feche o aplicativo</p>
+          </div>
+        </div>
+      )}
       {isCreating && (
         <div className="absolute inset-0 z-[1000] bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
           <Loader2 className="w-12 h-12 text-primary animate-spin" />
