@@ -46,6 +46,9 @@ configurations.all {
         if (details.requested.group == 'androidx.fragment' && details.requested.name == 'fragment') {
             details.useVersion rootProject.ext.androidxFragmentVersion
         }
+        if (details.requested.group == 'androidx.browser' && details.requested.name == 'browser') {
+            details.useVersion '1.8.0'
+        }
     }
 }
 
