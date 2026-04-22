@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { MessageCircle, HelpCircle } from 'lucide-react';
 import { Header } from '../components/Shared';
+import { openWhatsApp } from '../utils/mobileActions';
 
 interface HelpSupportProps {
   onBack: () => void;
@@ -44,7 +45,7 @@ export const HelpSupport: React.FC<HelpSupportProps> = ({ onBack }) => {
             </button>
 
             <button 
-              onClick={() => window.open("https://wa.me/5561999992842?text=Olá,%20preciso%20de%20ajuda", "_blank")}
+              onClick={() => openWhatsApp('5561999992842', 'Olá, preciso de ajuda')}
               className="w-full bg-[#25D366] text-white py-4 rounded-2xl font-bold shadow-lg shadow-green-100 flex items-center justify-center gap-3 active:scale-[0.98] transition-all hover:bg-[#20ba5a]"
             >
               <div className="bg-white/20 p-1.5 rounded-lg">

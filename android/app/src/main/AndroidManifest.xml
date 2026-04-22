@@ -41,6 +41,14 @@
                 <data android:scheme="https" android:host="feiraodaorca.com" android:pathPrefix="/anuncio" />
                 <data android:scheme="https" android:host="feiraodaorca.com" android:pathPrefix="/ad" />
             </intent-filter>
+
+            <!-- DEEP LINK: Google OAuth Callback -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="feiraodaorca.com" android:pathPrefix="/auth/callback" />
+            </intent-filter>
         </activity>
 
         <provider

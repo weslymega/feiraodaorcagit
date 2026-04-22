@@ -2,6 +2,7 @@
 import React from 'react';
 import { Header } from '../components/Shared';
 import { Target, Shield, Zap, Users, Mail, MessageCircle } from 'lucide-react';
+import { openWhatsApp } from '../utils/mobileActions';
 
 interface AboutUsProps {
     onBack: () => void;
@@ -82,15 +83,13 @@ export const AboutUs: React.FC<AboutUsProps> = ({ onBack }) => {
                     <p className="text-gray-600 mb-6 font-medium">Anuncie sua marca no maior portal de classificados do DF</p>
                     
                     <div className="flex flex-col gap-4 items-center">
-                        <a 
-                            href="https://wa.me/5561999992842" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
+                        <button 
+                            onClick={() => openWhatsApp('5561999992842')}
                             className="flex items-center justify-center gap-3 bg-green-500 text-white px-6 py-4 rounded-2xl font-bold hover:bg-green-600 transition-colors shadow-lg shadow-green-100 w-full max-w-sm"
                         >
                             <MessageCircle className="w-5 h-5 flex-shrink-0" />
                             <span>61 99999-2842</span>
-                        </a>
+                        </button>
                         
                         <a 
                             href="mailto:feiraodaorcadf@gmail.com" 

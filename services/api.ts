@@ -17,8 +17,10 @@ const finalUrl = isValidUrl(SUPABASE_URL) ? SUPABASE_URL : 'https://placeholder-
 
 export const supabase: SupabaseClient = createClient(finalUrl, SUPABASE_ANON_KEY, {
     auth: {
+        flowType: 'pkce',
         persistSession: true,
         autoRefreshToken: true,
+        detectSessionInUrl: true
     }
 });
 

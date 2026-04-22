@@ -213,17 +213,24 @@ export const RealEstateList: React.FC<RealEstateListProps> = ({ ads, onBack, onA
       if (minP > 0 && price < minP) return false;
       if (maxP > 0 && price > maxP) return false;
 
-      // Bedrooms (Mínimo de)
+      // Bedrooms
       if (filters.bedrooms !== null) {
-        const adBeds = ad.bedrooms || 0;
-        // Use >= para garantir que se o usuário pede 2, mostre imóveis com 3, 4, etc.
-        if (adBeds < filters.bedrooms) return false;
+        const adBeds = Number(ad.bedrooms || 0);
+        if (filters.bedrooms === 4) {
+          if (adBeds < 4) return false;
+        } else {
+          if (adBeds !== filters.bedrooms) return false;
+        }
       }
 
-      // Bathrooms (Mínimo de)
+      // Bathrooms
       if (filters.bathrooms !== null) {
-        const adBaths = ad.bathrooms || 0;
-        if (adBaths < filters.bathrooms) return false;
+        const adBaths = Number(ad.bathrooms || 0);
+        if (filters.bathrooms === 4) {
+          if (adBaths < 4) return false;
+        } else {
+          if (adBaths !== filters.bathrooms) return false;
+        }
       }
 
       // Area

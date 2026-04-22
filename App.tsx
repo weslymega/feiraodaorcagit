@@ -43,7 +43,12 @@ const App: React.FC = () => {
     };
 
     // 1. Escuta eventos com o app já em execução (Background -> Foreground)
-    const appUrlListener = CapApp.addListener('appUrlOpen', (event) => {
+    const appUrlListener = CapApp.addListener('appUrlOpen', async (event) => {
+      if (event.url.includes('auth/callback')) {
+        await supabase.auth.getSession();
+        window.location.href = '/';
+        return;
+      }
       handleDeepLink(event.url);
     });
 

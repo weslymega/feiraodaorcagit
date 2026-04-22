@@ -2,6 +2,37 @@ import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
+/**
+ * Abre uma URL externa de forma segura.
+ * - No APK (Capacitor nativo): usa `window.open(url, '_system')` para garantir
+ *   abertura no browser externo ou app externo, evitando ERR_UNKNOWN_URL_SCHEME.
+ * - No browser/desktop: usa `window.open(url, '_blank')` padrão.
+ */
+export const openExternalUrl = (url: string): void => {
+  if (Capacitor.isNativePlatform()) {
+    window.open(url, '_system');
+  } else {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+};
+
+/**
+ * Abre o WhatsApp com o número e mensagem fornecidos.
+ * Usa sempre https://wa.me/ (nunca whatsapp:// para evitar ERR_UNKNOWN_URL_SCHEME).
+ * Fallback automático para web.whatsapp.com em desktop.
+ *
+ * @param phone - Número com DDI, sem símbolos. Ex: "5561999992842"
+ * @param message - Mensagem pré-preenchida (opcional)
+ */
+export const openWhatsApp = (phone: string, message?: string): void => {
+  const cleanPhone = phone.replace(/\D/g, '');
+  const encodedMessage = message ? encodeURIComponent(message) : '';
+  const waUrl = encodedMessage
+    ? `https://wa.me/${cleanPhone}?text=${encodedMessage}`
+    : `https://wa.me/${cleanPhone}`;
+  openExternalUrl(waUrl);
+};
+
 export interface ShareOptions {
   title: string;
   text: string;

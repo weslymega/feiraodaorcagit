@@ -350,26 +350,29 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
     return (
         <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden relative">
             <header className="px-6 pt-12 pb-6 flex items-center gap-4 bg-white border-b border-gray-100 shadow-sm relative z-10">
-                <button onClick={onBack} className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-900 active:scale-90 transition-all border border-gray-100">
+                <button onClick={onBack} className="w-10 h-10 flex-shrink-0 rounded-xl bg-gray-50 flex items-center justify-center text-gray-900 active:scale-90 transition-all border border-gray-100">
                     <ArrowLeft className="w-5 h-5" />
                 </button>
-                <div>
-                    <h1 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Boost Turbo {isProgressiveMode ? "⚡" : ""}</h1>
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-lg font-black text-gray-900 uppercase tracking-tighter truncate">Boost Turbo {isProgressiveMode ? "⚡" : ""}</h1>
                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none">Acelerador de Resultados</p>
                 </div>
-                <div className="flex items-center gap-2 ml-auto">
-                    <button 
-                        onClick={handleDebugAdFlow}
-                        className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 active:scale-90 transition-all border border-gray-100"
-                        title="Debug Ad Flow"
-                    >
-                        <Bug className="w-5 h-5" />
-                    </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Botão de Debug: visível apenas no ambiente de desenvolvimento */}
+                    {import.meta.env.DEV && (
+                        <button 
+                            onClick={handleDebugAdFlow}
+                            className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 active:scale-90 transition-all border border-gray-100"
+                            title="Debug Ad Flow"
+                        >
+                            <Bug className="w-5 h-5" />
+                        </button>
+                    )}
                     <button 
                         onClick={() => setShowRulesModal(true)}
-                        className="h-10 px-3 rounded-xl bg-blue-600 flex items-center gap-2 text-white active:scale-95 transition-all shadow-lg shadow-blue-500/30 border border-blue-500"
+                        className="h-10 px-4 rounded-xl bg-blue-600 flex items-center gap-2 text-white active:scale-95 transition-all shadow-lg shadow-blue-500/30 border border-blue-500 whitespace-nowrap"
                     >
-                        <Info className="w-4 h-4 fill-white/20" />
+                        <Info className="w-4 h-4 fill-white/20 flex-shrink-0" />
                         <span className="text-[10px] font-black uppercase tracking-tight">Como funciona?</span>
                     </button>
                 </div>

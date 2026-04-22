@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Image as ImageIcon, Shield, Loader2, AlertCircle } from 'lucide-react';
+import { Browser } from '@capacitor/browser';
 import { APP_LOGOS, ADMIN_USER, REGULAR_USER } from '../constants';
 import { User } from '../types';
 import { supabase, api } from '../services/api';
@@ -113,20 +114,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       setLoading(true);
       setErrorMsg('');
       setShowErrorLinks(false);
-      const redirectUrl = getSiteUrl();
-      console.log('🔗 [DEBUG] Starting Google Login...');
-      console.log('🔗 [DEBUG] Resolved Site URL (getSiteUrl):', redirectUrl);
-      console.log('🔗 [DEBUG] Window Origin:', window.location.origin);
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      const redirectTo = 'https://feiraodaorca.com/auth/callback';
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl
+          redirectTo,
+          skipBrowserRedirect: true
         }
       });
+
       if (error) throw error;
+
+      if (data?.url) {
+        await Browser.open({
+          url: data.url,
+          presentationStyle: 'fullscreen'
+        });
+      }
     } catch (err: any) {
-      console.error("Google login error:", err);
+      console.error("[GOOGLE LOGIN ERROR]", err);
       setErrorMsg("Erro ao iniciar login com Google.");
     } finally {
       // --- GUARANTEED STATE RESET ---

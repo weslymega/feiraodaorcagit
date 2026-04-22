@@ -2,6 +2,7 @@
 import React from 'react';
 import { Header } from '../components/Shared';
 import { FileText, Shield, AlertTriangle, MapPin, Users, Ban, Trash2, Mail, MessageCircle, Clock } from 'lucide-react';
+import { openWhatsApp } from '../utils/mobileActions';
 
 interface TermsOfUseProps {
     onBack: () => void;
@@ -188,15 +189,13 @@ export const TermsOfUse: React.FC<TermsOfUseProps> = ({ onBack }) => {
                                 <span className="text-[14px]">feiraodaorcadf@gmail.com</span>
                             </a>
                             
-                            <a 
-                                href="https://wa.me/5561999992842"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <button 
+                                onClick={() => openWhatsApp('5561999992842')}
                                 className="w-full flex items-center justify-center gap-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 px-6 py-4 rounded-2xl font-bold transition-all border border-[#25D366]/20 active:scale-[0.98] text-[#25D366]"
                             >
                                 <MessageCircle className="w-5 h-5" />
                                 <span className="text-[14px]">(61) 99999-2842</span>
-                            </a>
+                            </button>
                         </div>
                     </section>
 
