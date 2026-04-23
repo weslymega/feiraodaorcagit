@@ -1,8 +1,10 @@
 
 import React from 'react';
-import { User, Bell, Shield, Lock, HelpCircle, Info, ChevronRight, ShieldCheck } from 'lucide-react';
+import { User, Bell, Shield, Lock, HelpCircle, Info, ChevronRight, ShieldCheck, ExternalLink } from 'lucide-react';
 import { Header } from '../components/Shared';
 import { Screen, User as UserType } from '../types';
+import { openExternalLink } from '../utils/openExternalLink';
+import { LINKS } from '../utils/links';
 
 interface SettingsProps {
   user: UserType;
@@ -75,6 +77,16 @@ export const Settings: React.FC<SettingsProps> = ({ user, onBack, onLogout, onNa
             icon={<Info className="w-5 h-5" />} 
             label="Sobre o Aplicativo" 
             onClick={() => onNavigate(Screen.ABOUT_APP)}
+          />
+          <SettingsItem 
+            icon={<ExternalLink className="w-5 h-5" />} 
+            label="Termos de Uso" 
+            onClick={() => openExternalLink(LINKS.TERMS)}
+          />
+          <SettingsItem 
+            icon={<ExternalLink className="w-5 h-5" />} 
+            label="Política de Privacidade" 
+            onClick={() => openExternalLink(LINKS.PRIVACY)}
           />
         </div>
 

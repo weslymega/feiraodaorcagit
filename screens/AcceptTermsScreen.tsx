@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Shield, Check, ArrowRight, ExternalLink } from 'lucide-react';
 import { APP_LOGOS, BASE_URL } from '../constants';
 import { Screen } from '../types';
+import { openExternalLink } from '../utils/openExternalLink';
+import { LINKS } from '../utils/links';
 
 interface AcceptTermsScreenProps {
   onAccept: () => Promise<void>;
@@ -56,7 +58,7 @@ export const AcceptTermsScreen: React.FC<AcceptTermsScreenProps> = ({ onAccept, 
             {accepted && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
           </div>
           <span className="text-sm text-slate-700 leading-snug">
-            Li e aceito os <a href={`${BASE_URL}/termos`} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline inline-flex items-center gap-0.5">Termos de Uso <ExternalLink className="w-3 h-3" /></a> e a <a href={`${BASE_URL}/privacidade`} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline inline-flex items-center gap-0.5">Política de Privacidade <ExternalLink className="w-3 h-3" /></a>.
+            Li e aceito os <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternalLink(LINKS.TERMS); }} className="text-blue-600 font-semibold cursor-pointer hover:underline inline-flex items-center gap-1">Termos de Uso <ExternalLink className="w-3 h-3" /></span> e a <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternalLink(LINKS.PRIVACY); }} className="text-blue-600 font-semibold cursor-pointer hover:underline inline-flex items-center gap-1">Política de Privacidade <ExternalLink className="w-3 h-3" /></span>.
           </span>
         </button>
 
