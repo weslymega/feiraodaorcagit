@@ -1,4 +1,6 @@
 import { api, supabase } from '../services/api';
+import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { useState, useEffect, useRef } from 'react';
 import { Screen, User, AdItem, MessageItem, ChatMessage, NotificationItem, ReportItem, FilterContext, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
 import {
@@ -50,7 +52,7 @@ export const useAppState = () => {
   const [authInitialized, setAuthInitialized] = useState<boolean>(false);
   const [sessionReady, setSessionReady] = useState<boolean>(false);
   const [profileLoaded, setProfileLoaded] = useState<boolean>(false);
-  const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [retryProfileCount, setRetryProfileCount] = useState<number>(0);
 
   const [myAds, setMyAds] = useState<AdItem[]>([]);
@@ -256,6 +258,37 @@ export const useAppState = () => {
     // 2. Verificação de sessão inicial (Cold Boot)
     const initSession = async () => {
       console.log("🔐 [Auth] Initializing session check...");
+      
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const launchData = await CapApp.getLaunchUrl();
+          
+          console.log('[AUTH FLOW]', {
+            isNative: Capacitor.isNativePlatform(),
+            launchUrl: launchData?.url,
+            authLoading: true
+          });
+
+          if (launchData?.url && (
+            launchData.url.includes('access_token') ||
+            launchData.url.includes('code')
+          )) {
+            console.log('[AUTH] OAuth detectado via LaunchUrl');
+            setAuthLoading(true);
+            
+            // Proteção extra (anti-loop)
+            setTimeout(() => {
+              setAuthLoading(false);
+              setSessionReady(true);
+            }, 5000);
+            
+            return; // Aguarda listener do App.tsx tratar e setar a sessão
+          }
+        } catch (e) {
+          console.error("Erro ao verificar getLaunchUrl", e);
+        }
+      }
+
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
@@ -292,6 +325,7 @@ export const useAppState = () => {
       } finally {
         setAuthInitialized(true);
         setSessionReady(true);
+        setAuthLoading(false);
       }
     };
 

@@ -70,7 +70,16 @@ const App: React.FC = () => {
             }
           }
 
+          console.log('[AUTH] Processando OAuth callback');
           const { data } = await supabase.auth.getSession();
+          
+          // 🔴 LIBERA A UI
+          if (typeof actions.setAuthLoading === 'function') {
+            actions.setAuthLoading(false);
+          } else {
+            state.setAuthLoading(false);
+          }
+
           if (data?.session?.user != null) {
             console.log('[AUTH DEBUG] Usuário autenticado');
             window.location.href = '/';
@@ -78,6 +87,11 @@ const App: React.FC = () => {
           }
         } catch (error) {
           console.error('[AUTH DEBUG] Erro ao recuperar sessão:', error);
+          if (typeof actions.setAuthLoading === 'function') {
+            actions.setAuthLoading(false);
+          } else {
+            state.setAuthLoading(false);
+          }
         }
       }
       handleDeepLink(event.url);
@@ -182,7 +196,13 @@ const App: React.FC = () => {
         />
       )}
 
-      <AppRouter state={state} actions={actions} />
+      {(!state.sessionReady || state.authLoading) ? (
+        <div id="app-main-container" className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl relative border-x border-gray-100 flex items-center justify-center">
+          <AppLoadingOverlay isActive={true} message="Finalizando sessão..." />
+        </div>
+      ) : (
+        <AppRouter state={state} actions={actions} />
+      )}
     </>
   );
 };
