@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Browser } from '@capacitor/browser';
 
 /**
  * Abre uma URL externa de forma segura.
@@ -8,9 +9,13 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
  *   abertura no browser externo ou app externo, evitando ERR_UNKNOWN_URL_SCHEME.
  * - No browser/desktop: usa `window.open(url, '_blank')` padrão.
  */
-export const openExternalUrl = (url: string): void => {
+export const openExternalUrl = async (url: string): Promise<void> => {
   if (Capacitor.isNativePlatform()) {
-    window.open(url, '_system');
+    try {
+      await Browser.open({ url });
+    } catch (e) {
+      console.error('Failed to open external url:', e);
+    }
   } else {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
@@ -24,13 +29,13 @@ export const openExternalUrl = (url: string): void => {
  * @param phone - Número com DDI, sem símbolos. Ex: "5561999992842"
  * @param message - Mensagem pré-preenchida (opcional)
  */
-export const openWhatsApp = (phone: string, message?: string): void => {
+export const openWhatsApp = async (phone: string, message?: string): Promise<void> => {
   const cleanPhone = phone.replace(/\D/g, '');
   const encodedMessage = message ? encodeURIComponent(message) : '';
   const waUrl = encodedMessage
     ? `https://wa.me/${cleanPhone}?text=${encodedMessage}`
     : `https://wa.me/${cleanPhone}`;
-  openExternalUrl(waUrl);
+  await openExternalUrl(waUrl);
 };
 
 export interface ShareOptions {

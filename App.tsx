@@ -7,7 +7,7 @@ import { PublicRouteHandler } from './components/router/PublicRouteHandler';
 import { Toast } from './components/Shared';
 
 import { App as CapApp } from '@capacitor/app';
-import { api } from './services/api';
+import { api, supabase } from './services/api';
 import { FirebaseService } from './services/firebaseService';
 
 const App: React.FC = () => {
@@ -44,10 +44,41 @@ const App: React.FC = () => {
 
     // 1. Escuta eventos com o app já em execução (Background -> Foreground)
     const appUrlListener = CapApp.addListener('appUrlOpen', async (event) => {
-      if (event.url.includes('auth/callback')) {
-        await supabase.auth.getSession();
-        window.location.href = '/';
-        return;
+      console.log('[AUTH DEBUG] URL recebida:', event.url);
+      
+      if (
+        event.url.includes('auth/callback') || 
+        event.url.includes('access_token') || 
+        event.url.includes('code') || 
+        event.url.includes('refresh_token') ||
+        event.url.includes('/auth')
+      ) {
+        try {
+          const urlObj = new URL(event.url);
+          const code = urlObj.searchParams.get('code');
+          
+          if (code) {
+            await supabase.auth.exchangeCodeForSession(code);
+            console.log('[AUTH DEBUG] Sessão criada');
+          } else if (urlObj.hash && urlObj.hash.includes('access_token')) {
+            const params = new URLSearchParams(urlObj.hash.substring(1));
+            const access_token = params.get('access_token');
+            const refresh_token = params.get('refresh_token');
+            if (access_token && refresh_token) {
+              await supabase.auth.setSession({ access_token, refresh_token });
+              console.log('[AUTH DEBUG] Sessão criada');
+            }
+          }
+
+          const { data } = await supabase.auth.getSession();
+          if (data?.session?.user != null) {
+            console.log('[AUTH DEBUG] Usuário autenticado');
+            window.location.href = '/';
+            return;
+          }
+        } catch (error) {
+          console.error('[AUTH DEBUG] Erro ao recuperar sessão:', error);
+        }
       }
       handleDeepLink(event.url);
     });
