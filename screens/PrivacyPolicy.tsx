@@ -40,17 +40,19 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                             <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs">2</span>
                             Dados Coletados
                         </h3>
-                        <p className="text-gray-600 mb-4 text-sm">Podemos coletar:</p>
+                        <p className="text-gray-600 mb-4 text-sm">Para o funcionamento seguro, coletamos:</p>
                         <div className="grid grid-cols-2 gap-3">
                             {[
-                                { text: 'Nome', icon: <Database className="w-4 h-4 text-blue-500" /> },
-                                { text: 'E-mail', icon: <Mail className="w-4 h-4 text-blue-500" /> },
+                                { text: 'Nome/E-mail', icon: <Database className="w-4 h-4 text-blue-500" /> },
+                                { text: 'Telefone', icon: <Mail className="w-4 h-4 text-blue-500" /> },
                                 { text: 'Anúncios', icon: <Layout className="w-4 h-4 text-blue-500" /> },
-                                { text: 'Interações', icon: <RefreshCw className="w-4 h-4 text-blue-500" /> }
+                                { text: 'Device IDs', icon: <Fingerprint className="w-4 h-4 text-blue-500" /> },
+                                { text: 'Session IDs', icon: <RefreshCw className="w-4 h-4 text-blue-500" /> },
+                                { text: 'Ad IDs', icon: <Layout className="w-4 h-4 text-blue-500" /> }
                             ].map((item, idx) => (
                                 <div key={idx} className="bg-gray-50 p-3 rounded-xl flex items-center gap-3">
                                     {item.icon}
-                                    <span className="text-sm font-medium text-gray-700">{item.text}</span>
+                                    <span className="text-[12px] font-medium text-gray-700">{item.text}</span>
                                 </div>
                             ))}
                         </div>
@@ -64,10 +66,10 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                         </h3>
                         <div className="space-y-3">
                             {[
-                                'Permitir o funcionamento do aplicativo',
-                                'Exibir anúncios',
-                                'Melhorar a experiência do usuário',
-                                'Garantir segurança e prevenção de fraudes'
+                                'Autenticação segura (Supabase)',
+                                'Anúncios Premiados (Google AdMob)',
+                                'Melhoria da experiência do usuário',
+                                'Segurança e prevenção de fraudes'
                             ].map((text, idx) => (
                                 <div key={idx} className="flex items-center gap-3 text-sm text-gray-600">
                                     <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
@@ -105,15 +107,21 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                     <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
                             <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs">5</span>
-                            Compartilhamento de Dados
+                            Parceiros e Compartilhamento
                         </h3>
-                        <div className="flex gap-3 items-center p-3 bg-blue-50 rounded-xl text-blue-800 text-sm font-medium border border-blue-100">
-                            <Share2 className="w-5 h-5 flex-shrink-0" />
-                            Não vendemos dados pessoais.
-                        </div>
-                        <p className="mt-3 text-gray-600 text-sm">
-                            As informações podem ser exibidas publicamente dentro do app conforme necessário para funcionamento (ex: anúncios).
+                        <p className="text-gray-600 text-sm mb-4 leading-relaxed">
+                            Não vendemos seus dados. Compartilhamos informações técnicas necessárias com parceiros de confiança:
                         </p>
+                        <div className="space-y-3">
+                            <div className="flex gap-3 items-center p-3 bg-blue-50 rounded-xl text-blue-800 text-sm font-medium border border-blue-100">
+                                <Shield className="w-5 h-5 flex-shrink-0" />
+                                <span>Google AdMob (Anúncios)</span>
+                            </div>
+                            <div className="flex gap-3 items-center p-3 bg-gray-50 rounded-xl text-gray-800 text-sm font-medium border border-gray-100">
+                                <Database className="w-5 h-5 flex-shrink-0" />
+                                <span>Supabase (Infraestrutura)</span>
+                            </div>
+                        </div>
                     </section>
 
                     {/* 7. Direitos do Usuário */}
