@@ -40,11 +40,13 @@ jobs:
       run: npx cap sync android
 
     - name: Decode Keystore
-      if: env.RELEASE_KEYSTORE_BASE64 != null
       run: |
-        echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > feiraodaorca.keystore
-      env:
-        RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        if [ ! -z "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > feiraodaorca.keystore
+          echo "✅ Keystore decoded successfully"
+        else
+          echo "⚠️ RELEASE_KEYSTORE_BASE64 secret is empty or not set"
+        fi
 
     - name: Build Android App Bundle (.aab)
       working-directory: android
