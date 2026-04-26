@@ -21,9 +21,9 @@ android {
     signingConfigs {
         release {
             storeFile file("../../feiraodaorca.keystore")
-            storePassword "Orca_Security_2026_@_Secure_Build"
-            keyAlias "feiraodaorca"
-            keyPassword "Orca_Security_2026_@_Secure_Build"
+            storePassword System.getenv("RELEASE_STORE_PASSWORD")
+            keyAlias System.getenv("RELEASE_KEY_ALIAS")
+            keyPassword System.getenv("RELEASE_KEY_PASSWORD")
         }
     }
     buildTypes {

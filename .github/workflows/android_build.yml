@@ -39,9 +39,12 @@ jobs:
     - name: Sync Capacitor Android
       run: npx cap sync android
 
-    - name: Decode Keystore (Se necessário)
-      # Se a keystore já estiver no repositório, este passo não é preciso.
-      run: echo "Keystore já está no repositório em feiraodaorca.keystore"
+    - name: Decode Keystore
+      if: env.RELEASE_KEYSTORE_BASE64 != null
+      run: |
+        echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > feiraodaorca.keystore
+      env:
+        RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
 
     - name: Build Android App Bundle (.aab)
       working-directory: android
@@ -49,8 +52,11 @@ jobs:
         chmod +x gradlew
         ./gradlew bundleRelease
       env:
-        # Passar os privilégios se não estiverem hardcoded no build.gradle
+        # Passar os privilégios via GitHub Secrets
         ANDROID_SDK_ROOT: $ANDROID_HOME
+        RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+        RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
