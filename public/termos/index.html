@@ -40,6 +40,8 @@
         .btn-wa { display: inline-flex; align-items: center; background-color: var(--accent-green); color: white; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; margin: 10px; }
         .btn-mail { display: inline-flex; align-items: center; background-color: var(--primary); color: white; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; margin: 10px; }
         hr { border: 0; border-top: 1px solid #e5e7eb; margin: 30px 0; }
+        .alert { background: #fff7ed; border-left: 4px solid #f97316; padding: 15px; margin: 20px 0; font-size: 14px; color: #9a3412; }
+        .link-button { display: inline-block; background: var(--primary); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px; }
         @media (max-width: 600px) {
             .container { padding: 20px; margin: 10px auto; }
             h1 { font-size: 24px; }
@@ -64,18 +66,18 @@
             <li>Peças</li>
             <li>Serviços</li>
         </ul>
-        <p>A plataforma atua apenas como intermediadora, não participando diretamente das negociações.</p>
+        <p>A plataforma atua exclusivamente como intermediadora, não participando diretamente das negociações entre usuários.</p>
 
         <hr>
 
         <h2>3. CADASTRO E RESPONSABILIDADE DO USUÁRIO</h2>
         <p>O usuário é responsável por:</p>
         <ul>
-            <li>Fornecer informações verdadeiras</li>
+            <li>Fornecer informações verdadeiras e atualizadas</li>
             <li>Manter a segurança de sua conta</li>
-            <li>Atualizar seus dados quando necessário</li>
+            <li>Não compartilhar seus dados de acesso</li>
         </ul>
-        <p>O uso de informações falsas poderá resultar em suspensão ou exclusão da conta.</p>
+        <p class="alert">O uso de informações falsas poderá resultar em suspensão ou exclusão da conta.</p>
 
         <hr>
 
@@ -86,22 +88,49 @@
             <li>As informações são verídicas</li>
             <li>O conteúdo não viola leis ou direitos de terceiros</li>
         </ul>
+        <p>O usuário é integralmente responsável pelo conteúdo publicado.</p>
 
         <hr>
 
         <h2>5. FUNCIONALIDADE “ESTOU NA FEIRA AGORA”</h2>
-        <p>O aplicativo oferece a funcionalidade “Estou na Feira Agora”, que permite ao usuário indicar sua presença em eventos físicos. Ao utilizar esta função, o usuário concorda que:</p>
+        <p>O aplicativo oferece a funcionalidade “Estou na Feira Agora”, que permite ao usuário indicar sua presença em eventos físicos.</p>
+        <p>Ao utilizar essa função, o usuário declara que:</p>
         <ul>
             <li>Está fisicamente presente no local do evento</li>
-            <li>A informação será exibida publicamente no anúncio</li>
-            <li>O status tem duração temporária (ex: 6 horas)</li>
-            <li>O uso indevido pode resultar em penalidades</li>
+            <li>A informação poderá ser exibida publicamente no anúncio</li>
+            <li>O status é temporário (ex: até 6 horas)</li>
         </ul>
+        <p class="alert">O uso indevido pode resultar em penalidades.</p>
         <p>O Feirão da Orca não garante a presença contínua do usuário nem a disponibilidade do item no local.</p>
 
         <hr>
 
-        <h2>6. NEGOCIAÇÕES ENTRE USUÁRIOS</h2>
+        <h2>6. QR CODE DOS ANÚNCIOS</h2>
+        <p>O aplicativo permite a geração de QR Codes vinculados aos anúncios, facilitando o acesso às informações.</p>
+        <p>O uso dessa funcionalidade é de responsabilidade do usuário, não garantindo a concretização de negociações.</p>
+
+        <hr>
+
+        <h2>7. INTERAÇÃO ENTRE USUÁRIOS (CHAT)</h2>
+        <p>O aplicativo pode disponibilizar ferramentas de comunicação entre usuários, como chat.</p>
+        <p>O Feirão da Orca não se responsabiliza pelo conteúdo das mensagens trocadas, podendo aplicar medidas como:</p>
+        <ul>
+            <li>Advertência</li>
+            <li>Bloqueio</li>
+            <li>Suspensão</li>
+            <li>Exclusão de conta</li>
+        </ul>
+        <p>em caso de violação destes Termos.</p>
+
+        <hr>
+
+        <h2>8. DENÚNCIA DE CONTEÚDO</h2>
+        <p>Os usuários podem denunciar conteúdos ou outros usuários que violem estes Termos.</p>
+        <p>O Feirão da Orca poderá analisar e tomar as medidas cabíveis, sem obrigação de remoção imediata.</p>
+
+        <hr>
+
+        <h2>9. NEGOCIAÇÕES ENTRE USUÁRIOS</h2>
         <p>O Feirão da Orca não participa das transações realizadas entre usuários e não se responsabiliza por:</p>
         <ul>
             <li>Pagamentos</li>
@@ -112,35 +141,41 @@
 
         <hr>
 
-        <h2>7. CONTEÚDO E CONDUTA</h2>
+        <h2>10. CONTEÚDO E CONDUTA</h2>
         <p>É proibido:</p>
         <ul>
-            <li>Publicar conteúdo ilegal ou enganoso</li>
-            <li>Utilizar o app para fraudes</li>
-            <li>Praticar qualquer atividade abusiva</li>
+            <li>Publicar conteúdo ilegal, enganoso ou fraudulento</li>
+            <li>Utilizar o app para golpes ou atividades ilícitas</li>
+            <li>Praticar qualquer comportamento abusivo</li>
         </ul>
 
         <hr>
 
-        <h2>8. EXCLUSÃO DE CONTA</h2>
-        <p>O usuário pode excluir sua conta a qualquer momento pelo aplicativo. O Feirão da Orca também pode suspender ou excluir contas que violem estes termos.</p>
+        <h2>11. EXCLUSÃO DE CONTA</h2>
+        <p>O usuário pode solicitar a exclusão da conta a qualquer momento:</p>
+        <ul>
+            <li>Pelo aplicativo</li>
+            <li>Ou através da página:</li>
+        </ul>
+        <a href="https://feiraodaorca.com/excluir-conta" class="link-button">Página de Exclusão de Conta</a>
+        <p style="margin-top: 15px;">O Feirão da Orca também poderá suspender ou excluir contas que violem estes Termos.</p>
 
         <hr>
 
-        <h2>9. LIMITAÇÃO DE RESPONSABILIDADE</h2>
-        <p>O aplicativo é fornecido “como está”, sem garantias de funcionamento contínuo ou livre de erros.</p>
+        <h2>12. LIMITAÇÃO DE RESPONSABILIDADE</h2>
+        <p>O aplicativo é fornecido “como está”, sem garantias de funcionamento contínuo, disponibilidade ou ausência de erros.</p>
 
         <hr>
 
-        <h2>10. ALTERAÇÕES DOS TERMOS</h2>
-        <p>Os Termos podem ser atualizados a qualquer momento. O uso contínuo do app indica concordância com as alterações.</p>
+        <h2>13. ALTERAÇÕES DOS TERMOS</h2>
+        <p>Estes Termos podem ser atualizados a qualquer momento. O uso contínuo do aplicativo implica concordância com as alterações.</p>
 
         <hr>
 
         <div class="contact-box">
             <h3>Contato e Suporte</h3>
             <p>Dúvidas sobre estes Termos?</p>
-            <a href="https://wa.me/5561983227344" class="btn-wa" target="_blank">WhatsApp: (61) 98322-7344</a>
+            <a href="https://wa.me/5561999992842" class="btn-wa" target="_blank">WhatsApp: (61) 99999-2842</a>
             <a href="mailto:feiraodaorcadf@gmail.com" class="btn-mail">E-mail: feiraodaorcadf@gmail.com</a>
         </div>
 
