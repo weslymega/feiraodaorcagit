@@ -374,6 +374,8 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
           <div className="mb-8">
             <h3 className="font-bold text-gray-900 mb-4 text-lg">Detalhes Técnicos</h3>
             <div className="grid grid-cols-2 gap-3">
+              <SpecItem label="Marca" value={ad.brand || "Não informada"} />
+              <SpecItem label="Modelo" value={ad.model || "Não informado"} />
               <SpecItem label="Ano" value={ad.year || 2024} />
               <SpecItem label="KM" value={ad.mileage !== undefined ? `${Number(ad.mileage).toLocaleString('pt-BR')} km` : 'N/A'} />
               <SpecItem label="Câmbio" value={ad.gearbox || "Manual"} />
@@ -386,7 +388,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
                 />
               )}
               {ad.detalhes?.doors && <SpecItem label="Portas" value={`${ad.detalhes.doors} Portas`} />}
-              <SpecItem label="Motor" value={ad.engine || "1.0"} />
+              <SpecItem label="Motor" value={ad.engine || "Não informado"} />
               <SpecItem label="Final da Placa" value={ad.plate ? ad.plate.slice(-1) : "?"} />
             </div>
           </div>

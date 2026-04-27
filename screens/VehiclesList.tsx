@@ -56,6 +56,7 @@ const COLORS = [
 ];
 
 const FUEL_OPTIONS = ['Flex', 'Gasolina', 'Diesel', 'Elétrico', 'Híbrido'];
+const ENGINE_OPTIONS = ['1.0', '1.2', '1.3', '1.4', '1.5', '1.6', '1.8', '2.0', '2.2', '2.4', '2.5', '2.8', '3.0', '3.5', '3.6', '4.1', 'V6', 'V8', 'V12'];
 
 // Gera anos de 2026 até 1950
 const YEARS = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => 2026 - i);
@@ -75,7 +76,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     transmission: '',
     steering: '',
     fuel: '',
-    color: ''
+    color: '',
+    engine: ''
   });
 
   const [selectedGroup, setSelectedGroup] = useState('todos');
@@ -119,6 +121,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
         filters: {
            brand: filters.brand,
            baseModel: filters.baseModel,
+           engine: filters.engine,
         }
       });
       
@@ -153,7 +156,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
         searchTerm: debouncedSearch,
         filters: {
            brand: filters.brand,
-           baseModel: filters.baseModel
+           baseModel: filters.baseModel,
+           engine: filters.engine
         }
       });
       
@@ -268,9 +272,14 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       setIsLoadingBrands(false);
     };
 
-    // Reseta filtros dependentes ao mudar de categoria
-    setFilters(prev => ({ ...prev, brand: '', baseModel: '', version: '' }));
-    setFipeModels([]);
+    // Reseta filtros dependentes ao mudar de categoria, 
+    // EXCETO se estivermos hidratando via contexto (ex: vindo do Dashboard)
+    const isHydrating = filterContext?.mode === 'category' && filterContext?.category === 'veiculos';
+    
+    if (!isHydrating) {
+      setFilters(prev => ({ ...prev, brand: '', baseModel: '', version: '' }));
+      setFipeModels([]);
+    }
 
     loadBrands();
   }, [selectedGroup]);
@@ -397,7 +406,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       filters.transmission ||
       filters.steering ||
       filters.fuel ||
-      filters.color;
+      filters.color ||
+      filters.engine;
 
     const matchesGroup = (ad: AdItem, group: string) => {
       if (group === 'todos') return true;
@@ -455,6 +465,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
         const text = [
           ad.brand,
           ad.model,
+          ad.engine,
           ad.title,
           ad.description,
           ad.location,
@@ -478,7 +489,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       if (filters.brand) {
         const cleanFilterBrand = filters.brand.toLowerCase();
         const brandParts = cleanFilterBrand.split(/[\s-]+/).filter(p => p.length > 1);
-        const adText = ((ad.vehicleType || '') + ' ' + ad.title + ' ' + (ad.description || '')).toLowerCase();
+        const adText = ((ad.brand || '') + ' ' + (ad.vehicleType || '') + ' ' + ad.title + ' ' + (ad.description || '')).toLowerCase();
 
         const matchesBrand = brandParts.length > 0
           ? brandParts.some(part => adText.includes(part))
@@ -489,7 +500,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
       if (filters.baseModel) {
         const cleanBase = filters.baseModel.toLowerCase();
-        const adText = ((ad.vehicleType || '') + ' ' + ad.title).toLowerCase();
+        const adText = ((ad.model || '') + ' ' + (ad.vehicleType || '') + ' ' + ad.title).toLowerCase();
         if (!adText.includes(cleanBase)) return false;
       }
 
@@ -525,6 +536,11 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       if (filters.color) {
         const adColor = (ad.detalhes?.color || "").toLowerCase();
         if (adColor !== filters.color.toLowerCase()) return false;
+      }
+
+      if (filters.engine) {
+        const adEngine = (ad.engine || "").toLowerCase();
+        if (!adEngine.includes(filters.engine.toLowerCase())) return false;
       }
 
       return true;
@@ -568,6 +584,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
   // Filters that are counted for the badge (excluding Brand/Model since they are visible)
   const activeFiltersCount = useMemo(() => [
+    filters.brand, filters.baseModel, filters.version, filters.engine,
     filters.minPrice, filters.maxPrice, filters.minYear, filters.maxYear,
     filters.maxMileage, filters.transmission, filters.steering, filters.fuel, filters.color
   ].filter(Boolean).length, [filters]);
@@ -576,7 +593,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     setFilters({
       brand: '', baseModel: '', version: '',
       minPrice: '', maxPrice: '', minYear: '', maxYear: '',
-      maxMileage: '', transmission: '', steering: '', fuel: '', color: ''
+      maxMileage: '', transmission: '', steering: '', fuel: '', color: '',
+      engine: ''
     });
     setInitialFilters(null);
     setSearchTerm('');
@@ -877,7 +895,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
             <div className="px-6 pt-4 pb-4 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-[30px]">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-gray-900">Filtros Avançados</h2>
-                {hasUserInteracted && (
+                {activeFiltersCount > 0 && (
                   <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">{filteredAds.length}</span>
                 )}
               </div>
@@ -889,7 +907,83 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
             {/* Modal Body - Scrollable */}
             <div className="p-6 space-y-8 overflow-y-auto pb-28">
 
-              {/* ... existing filter content ... */}
+              {/* Veículo (Marca, Modelo, Versão, Motor) */}
+              <section className="space-y-4">
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-1">
+                  <Car className="w-4 h-4 text-primary" /> Identificação do Veículo
+                </label>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Brand */}
+                  <div className="relative">
+                    <select
+                      value={filters.brand}
+                      onChange={handleBrandChange}
+                      disabled={isLoadingBrands}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm disabled:opacity-50"
+                    >
+                      <option value="">Marca</option>
+                      {fipeBrands.map(b => (
+                        <option key={b.codigo} value={b.nome}>{b.nome}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
+                  </div>
+
+                  {/* Model */}
+                  <div className="relative">
+                    <select
+                      value={filters.baseModel}
+                      onChange={(e) => handleModelChange(e.target.value)}
+                      disabled={!filters.brand || uniqueBaseModels.length === 0}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm disabled:opacity-50"
+                    >
+                      <option value="">Modelo</option>
+                      {uniqueBaseModels.map(name => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
+                  </div>
+                </div>
+
+                {/* Version */}
+                <div className="relative">
+                  <select
+                    value={filters.version}
+                    onChange={(e) => {
+                      setFilters(prev => ({ ...prev, version: e.target.value }));
+                      setHasUserInteracted(true);
+                    }}
+                    disabled={!filters.baseModel}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm disabled:opacity-50"
+                  >
+                    <option value="">Todas as versões</option>
+                    {availableVersions.map(m => (
+                      <option key={m.codigo} value={m.nome}>{m.nome}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
+                </div>
+
+                {/* Engine */}
+                <div className="relative">
+                  <select
+                    value={filters.engine}
+                    onChange={(e) => {
+                      setFilters(prev => ({ ...prev, engine: e.target.value }));
+                      setHasUserInteracted(true);
+                    }}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-primary focus:bg-white transition-all font-medium appearance-none truncate pr-8 text-sm shadow-sm"
+                  >
+                    <option value="">Qualquer Motorização</option>
+                    {ENGINE_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
+                </div>
+              </section>
               {/* Preço */}
               <section>
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
@@ -1098,7 +1192,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
                 }}
                 className="flex-1 py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-transform flex items-center justify-center gap-2"
               >
-                {hasUserInteracted 
+                {activeFiltersCount > 0 
                   ? `Ver resultados (${filteredAds.length})` 
                   : "Ver resultados"
                 }

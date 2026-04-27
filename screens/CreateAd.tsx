@@ -865,7 +865,8 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
   const renderSpecs = () => {
     const isManualComplete = !!formData.brandName && !!formData.modelName && !!formData.year && formData.year.length === 4;
     const isFipeComplete = (!!selectedBrandId && !!selectedModelId && !!selectedYearId && formData.fipePrice > 0) || !!editingAd;
-    const areDetailsSelected = !!formData.color && !!formData.gearbox;
+    const isCar = formData.vehicleType !== 'Moto' && formData.fipeCategory !== 'motos';
+    const areDetailsSelected = !!formData.color && !!formData.gearbox && (isCar ? !!formData.engine : true);
 
     // A lógica agora é estrita: se não preencheu o básico (FIPE ou Manual) + detalhes técnicos, não continua.
     const isNextStepDisabled = isManualEntry 
@@ -946,6 +947,36 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
                       <option value="5">5 Portas</option>
                     </select>
                   </div>
+                </div>
+              )}
+
+              {/* Campo Motor (Sempre visível para carros) */}
+              {formData.vehicleType !== 'Moto' && formData.fipeCategory !== 'motos' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Motor *</label>
+                  <select 
+                    value={formData.engine} 
+                    onChange={(e) => setFormData(p => ({ ...p, engine: e.target.value }))} 
+                    className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                  >
+                    <option value="">Selecione a motorização</option>
+                    <option value="1.0">1.0</option>
+                    <option value="1.2">1.2</option>
+                    <option value="1.3">1.3</option>
+                    <option value="1.4">1.4</option>
+                    <option value="1.5">1.5</option>
+                    <option value="1.6">1.6</option>
+                    <option value="1.8">1.8</option>
+                    <option value="2.0">2.0</option>
+                    <option value="2.2">2.2</option>
+                    <option value="2.4">2.4</option>
+                    <option value="2.5">2.5</option>
+                    <option value="2.8">2.8</option>
+                    <option value="3.0">3.0</option>
+                    <option value="V6">V6</option>
+                    <option value="V8">V8</option>
+                    <option value="Outro">Outro</option>
+                  </select>
                 </div>
               )}
             </div>
@@ -1037,6 +1068,36 @@ export const CreateAd: React.FC<CreateAdProps> = ({ onBack, onFinish, editingAd,
                       <option value="5">5 Portas</option>
                     </select>
                   </div>
+                </div>
+              )}
+
+              {/* Campo Motor (Sempre visível para carros) */}
+              {formData.vehicleType !== 'Moto' && formData.fipeCategory !== 'motos' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Motor *</label>
+                  <select 
+                    value={formData.engine} 
+                    onChange={(e) => setFormData(p => ({ ...p, engine: e.target.value }))} 
+                    className="w-full border border-gray-200 bg-gray-50 rounded-2xl p-4 focus:border-primary focus:bg-white outline-none transition-all appearance-none"
+                  >
+                    <option value="">Selecione a motorização</option>
+                    <option value="1.0">1.0</option>
+                    <option value="1.2">1.2</option>
+                    <option value="1.3">1.3</option>
+                    <option value="1.4">1.4</option>
+                    <option value="1.5">1.5</option>
+                    <option value="1.6">1.6</option>
+                    <option value="1.8">1.8</option>
+                    <option value="2.0">2.0</option>
+                    <option value="2.2">2.2</option>
+                    <option value="2.4">2.4</option>
+                    <option value="2.5">2.5</option>
+                    <option value="2.8">2.8</option>
+                    <option value="3.0">3.0</option>
+                    <option value="V6">V6</option>
+                    <option value="V8">V8</option>
+                    <option value="Outro">Outro</option>
+                  </select>
                 </div>
               )}
             </div>

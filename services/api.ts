@@ -247,17 +247,33 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
     }
 
     if (category === 'veiculos' || category === 'autos') {
+        let brand = detalhes.brandName || ad.brand;
+        let model = detalhes.modelName || ad.model;
+        const vehicleType = detalhes.vehicleType || ad.vehicleType;
+        const title = baseData.title;
+
+        // Fallback: Tenta extrair do título ou vehicleType se estiver vazio (Anúncios antigos)
+        if (!brand && (title || vehicleType)) {
+            const source = title || vehicleType;
+            brand = source.split(' ')[0];
+        }
+        if (!model && (title || vehicleType)) {
+            const source = title || vehicleType;
+            model = source.split(' ').slice(1, 3).join(' ');
+        }
+
         return {
             ...baseData,
-            vehicleType: detalhes.vehicleType || ad.vehicleType,
-            brand: detalhes.brandName || ad.brand,
-            model: detalhes.modelName || ad.model,
+            vehicleType,
+            brand,
+            model,
             year: detalhes.year || ad.year || new Date().getFullYear(),
             mileage: detalhes.mileage || ad.mileage || 0,
             fipePrice: detalhes.fipePrice || ad.fipePrice || 0,
             fuel: detalhes.fuel || ad.fuel,
             gearbox: detalhes.gearbox || ad.gearbox,
             plate: detalhes.plate || ad.plate,
+            engine: detalhes.engine || ad.engine,
             features: detalhes.features || ad.features || []
         };
     }
@@ -540,7 +556,7 @@ export const api = {
                 plate: adData.plate,
                 fipePrice: adData.fipePrice,
                 brandName: adData.brandName,
-                modelName: adData.modelName
+                modelName: adData.modelName, engine: adData.engine
             };
         } else if (category === 'servicos' || category === 'pecas') {
             details = {
@@ -1116,7 +1132,7 @@ export const api = {
                 plate: adData.plate,
                 fipePrice: adData.fipePrice,
                 brandName: adData.brandName,
-                modelName: adData.modelName
+                modelName: adData.modelName, engine: adData.engine
             };
         } else if (category === 'servicos' || category === 'pecas') {
             details = {

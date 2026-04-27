@@ -20,6 +20,7 @@ import { HowAppWorksSection } from '../components/HomeSections/HowAppWorksSectio
 import { PromoCarousel } from '../components/HomeSections/PromoCarousel';
 import { Footer } from '../components/Footer';
 import { marketPriceService } from '../services/marketPriceService';
+import { SecurityTipsSection } from '../components/HomeSections/SecurityTipsSection';
 
 interface DashboardProps {
   user: User;
@@ -224,6 +225,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <PersonalizedFeedSection ads={allDiscoveryAds} onAdClick={handleAdClickWrapper} onNavigate={onNavigate} onViewAll={onOpenNewArrivals} />
       <AutomotiveServicesSection ads={serviceAds} onAdClick={handleAdClickWrapper} onNavigate={onNavigate} onViewAll={onOpenServices} />
       <TrendingRealEstateSection ads={trendingRealEstate} onAdClick={handleAdClickWrapper} onNavigate={onNavigate} onViewAll={onOpenTrending} />
+
+      <SecurityTipsSection />
+
       <div className="px-5 mb-10">
         <button onClick={() => onNavigate(Screen.FIPE_EXPLORER)} className="w-full h-40 rounded-[2.5rem] shadow-2xl shadow-primary/30 flex items-center justify-between group active:scale-[0.98] transition-all relative overflow-hidden border border-white/20">
           <div className="absolute inset-0 z-0"><img src="/assets/ponte_jk_v3.png" alt="Ponte JK Branded" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" /><div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/50 to-transparent z-10"></div><div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent z-10"></div></div>
