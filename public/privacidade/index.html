@@ -40,9 +40,15 @@
         .btn-wa { display: inline-flex; align-items: center; background-color: var(--accent-green); color: white; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; margin: 10px; }
         .btn-mail { display: inline-flex; align-items: center; background-color: var(--primary); color: white; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; margin: 10px; }
         hr { border: 0; border-top: 1px solid #e5e7eb; margin: 30px 0; }
+        .alert { background: #fff7ed; border-left: 4px solid #f97316; padding: 15px; margin: 20px 0; font-size: 14px; color: #9a3412; }
+        .link-button { display: inline-block; background: var(--primary); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px; }
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+        .data-item { background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; }
+        .data-item h4 { margin: 0 0 10px 0; color: var(--primary); font-size: 14px; text-transform: uppercase; }
         @media (max-width: 600px) {
             .container { padding: 20px; margin: 10px auto; }
             h1 { font-size: 24px; }
+            .data-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -52,81 +58,109 @@
         <p><strong>Última atualização:</strong> Março de 2026</p>
 
         <h2>1. INTRODUÇÃO</h2>
-        <p>Esta Política de Privacidade explica como coletamos, usamos e protegemos os dados dos usuários do aplicativo Feirão da Orca.</p>
+        <p>Esta Política de Privacidade descreve como coletamos, utilizamos e protegemos os dados dos usuários do aplicativo Feirão da Orca, em conformidade com a legislação aplicável, incluindo a LGPD.</p>
 
         <hr>
 
         <h2>2. DADOS COLETADOS</h2>
-        <p>Para o funcionamento seguro e eficiente do aplicativo, coletamos os seguintes dados:</p>
-        <ul>
-            <li><strong>Informações Cadastrais:</strong> Nome, e-mail e telefone.</li>
-            <li><strong>Identificadores Técnicos:</strong> Identificadores de dispositivo (Device ID), IDs de sessão e identificadores de publicidade (como o GAID do Google).</li>
-            <li><strong>Conteúdo do Usuário:</strong> Fotos, descrições e informações inseridas nos anúncios.</li>
-            <li><strong>Dados de Uso:</strong> Informações sobre como você interage com o aplicativo e seus recursos.</li>
-        </ul>
+        <p>Coletamos os seguintes dados:</p>
+        
+        <div class="data-grid">
+            <div class="data-item">
+                <h4>Informações Pessoais</h4>
+                <ul style="margin: 0; padding-left: 15px;">
+                    <li>Nome</li>
+                    <li>E-mail</li>
+                    <li>Número de telefone</li>
+                    <li>Localização aproximada (CEP)</li>
+                </ul>
+            </div>
+            <div class="data-item">
+                <h4>Identificadores Técnicos</h4>
+                <ul style="margin: 0; padding-left: 15px;">
+                    <li>Identificadores de dispositivo</li>
+                    <li>IDs de sessão</li>
+                    <li>Identificadores de publicidade (GAID)</li>
+                </ul>
+            </div>
+        </div>
+
+        <p>Também coletamos <strong>Conteúdo do Usuário</strong> (Fotos, descrições, informações dos anúncios) e <strong>Dados de Uso</strong> (Interações no app, funcionalidades utilizadas, dados de desempenho e diagnóstico).</p>
 
         <hr>
 
         <h2>3. USO DAS INFORMAÇÕES</h2>
-        <p>Os dados coletados são utilizados para:</p>
+        <p>Os dados são utilizados para:</p>
         <ul>
-            <li>Autenticação e gerenciamento de conta (via Supabase).</li>
-            <li>Operação do sistema de anúncios premiados (Turbo Ads) via Google AdMob.</li>
-            <li>Melhoria contínua da experiência e funcionalidades do app.</li>
-            <li>Segurança, conformidade legal e prevenção de fraudes.</li>
+            <li>Autenticação e gerenciamento de contas</li>
+            <li>Exibição e gerenciamento de anúncios</li>
+            <li>Comunicação entre usuários</li>
+            <li>Melhoria da experiência do app</li>
+            <li>Segurança, prevenção de fraudes e conformidade legal</li>
+            <li>Exibição de anúncios via AdMob</li>
         </ul>
+        <p>O tratamento dos dados é baseado no consentimento do usuário e na necessidade para execução dos serviços.</p>
 
         <hr>
 
         <h2>4. FUNCIONALIDADE “ESTOU NA FEIRA AGORA”</h2>
-        <p>O aplicativo oferece a funcionalidade “Estou na Feira Agora”, que permite ao usuário indicar sua presença em eventos físicos. Ao ativar essa função:</p>
+        <p>Ao ativar essa função:</p>
         <ul>
-            <li>O usuário fornece voluntariamente sua condição de presença no evento.</li>
-            <li>A informação é exibida publicamente no anúncio para facilitar negociações.</li>
-            <li>O status é temporário e expira automaticamente (ex: 6 horas).</li>
-            <li><strong>Não</strong> coletamos geolocalização por GPS em tempo real em segundo plano para este recurso.</li>
+            <li>O usuário informa voluntariamente sua presença em um evento</li>
+            <li>A informação pode ser exibida publicamente no anúncio</li>
+            <li>O status é temporário</li>
         </ul>
+        <p class="alert">O app não coleta geolocalização em tempo real em segundo plano.</p>
 
         <hr>
 
         <h2>5. COMPARTILHAMENTO DE DADOS</h2>
-        <p>Valorizamos sua privacidade e <strong>não vendemos</strong> seus dados pessoais. Compartilhamos informações apenas com parceiros essenciais:</p>
+        <p><strong>Não vendemos dados pessoais.</strong></p>
+        <p>Compartilhamos apenas com serviços essenciais:</p>
         <ul>
-            <li><strong>Google AdMob:</strong> Para exibição de anúncios. O Google pode processar identificadores de publicidade para fornecer anúncios relevantes e prevenir abusos.</li>
-            <li><strong>Supabase:</strong> Nossa infraestrutura de nuvem para autenticação segura e armazenamento de banco de dados.</li>
+            <li><strong>Google AdMob:</strong> Exibição de anúncios e medição.</li>
+            <li><strong>Supabase:</strong> Autenticação e banco de dados.</li>
         </ul>
+        <p>Esses serviços podem processar dados conforme suas próprias políticas.</p>
 
         <hr>
 
         <h2>6. ARMAZENAMENTO E SEGURANÇA</h2>
-        <p>Seus dados são armazenados de forma criptografada em servidores de alta segurança (Supabase/AWS). Adotamos as melhores práticas para proteger suas informações contra acesso não autorizado.</p>
+        <p>Os dados são armazenados em ambientes seguros com criptografia e boas práticas de proteção.</p>
 
         <hr>
 
-        <h2>7. DIREITOS DO USUÁRIO</h2>
-        <p>Em conformidade com a Lei Geral de Proteção de Dados (LGPD), você tem direito a:</p>
+        <h2>7. DIREITOS DO USUÁRIO (LGPD)</h2>
+        <p>O usuário pode:</p>
         <ul>
-            <li>Confirmar a existência de tratamento e acessar seus dados.</li>
-            <li>Corrigir dados incompletos ou inexatos.</li>
-            <li>Solicitar a exclusão definitiva de sua conta e dados (veja seção 8).</li>
+            <li>Acessar seus dados</li>
+            <li>Corrigir informações</li>
+            <li>Solicitar exclusão de dados</li>
+            <li>Revogar consentimento</li>
         </ul>
 
         <hr>
 
         <h2>8. EXCLUSÃO DE DADOS</h2>
-        <p>A exclusão da conta remove os dados associados, salvo obrigações legais.</p>
+        <p>O usuário pode solicitar a exclusão da conta e dos dados:</p>
+        <ul>
+            <li>Pelo aplicativo</li>
+            <li>Ou através da página:</li>
+        </ul>
+        <a href="https://feiraodaorca.com/excluir-conta" class="link-button">Página de Exclusão de Conta</a>
+        <p style="margin-top: 15px;">Alguns dados podem ser mantidos por obrigações legais.</p>
 
         <hr>
 
         <h2>9. ALTERAÇÕES NA POLÍTICA</h2>
-        <p>Esta política pode ser atualizada a qualquer momento.</p>
+        <p>Esta política pode ser atualizada a qualquer momento. O uso contínuo do app indica concordância.</p>
 
         <hr>
 
         <div class="contact-box">
-            <h3>Dúvidas sobre sua Privacidade?</h3>
-            <p>Fale conosco:</p>
-            <a href="https://wa.me/5561983227344" class="btn-wa" target="_blank">WhatsApp: (61) 98322-7344</a>
+            <h3>Contato e Suporte</h3>
+            <p>Dúvidas sobre sua Privacidade?</p>
+            <a href="https://wa.me/5561999992842" class="btn-wa" target="_blank">WhatsApp: (61) 99999-2842</a>
             <a href="mailto:feiraodaorcadf@gmail.com" class="btn-mail">E-mail: feiraodaorcadf@gmail.com</a>
         </div>
 
