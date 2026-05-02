@@ -1,5 +1,6 @@
 import { supabase } from './api';
 import imageCompression from 'browser-image-compression';
+import { captureError } from './sentry';
 
 // --- IMAGE OPTIMIZATION SERVICE (HARDENED) ---
 /**
@@ -83,35 +84,125 @@ export const imageService = {
      * @param folder Optional folder name (e.g. userId or adId)
      */
     async upload(file: File, bucket: 'ads-images' | 'chat-images', folder?: string): Promise<string> {
+        const startTimestamp = Date.now();
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('User not authenticated');
+        if (!user) {
+            console.error('[UPLOAD_ERROR] Usuário não autenticado');
+            throw new Error('User not authenticated');
+        }
 
         const timestamp = new Date().getTime();
         const randomStr = Math.random().toString(36).substring(2, 8);
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const fileName = `${folder ? `${folder}/` : ''}${user.id}_${timestamp}_${randomStr}_${cleanFileName}`;
 
-        console.log(`[imageService] Uploading to ${bucket}/${fileName}`, { size: file.size });
+        // [ETAPA 3] Log de início
+        console.log(`[UPLOAD_START] ${fileName}`, {
+            size: `${(file.size / 1024).toFixed(2)}KB`,
+            mimeType: file.type || 'unknown'
+        });
 
-        const { error } = await supabase.storage
-            .from(bucket)
-            .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
+        let lastError: any = null;
+        const maxRetries = 2; // [ETAPA 4] Máximo de 2 retentativas (Total 3)
+        const fileSizeKB = file.size / 1024;
+        let timeoutMs = 20000;
 
-        if (error) {
-            console.error('[imageService] Upload error:', error);
-            throw error;
+        // [ESTRATÉGIA ADAPTATIVA] Ajusta timeout conforme o peso do arquivo
+        if (fileSizeKB > 100 && fileSizeKB <= 500) {
+            timeoutMs = 35000; // 35s para imagens médias (otimizadas)
+        } else if (fileSizeKB > 500) {
+            timeoutMs = 45000; // 45s para arquivos grandes (fallbacks)
         }
 
-        const { data } = supabase.storage
-            .from(bucket)
-            .getPublicUrl(fileName);
+        console.log(`[UPLOAD_DEBUG] Timeout configurado: ${timeoutMs}ms para ${fileSizeKB.toFixed(2)}KB`);
 
-        const publicUrl = data?.publicUrl;
-        console.log(`[imageService] Generated Public URL for ${fileName}:`, publicUrl);
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                if (attempt > 0) {
+                    const delay = attempt * 1000;
+                    console.log(`[UPLOAD_DEBUG] Retentativa ${attempt}/${maxRetries} em ${delay}ms...`);
+                    await new Promise(res => setTimeout(res, delay));
+                }
 
-        return publicUrl;
+                // [ETAPA 5] Implementação do Timeout via Promise.race
+                const uploadPromise = supabase.storage
+                    .from(bucket)
+                    .upload(fileName, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Upload timeout')), timeoutMs)
+                );
+
+                // @ts-ignore - Supabase storage returns { data, error }
+                const result = await Promise.race([uploadPromise, timeoutPromise]) as any;
+                
+                if (result.error) throw result.error;
+
+                const duration = Date.now() - startTimestamp;
+                
+                // [ETAPA 3] Log de sucesso
+                console.log(`[UPLOAD_SUCCESS] ${fileName}`, {
+                    duration: `${duration}ms`,
+                    attempts: attempt + 1,
+                    timeoutApplied: timeoutMs
+                });
+
+                const { data: urlData } = supabase.storage
+                    .from(bucket)
+                    .getPublicUrl(fileName);
+
+                return urlData?.publicUrl;
+
+            } catch (error: any) {
+                lastError = error;
+                const isNetworkError = error.message?.toLowerCase().includes('fetch') || 
+                                     error.message?.toLowerCase().includes('network');
+                const isTimeout = error.message?.toLowerCase().includes('timeout');
+
+                // [ETAPA 3] Log de erro
+                console.error(`[UPLOAD_ERROR] Tentativa ${attempt} falhou:`, {
+                    message: error.message,
+                    type: isNetworkError ? 'network' : (isTimeout ? 'timeout' : 'unknown'),
+                    timeoutConfigured: timeoutMs
+                });
+
+                // [ETAPA 2 & 6] Registro no Sentry
+                captureError(error, {
+                    tags: {
+                        module: 'upload',
+                        feature: 'image_upload',
+                        attempt: String(attempt),
+                        type: isTimeout ? 'timeout' : (isNetworkError ? 'network' : 'unknown')
+                    },
+                    extra: {
+                        fileName: file.name,
+                        fileSize: file.size,
+                        fileSizeKB: fileSizeKB.toFixed(2),
+                        mimeType: file.type,
+                        userAgent: navigator.userAgent,
+                        timestamp: new Date().toISOString(),
+                        bucket,
+                        folder,
+                        configuredTimeout: timeoutMs,
+                        attemptNumber: attempt
+                    },
+                    level: isTimeout || isNetworkError ? 'warning' : 'error'
+                });
+
+                // [ETAPA 4] Regras de interrupção de retry
+                const status = error.status || error.status_code;
+                if (status === 401 || status === 403 || status === 413) {
+                    console.warn(`[UPLOAD_DEBUG] Erro fatal ${status}. Abortando retries.`);
+                    break;
+                }
+
+                // Se for a última tentativa, o loop acaba e lança o erro abaixo
+            }
+        }
+
+        throw lastError;
     }
 };

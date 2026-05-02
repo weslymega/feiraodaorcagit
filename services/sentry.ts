@@ -120,9 +120,9 @@ export function initSentry(): void {
       // Ignora erros triviais — usamos RegExp para matching robusto
       ignoreErrors: [
         /ResizeObserver loop/i,
-        /Network request failed/i,
+        // /Network request failed/i, // [REMOVIDO] para permitir captura de erros de rede no Android
         /Load failed/i,
-        /AbortError/i,
+        // /AbortError/i, // [REMOVIDO] para capturar timeouts manuais
         /The user aborted/i,
         // Erros de JWT esperados (refresh silencioso em andamento) — NÃO são bugs
         /JWT_EXPIRED/i,
