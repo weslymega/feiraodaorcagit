@@ -378,7 +378,7 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto px-6 py-8 scrolling-touch">
+            <main className="flex-1 overflow-y-auto px-6 pt-8 pb-32 scrolling-touch">
                 {showDebug && <div className="mb-6"><DebugPanel /></div>}
 
                 {/* UI UNIFICADA DE PROGRESSÃO (Suporta Modo Progressivo e Sessões Legadas) */}

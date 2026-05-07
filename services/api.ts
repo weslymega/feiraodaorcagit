@@ -1286,6 +1286,11 @@ export const api = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("Usuário não autenticado");
 
+        // --- SECURITY: PREVENT SELF-REPORTING ---
+        if (user.id === reportData.targetId && reportData.targetType === 'user') {
+            throw new Error("Você não pode denunciar a si mesmo.");
+        }
+
         const { error } = await supabase.from('reports').insert({
             reporter_id: user.id,
             ad_id: reportData.targetType === 'ad' ? (reportData.targetId || reportData.adId) : null,

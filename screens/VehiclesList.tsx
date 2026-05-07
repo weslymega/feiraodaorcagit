@@ -390,13 +390,21 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       return pagedAds;
     }
 
-    const activeSearchContent = debouncedSearch || searchTerm;
+    // 🎯 [ESTRATÉGIA DE HIDRATAÇÃO IMEDIATA]
+    // Para evitar o "flash" de todos os anúncios, usamos o filterContext como fonte primária
+    // se o estado local ainda não foi populado.
+    const effectiveSearch = searchTerm || (filterContext?.mode === 'category' && filterContext?.category === 'veiculos' ? filterContext.searchTerm : '');
+    const activeSearchContent = debouncedSearch || effectiveSearch;
+    
+    const effectiveBrand = filters.brand || (filterContext?.mode === 'category' && filterContext?.category === 'veiculos' ? filterContext.brand : '');
+    const effectiveModel = filters.baseModel || (filterContext?.mode === 'category' && filterContext?.category === 'veiculos' ? filterContext.model : '');
 
-    // Verificamos se há algum filtro específico ativo (exceto "todos" no grupo)
-    const hasSpecificFilters =
+    // 🎯 [LÓGICA DE FILTRAGEM]
+    // Determinamos se há filtros ativos. 
+    const hasSpecificFilters = Boolean(
       activeSearchContent ||
-      filters.brand ||
-      filters.baseModel ||
+      effectiveBrand ||
+      effectiveModel ||
       filters.version ||
       filters.minPrice ||
       filters.maxPrice ||
@@ -407,7 +415,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       filters.steering ||
       filters.fuel ||
       filters.color ||
-      filters.engine;
+      filters.engine ||
+      selectedGroup !== 'todos' ||
+      isRecentFilterActive
+    );
 
     const matchesGroup = (ad: AdItem, group: string) => {
       if (group === 'todos') return true;
@@ -454,14 +465,13 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       // Grupo (Usando a mesma lógica unificada)
       if (!matchesGroup(ad, selectedGroup)) return false;
 
+      const adTitleLower = ad.title.toLowerCase();
+      const terms = activeSearchContent
+        ? activeSearchContent.toLowerCase().trim().split(/\s+/).filter(Boolean)
+        : [];
+
       // Busca Texto Inteligente e Flexível (Tolerante)
       if (activeSearchContent) {
-        const terms = activeSearchContent
-          .toLowerCase()
-          .trim()
-          .split(/\s+/)
-          .filter(Boolean);
-
         const text = [
           ad.brand,
           ad.model,
@@ -472,8 +482,6 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
           ad.vehicleType,
           ad.category
         ].filter(Boolean).join(' ').toLowerCase();
-
-        const adTitleLower = ad.title.toLowerCase();
 
         // 1. Busca estrita: o anúncio tem todos os termos da busca em algum lugar?
         const matchesAll = terms.every(term => text.includes(term));
@@ -486,8 +494,8 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       }
 
       // Filtros Avançados
-      if (filters.brand) {
-        const cleanFilterBrand = filters.brand.toLowerCase();
+      if (effectiveBrand) {
+        const cleanFilterBrand = effectiveBrand.toLowerCase();
         const brandParts = cleanFilterBrand.split(/[\s-]+/).filter(p => p.length > 1);
         const adText = ((ad.brand || '') + ' ' + (ad.vehicleType || '') + ' ' + ad.title + ' ' + (ad.description || '')).toLowerCase();
 
@@ -495,11 +503,15 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
           ? brandParts.some(part => adText.includes(part))
           : adText.includes(cleanFilterBrand);
 
-        if (!matchesBrand) return false;
+        // Relaxamento: Se o termo de busca já casou perfeitamente, não removemos o anúncio apenas por falta da marca explícita
+        // Isso resolve problemas de base de dados onde a marca está apenas no título.
+        const isMatchedBySearch = activeSearchContent && terms.some(t => adTitleLower.includes(t));
+        
+        if (!matchesBrand && !isMatchedBySearch) return false;
       }
 
-      if (filters.baseModel) {
-        const cleanBase = filters.baseModel.toLowerCase();
+      if (effectiveModel) {
+        const cleanBase = effectiveModel.toLowerCase();
         const adText = ((ad.model || '') + ' ' + (ad.vehicleType || '') + ' ' + ad.title).toLowerCase();
         if (!adText.includes(cleanBase)) return false;
       }
@@ -553,7 +565,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       return weightB - weightA;
     });
 
-  }, [ads, selectedGroup, debouncedSearch, searchTerm, filters, isRecentFilterActive]);
+  }, [ads, selectedGroup, debouncedSearch, searchTerm, filters, isRecentFilterActive, filterContext]);
 
   const feedItems = filteredAds;
 
@@ -618,7 +630,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
     return () => {
       clearFilters();
     };
-  }, [clearFilters]);
+  }, []); // Dependência vazia para rodar apenas no unmount real
 
   return (
     <div className="min-h-screen bg-gray-50 pb-[110px]">

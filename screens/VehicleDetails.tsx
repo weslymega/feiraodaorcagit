@@ -214,7 +214,9 @@ export const VehicleDetails: React.FC<VehicleDetailsProps & { user?: User | null
                   <UserX className="w-5 h-5" />
                 </button>
               )}
-              <button onClick={(e) => { e.stopPropagation(); setIsReportModalOpen(true); }} className="p-2.5 rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-red-500 border border-white/10 transition-all active:scale-90" title="Denunciar"><Flag className="w-5 h-5" /></button>
+              {!ad.isOwner && (
+                <button onClick={(e) => { e.stopPropagation(); setIsReportModalOpen(true); }} className="p-2.5 rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-red-500 border border-white/10 transition-all active:scale-90" title="Denunciar"><Flag className="w-5 h-5" /></button>
+              )}
               <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }} className={`p-2.5 rounded-full backdrop-blur-md transition-all border shadow-lg active:scale-90 ${isFavorite ? 'bg-red-500 border-red-500 text-white shadow-red-500/30' : 'bg-black/30 border-white/10 text-white hover:bg-white/20'}`}><Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} /></button>
               <button
                 onClick={(e) => { e.stopPropagation(); handleShareQR(); }}

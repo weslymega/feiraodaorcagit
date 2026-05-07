@@ -7,12 +7,30 @@ import { PublicRouteHandler } from './components/router/PublicRouteHandler';
 import { Toast } from './components/Shared';
 
 import { App as CapApp } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Capacitor } from '@capacitor/core';
 import { api, supabase } from './services/api';
 import { FirebaseService } from './services/firebaseService';
 
 const App: React.FC = () => {
   const state = useAppState();
   const actions = useAppActions(state);
+
+  // --- CONFIGURAÇÃO DE STATUS BAR (FASE 1 SEGURA) ---
+  useEffect(() => {
+    const initStatusBar = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await StatusBar.setOverlaysWebView({ overlay: false });
+          await StatusBar.setStyle({ style: Style.Dark });
+          console.log('✅ StatusBar configurado com sucesso');
+        } catch (error) {
+          console.error('❌ Erro ao configurar StatusBar:', error);
+        }
+      }
+    };
+    initStatusBar();
+  }, []);
 
   // --- DEEP LINK HANDLER (SENIOR ARCHITECTURE) ---
   useEffect(() => {
@@ -172,7 +190,7 @@ const App: React.FC = () => {
           : "Iniciando sessão...");
 
     return (
-      <div id="app-main-container" className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl relative border-x border-gray-100 flex items-center justify-center">
+      <div id="app-main-container" className="bg-gray-50 h-[calc(100dvh-var(--sat)-var(--sab))] text-slate-800 font-sans max-w-md mx-auto shadow-2xl relative border-x border-gray-100 flex items-center justify-center">
         <AppLoadingOverlay isActive={true} message={loadingMsg} />
       </div>
     );
@@ -197,7 +215,7 @@ const App: React.FC = () => {
       )}
 
       {(!state.sessionReady || state.authLoading) ? (
-        <div id="app-main-container" className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl relative border-x border-gray-100 flex items-center justify-center">
+        <div id="app-main-container" className="bg-gray-50 h-[calc(100dvh-var(--sat)-var(--sab))] text-slate-800 font-sans max-w-md mx-auto shadow-2xl relative border-x border-gray-100 flex items-center justify-center">
           <AppLoadingOverlay isActive={true} message="Finalizando sessão..." />
         </div>
       ) : (

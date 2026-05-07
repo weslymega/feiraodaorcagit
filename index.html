@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Feirão da Orca | O maior marketplace do DF</title>
   <meta name="description" content="Encontre veículos, imóveis, peças e serviços no Feirão da Orca. O maior portal de classificados do Distrito Federal." />
   
@@ -106,6 +106,16 @@
     }
   </script>
   <style>
+    :root {
+      --sat: env(safe-area-inset-top);
+      --sab: env(safe-area-inset-bottom);
+    }
+
+    body {
+      padding-top: var(--sat);
+      padding-bottom: var(--sab);
+    }
+
     /* Hide scrollbar for Chrome, Safari and Opera */
     .no-scrollbar::-webkit-scrollbar {
       display: none;

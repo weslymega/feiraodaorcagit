@@ -296,6 +296,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
                     onToggleFavorite={handleToggleFavorite}
                     onReport={handleAddReport}
                     onBlockUser={actions.handleBlockUser}
+                    currentUser={user}
                 />
             );
 

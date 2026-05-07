@@ -223,7 +223,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ state, actions }) => {
 
 
     return (
-        <div id="app-main-container" className="bg-gray-50 h-screen text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-y-auto relative border-x border-gray-100">
+        <div id="app-main-container" className="bg-gray-50 h-[calc(100dvh-var(--sat)-var(--sab))] text-slate-800 font-sans max-w-md mx-auto shadow-2xl overflow-y-auto relative border-x border-gray-100">
             <ScrollToTop currentScreen={currentScreen} />
 
 

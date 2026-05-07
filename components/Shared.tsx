@@ -69,8 +69,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate,
 
   return (
     <div 
-      className="fixed left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-[1100] max-w-md mx-auto shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-[20px] transition-all duration-300"
-      style={{ bottom: isBannerVisible ? '50px' : '0px' }}
+      className="fixed left-0 right-0 bg-white border-t border-gray-100 px-6 pt-3 flex justify-between items-center z-[1100] max-w-md mx-auto shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-[20px] transition-all duration-300"
+      style={{ bottom: isBannerVisible ? '50px' : '0px', paddingBottom: 'calc(0.75rem + var(--sab))' }}
     >
       <button
         onClick={() => onNavigate(Screen.DASHBOARD)}

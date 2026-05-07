@@ -16,6 +16,7 @@ interface PublicProfileProps {
   onToggleFavorite: (ad: AdItem) => void;
   onReport?: (report: ReportItem) => void;
   onBlockUser?: (userId: string) => void;
+  currentUser?: User | null;
 }
 
 export const PublicProfile: React.FC<PublicProfileProps> = ({
@@ -27,11 +28,14 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
   favorites,
   onToggleFavorite,
   onReport,
-  onBlockUser
+  onBlockUser,
+  currentUser
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const isOwnProfile = currentUser?.id === user.id;
 
   // Filter ads by search term
   const filteredAds = ads.filter(ad =>
@@ -86,20 +90,24 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({
           <div className="flex gap-1 items-center">
             {onBlockUser && (
               <button
-                onClick={() => onBlockUser(user.id)}
-                className="p-2 rounded-full hover:bg-red-50 group transition-colors"
-                title="Bloquear Usuário"
+                onClick={() => !isOwnProfile && onBlockUser(user.id)}
+                className={`p-2 rounded-full group transition-colors ${isOwnProfile ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-50'}`}
+                title={isOwnProfile ? "Você não pode bloquear a si mesmo" : "Bloquear Usuário"}
+                disabled={isOwnProfile}
               >
-                <UserX className="w-5 h-5 text-gray-400 group-hover:text-red-600 transition-colors" />
+                <UserX className={`w-5 h-5 transition-colors ${isOwnProfile ? 'text-gray-300' : 'text-gray-400 group-hover:text-red-600'}`} />
               </button>
             )}
-            <button
-              onClick={() => setIsReportModalOpen(true)}
-              className="p-2 rounded-full hover:bg-red-50 group transition-colors"
-              title="Denunciar Usuário"
-            >
-              <Flag className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors" />
-            </button>
+            
+            {!isOwnProfile && (
+              <button
+                onClick={() => setIsReportModalOpen(true)}
+                className="p-2 rounded-full hover:bg-red-50 group transition-colors"
+                title="Denunciar Usuário"
+              >
+                <Flag className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors" />
+              </button>
+            )}
           </div>
         </div>
 

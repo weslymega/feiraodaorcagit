@@ -521,6 +521,12 @@ export const useAppActions = (state: AppState) => {
     };
 
     const handleAddReport = async (newReport: ReportItem) => {
+        // --- SAFETY CHECK (SENIOR ARCHITECTURE) ---
+        if (user && newReport.targetId === user.id && newReport.targetType === 'user') {
+            setToast({ message: "Você não pode denunciar a si mesmo.", type: 'error' });
+            return;
+        }
+
         try {
             await api.createReport(newReport);
 
