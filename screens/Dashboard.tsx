@@ -132,7 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
     onNavigate(Screen.VEHICLES_LIST);
   };
-  const allSearchableData = React.useMemo(() => [...(featuredAds || []), ...(recentVehicles || []), ...(trendingRealEstate || []), ...POPULAR_SERVICES], [featuredAds, recentVehicles, trendingRealEstate]);
+  const allSearchableData = React.useMemo(() => [...(featuredAds || []), ...(recentVehicles || []), ...(trendingRealEstate || []), ...(serviceAds || []), ...POPULAR_SERVICES], [featuredAds, recentVehicles, trendingRealEstate, serviceAds]);
   const searchSuggestions = React.useMemo(() => {
     if (searchTerm.length < 3) return [];
     return allSearchableData.filter(ad => ad.title.toLowerCase().includes(searchTerm.toLowerCase()) || ad.category?.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 6);
