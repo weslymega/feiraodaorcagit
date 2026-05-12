@@ -1762,7 +1762,23 @@ export const api = {
                     ).length,
                     adTitle: m.ads?.titulo || 'Anúncio',
                     adId: m.ad_id,
-                    adImage: m.ads?.imagens?.[0] || 'https://placehold.co/100x100?text=Orca',
+                    adImage: (() => {
+                        const img = m.ads?.imagens?.[0];
+                        if (!img) return 'https://placehold.co/100x100?text=Orca';
+                        if (typeof img === 'string') {
+                            if (img.trim().startsWith('{')) {
+                                try {
+                                    const parsed = JSON.parse(img);
+                                    return parsed.thumbnail || parsed.optimized || parsed.original || 'https://placehold.co/100x100?text=Orca';
+                                } catch(e) { return img; }
+                            }
+                            return img;
+                        }
+                        if (typeof img === 'object' && img !== null) {
+                            return img.thumbnail || img.optimized || img.original || 'https://placehold.co/100x100?text=Orca';
+                        }
+                        return 'https://placehold.co/100x100?text=Orca';
+                    })(),
                     adPrice: m.ads?.preco || 0,
                     readReceipts: true, // Fallback safe já que não expoemos este campo na view pública
                     online: false      // Fallback safe já que não expoemos este campo na view pública

@@ -11,6 +11,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import { api, supabase } from './services/api';
 import { FirebaseService } from './services/firebaseService';
+import { captureError } from './services/sentry';
 
 const App: React.FC = () => {
   const state = useAppState();
@@ -26,6 +27,7 @@ const App: React.FC = () => {
           console.log('✅ StatusBar configurado com sucesso');
         } catch (error) {
           console.error('❌ Erro ao configurar StatusBar:', error);
+          captureError(error instanceof Error ? error : new Error(String(error)), { tags: { context: 'initStatusBar' } });
         }
       }
     };
@@ -55,6 +57,7 @@ const App: React.FC = () => {
           }
         } catch (error) {
           console.error("Deep Link Error:", error);
+          captureError(error instanceof Error ? error : new Error(String(error)), { tags: { context: 'handleDeepLink' } });
           state.setToast({ message: "Erro ao abrir o anúncio via QR Code.", type: 'error' });
         }
       }
@@ -105,6 +108,7 @@ const App: React.FC = () => {
           }
         } catch (error) {
           console.error('[AUTH DEBUG] Erro ao recuperar sessão:', error);
+          captureError(error instanceof Error ? error : new Error(String(error)), { tags: { context: 'authCallback' } });
           if (typeof actions.setAuthLoading === 'function') {
             actions.setAuthLoading(false);
           } else {

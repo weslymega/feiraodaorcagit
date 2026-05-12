@@ -45,9 +45,11 @@ async function sendTelegramMessage(text) {
         } else {
             const errorData = await response.json();
             console.error('❌ Erro da API do Telegram:', errorData);
+            process.exit(1);
         }
     } catch (err) {
         console.error('❌ Erro na API do Telegram:', err.message);
+        process.exit(1);
     }
 }
 
@@ -92,6 +94,7 @@ async function generateReport() {
 
     } catch (err) {
         console.error('❌ Erro ao gerar relatório:', err.message);
+        process.exit(1);
     }
 }
 

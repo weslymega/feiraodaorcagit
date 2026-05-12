@@ -72,19 +72,19 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                         Sobre nós
                     </button>
                     <span className="text-gray-300 hidden md:inline">|</span>
-                    <a
-                        href="/termos"
-                        className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wide bg-transparent border-none cursor-pointer no-underline"
+                    <button
+                        onClick={() => onNavigate?.(Screen.TERMS_OF_USE)}
+                        className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wide bg-transparent border-none cursor-pointer"
                     >
                         Termos de uso
-                    </a>
+                    </button>
                     <span className="text-gray-300 hidden md:inline">|</span>
-                    <a
-                        href="/privacidade"
-                        className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wide bg-transparent border-none cursor-pointer no-underline"
+                    <button
+                        onClick={() => onNavigate?.(Screen.PRIVACY_POLICY)}
+                        className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wide bg-transparent border-none cursor-pointer"
                     >
                         Política de Privacidade
-                    </a>
+                    </button>
                 </div>
 
                 {/* Copyright */}
