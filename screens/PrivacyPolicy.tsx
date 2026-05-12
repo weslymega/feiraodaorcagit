@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Header } from '../components/Shared';
-import { Shield, Database, Layout, MapPin, Share2, Lock, Fingerprint, Trash2, RefreshCw, Mail, MessageCircle, Info, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Shield, Database, Layout, MapPin, Share2, Lock, Fingerprint, Trash2, RefreshCw, Mail, MessageCircle, Info, ExternalLink, CheckCircle2, Users } from 'lucide-react';
 import { openWhatsApp } from '../utils/mobileActions';
 import { openExternalLink } from '../utils/openExternalLink';
 
@@ -24,7 +24,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">Política de Privacidade</h2>
-                            <p className="text-sm text-gray-500">Última atualização: Março de 2026</p>
+                            <p className="text-sm text-gray-500">Última atualização: Maio de 2026</p>
                         </div>
                     </div>
                     <p className="text-gray-600 leading-relaxed border-l-4 border-primary pl-4 bg-gray-50/50 py-3 rounded-r-lg text-sm">
@@ -76,6 +76,17 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                                 </div>
                             </div>
                         </div>
+                    </section>
+
+                    {/* Privacidade de Menores */}
+                    <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <Users className="w-5 h-5 text-primary" />
+                            Privacidade de Menores
+                        </h3>
+                        <p className="text-gray-600 leading-relaxed text-sm">
+                            O aplicativo não é direcionado especificamente para crianças menores de 12 anos.
+                        </p>
                     </section>
 
                     {/* 3. Uso das Informações */}

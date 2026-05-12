@@ -24,13 +24,24 @@ export const TermsOfUse: React.FC<TermsOfUseProps> = ({ onBack }) => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">Termos de Uso – Feirão da Orca</h2>
-                            <p className="text-sm text-gray-500">Última atualização: Março de 2026</p>
+                            <p className="text-sm text-gray-500">Última atualização: Maio de 2026</p>
                         </div>
                     </div>
                     <p className="text-gray-600 leading-relaxed border-l-4 border-primary pl-4 bg-gray-50/50 py-3 rounded-r-lg text-sm">
                         Ao utilizar o aplicativo Feirão da Orca, o usuário declara que leu, compreendeu e concorda com estes Termos de Uso e com a Política de Privacidade.
                     </p>
                 </div>
+
+                {/* Classificação Indicativa */}
+                <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-primary" />
+                        CLASSIFICAÇÃO INDICATIVA
+                    </h3>
+                    <p className="text-gray-600 leading-relaxed text-sm">
+                        O aplicativo Feirão da Orca é destinado a usuários com idade igual ou superior a 12 anos, conforme classificação indicativa aplicada na plataforma Google Play.
+                    </p>
+                </section>
 
                 {/* Content Sections */}
                 <div className="space-y-6">
@@ -184,37 +195,59 @@ export const TermsOfUse: React.FC<TermsOfUseProps> = ({ onBack }) => {
                         </p>
                     </section>
 
-                    {/* 9. Negociações */}
+                    {/* 9. Segurança */}
                     <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold">9</span>
-                            Negociações entre Usuários
+                            <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">9</span>
+                            Segurança nas Negociações
                         </h3>
-                        <p className="text-gray-600 mb-3 text-sm">O Feirão da Orca não participa das transações realizadas entre usuários e não se responsabiliza por:</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            {['Pagamentos', 'Entregas', 'Qualidade dos produtos/serviços', 'Acordos externos'].map((item) => (
-                                <div key={item} className="bg-orange-50 p-2 rounded-lg text-xs font-bold text-orange-700 border border-orange-100">
-                                    ⚠️ {item}
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* 10. Conduta */}
-                    <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                        <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold">10</span>
-                            Conteúdo e Conduta
-                        </h3>
-                        <p className="text-gray-600 text-sm mb-2">É proibido:</p>
-                        <ul className="space-y-2">
-                            {['Publicar conteúdo ilegal, enganoso ou fraudulento', 'Utilizar o app para golpes ou atividades ilícitas', 'Praticar qualquer comportamento abusivo'].map((item, idx) => (
-                                <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                                    <div className="w-1 h-1 rounded-full bg-red-400" />
-                                    {item}
+                        <p className="text-gray-600 mb-4 text-sm">
+                            O Feirão da Orca recomenda que todos os usuários adotem medidas de segurança durante negociações realizadas através da plataforma. Recomendamos especialmente:
+                        </p>
+                        <ul className="space-y-3 mb-4">
+                            {[
+                                'Não realize pagamentos antecipados sem verificar a existência do produto, serviço, veículo ou imóvel',
+                                'Confira documentos, histórico e procedência do item anunciado',
+                                'Desconfie de ofertas com preços muito abaixo do mercado',
+                                'Evite negociações com pressão excessiva ou urgência incomum',
+                                'Priorize encontros em locais públicos e seguros',
+                                'Nunca compartilhe códigos de verificação, senhas ou dados bancários sensíveis'
+                            ].map((item, idx) => (
+                                <li key={idx} className="flex gap-3 text-sm text-gray-600">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+                                    <span>{item}</span>
                                 </li>
                             ))}
                         </ul>
+                        <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-xs font-medium">
+                            O Feirão da Orca não realiza intermediação financeira entre usuários e não solicita pagamentos fora dos canais oficiais divulgados pela plataforma.
+                        </div>
+                    </section>
+
+                    {/* 10. Proibidos */}
+                    <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold">10</span>
+                            Produtos, Serviços e Conteúdos Proibidos
+                        </h3>
+                        <p className="text-gray-600 text-sm mb-3">É proibida a publicação, divulgação ou comercialização de conteúdos que:</p>
+                        <div className="grid grid-cols-1 gap-2 mb-4">
+                            {[
+                                'Sejam ilegais ou violem a legislação aplicável',
+                                'Possuam origem ilícita, roubada ou falsificada',
+                                'Promovam fraudes, golpes ou atividades enganosas',
+                                'Representem risco à segurança pública',
+                                'Infrinjam direitos de terceiros',
+                                'Contenham conteúdo ofensivo, abusivo ou impróprio'
+                            ].map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs font-bold text-red-700 bg-red-50 p-2 rounded-lg border border-red-100">
+                                    <Ban className="w-3 h-3" /> {item}
+                                </div>
+                            ))}
+                        </div>
+                        <p className="text-xs text-gray-500 italic">
+                            O Feirão da Orca poderá remover conteúdos e suspender contas que violem estas regras, sem aviso prévio.
+                        </p>
                     </section>
 
                     {/* 11. Exclusão de Conta */}
