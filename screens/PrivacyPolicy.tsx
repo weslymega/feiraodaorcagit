@@ -174,12 +174,20 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                     <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
                             <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold">6</span>
-                            Armazenamento e Segurança
+                            Armazenamento e Retenção
                         </h3>
-                        <div className="flex gap-3 items-center p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                        <div className="flex gap-3 items-center p-4 bg-blue-50 rounded-2xl border border-blue-100 mb-4">
                             <Lock className="w-5 h-5 text-blue-600" />
                             <p className="text-sm text-blue-900 leading-relaxed font-medium">
                                 Os dados são armazenados em ambientes seguros com criptografia e boas práticas de proteção.
+                            </p>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <h4 className="text-xs font-bold text-gray-700 uppercase flex items-center gap-2 mb-2">
+                                <Clock className="w-4 h-4" /> Retenção de Anúncios
+                            </h4>
+                            <p className="text-[11px] text-gray-600 leading-relaxed">
+                                Para otimização de nossos sistemas, anúncios inativos (expirados) são mantidos por um período de segurança de <strong>5 dias</strong> após a expiração (totalizando 35 dias desde a publicação/renovação) antes da exclusão definitiva e irreversível dos dados vinculados ao anúncio.
                             </p>
                         </div>
                     </section>

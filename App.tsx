@@ -11,6 +11,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import { api, supabase } from './services/api';
 import { FirebaseService } from './services/firebaseService';
+import { PushService } from './services/pushService';
 import { captureError } from './services/sentry';
 
 const App: React.FC = () => {
@@ -141,8 +142,58 @@ const App: React.FC = () => {
   useEffect(() => {
     if (state.user?.id) {
       FirebaseService.setUserId(state.user.id);
+      // Registro de Push (Fase 3)
+      PushService.registerUser(state.user.id);
     }
   }, [state.user?.id]);
+
+  // --- PUSH NOTIFICATIONS INIT (FASE 3) ---
+  useEffect(() => {
+    PushService.init();
+  }, []);
+
+  // --- PUSH NAVIGATION HANDLER (FASE 5) ---
+  useEffect(() => {
+    if (!state.sessionReady) return;
+
+    PushService.setNavigationHandler(async (data) => {
+      console.log('🚀 Push Navigation Triggered:', data);
+      if (!data) return;
+
+      const { type, adId, otherUserId, senderId, senderName, avatarUrl } = data;
+
+      try {
+        if (type === 'chat' && adId && (otherUserId || senderId)) {
+          const targetUserId = otherUserId || senderId;
+          const ad = await api.getAdById(adId);
+          if (ad) {
+            state.setSelectedAd(ad);
+            state.setSelectedChat({
+              id: `${adId}_${targetUserId}`,
+              otherUserId: targetUserId,
+              senderName: senderName || 'Usuário',
+              avatarUrl: avatarUrl || '',
+              adId: adId,
+              adTitle: ad.title,
+              lastMessage: '',
+              time: 'Agora',
+              unreadCount: 0
+            });
+            state.setCurrentScreen(Screen.CHAT_DETAIL);
+          }
+        } else if (type === 'ad' && adId) {
+          const ad = await api.getAdById(adId);
+          if (ad) {
+            actions.handleAdClick(ad);
+          }
+        } else if (type === 'admin') {
+          state.setCurrentScreen(Screen.NOTIFICATIONS);
+        }
+      } catch (e) {
+        console.error('Error in Push Navigation:', e);
+      }
+    });
+  }, [state.sessionReady, actions]);
 
   // --- HARDENING: MONITOR DE SELF-HEALING (Sincronização de Anúncios) ---
   useEffect(() => {

@@ -106,6 +106,17 @@ export const TermsOfUse: React.FC<TermsOfUseProps> = ({ onBack }) => {
                                 </li>
                             ))}
                         </ul>
+                        <div className="bg-amber-50 border-l-4 border-amber-400 p-3 mb-4">
+                            <h4 className="text-xs font-bold text-amber-800 uppercase flex items-center gap-1 mb-1">
+                                <Clock className="w-3 h-3" /> Validade e Expiração
+                            </h4>
+                            <p className="text-[11px] text-amber-900 leading-relaxed">
+                                Os anúncios possuem validade padrão de <strong>30 dias</strong>. Após este prazo, o anúncio será marcado como "Expirado" e deixará de ser exibido publicamente. O usuário poderá renovar o anúncio para estender sua permanência.
+                            </p>
+                            <p className="text-[11px] text-amber-900 leading-relaxed mt-2 font-bold">
+                                Anúncios expirados por mais de 5 dias (35 dias no total) poderão ser excluídos permanentemente do sistema sem aviso prévio.
+                            </p>
+                        </div>
                         <p className="text-sm text-gray-600 italic">
                             O usuário é integralmente responsável pelo conteúdo publicado.
                         </p>
