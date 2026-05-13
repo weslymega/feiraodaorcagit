@@ -84,24 +84,37 @@ export const PushService = {
   /**
    * Fluxo completo de registro do usuário logado
    */
-  async registerUser(userId: string) {
+  async registerUser(userId: string, setToast?: (toast: any) => void) {
     if (Capacitor.getPlatform() === 'web' || !userId) return;
 
     try {
-      console.log('Iniciando registro de Push para user:', userId);
+      console.log('[PushService] Iniciando fluxo de registro para:', userId);
+      
       const isGranted = await this.requestPermissions();
+      console.log('[PushService] Permissão concedida:', isGranted);
       
       if (!isGranted) {
-        console.warn('Permissão de Push negada pelo usuário');
+        console.warn('[PushService] Permissão negada pelo usuário ou sistema');
         return;
       }
 
+      console.log('[PushService] Solicitando token ao Firebase...');
       const token = await this.getToken();
+      
       if (token) {
-        await this.saveTokenToDb(userId, token);
+        console.log('[PushService] Token obtido:', token.substring(0, 10) + '...');
+        const success = await this.saveTokenToDb(userId, token);
+        if (!success && setToast) {
+          setToast({ message: "Erro ao sincronizar notificações.", type: 'error' });
+        }
+      } else {
+        console.error('[PushService] Falha ao obter token do Firebase');
+        if (setToast) {
+          setToast({ message: "Não foi possível ativar notificações (Erro FCM).", type: 'error' });
+        }
       }
     } catch (err) {
-      console.error('Push registration flow failed:', err);
+      console.error('[PushService] Falha crítica no registro:', err);
     }
   },
 
@@ -110,6 +123,7 @@ export const PushService = {
    */
   async saveTokenToDb(userId: string, token: string) {
     try {
+      console.log(`[PushService] Salvando token no DB para user ${userId}...`);
       const { error } = await supabase
         .from('push_tokens')
         .upsert(
@@ -123,12 +137,15 @@ export const PushService = {
         );
 
       if (error) {
-        console.error('Error saving push token to Supabase:', error);
+        console.error('[PushService] Erro ao salvar token no Supabase:', error);
+        return false;
       } else {
-        console.log('Push token synced with Supabase successfully');
+        console.log('[PushService] Token sincronizado com sucesso!');
+        return true;
       }
     } catch (e) {
-      console.error('Critical error in saveTokenToDb:', e);
+      console.error('[PushService] Erro crítico em saveTokenToDb:', e);
+      return false;
     }
   },
 

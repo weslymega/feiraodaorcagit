@@ -143,7 +143,7 @@ const App: React.FC = () => {
     if (state.user?.id) {
       FirebaseService.setUserId(state.user.id);
       // Registro de Push (Fase 3)
-      PushService.registerUser(state.user.id);
+      PushService.registerUser(state.user.id, state.setToast);
     }
   }, [state.user?.id]);
 
