@@ -73,12 +73,18 @@ serve(async (req) => {
 
       notificationTitle = sender?.name || 'Novo contato';
       notificationBody = content || '📷 Enviou uma foto';
+      
+      // Proteção contra avatares em Base64 que estouram o limite de 4KB do FCM
+      const safeAvatarUrl = (sender?.avatar_url && sender.avatar_url.startsWith('http')) 
+        ? sender.avatar_url 
+        : '';
+
       customData = {
         type: 'chat',
         adId: ad_id,
         senderId: sender_id,
         senderName: sender?.name || '',
-        avatarUrl: sender?.avatar_url || ''
+        avatarUrl: safeAvatarUrl
       };
     } else if (type === 'ad_status_change') {
       const { user_id, status, titulo, id } = record;
