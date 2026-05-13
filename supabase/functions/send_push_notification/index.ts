@@ -36,9 +36,21 @@ serve(async (req) => {
   }
 
   try {
-    const { record, type } = await req.json();
-    console.log(`[PUSH] Triggered for type: ${type}`);
-    console.log(`[PUSH] Record data:`, JSON.stringify(record));
+    const payload = await req.json();
+    console.log(`[PUSH] Payload recebido:`, JSON.stringify(payload));
+
+    // Normalizar o tipo e o registro (Suporta chamada direta ou via Webhook do Supabase)
+    const record = payload.record || payload.data;
+    const table = payload.table;
+    const action = payload.type; // INSERT, UPDATE, etc
+    
+    let type = payload.type_override || payload.type; // Permite forçar um tipo
+    
+    // Auto-detecção baseada na tabela (Padrão Webhook Supabase)
+    if (table === 'messages') type = 'chat_message';
+    if (table === 'anuncios') type = 'ad_status_change';
+
+    console.log(`[PUSH] Processando - Tabela: ${table}, Ação: ${action}, Tipo Detectado: ${type}`);
 
     const serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT!);
     const PROJECT_ID = serviceAccount.project_id;
@@ -52,6 +64,7 @@ serve(async (req) => {
       const { receiver_id: rid, sender_id, ad_id, content } = record;
       receiver_id = rid;
 
+      console.log(`[PUSH] Buscando perfil do remetente: ${sender_id}`);
       const { data: sender } = await supabase
         .from('public_profiles')
         .select('name, avatar_url')
@@ -117,7 +130,7 @@ serve(async (req) => {
     const accessToken = await getAccessToken();
 
     // 3. Enviar para cada token (FCM v1)
-    console.log(`[PUSH] Sending notifications via FCM...`);
+    console.log(`[PUSH] Enviando para ${tokens.length} tokens via FCM v1...`);
     const results = await Promise.all(tokens.map(async (t) => {
       try {
         const res = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
@@ -144,9 +157,16 @@ serve(async (req) => {
             }
           })
         });
+        
+        const fcmResult = await res.json();
+        if (!res.ok) {
+          console.error(`[PUSH] Erro FCM para o token ${t.token.substring(0, 10)}:`, JSON.stringify(fcmResult));
+        } else {
+          console.log(`[PUSH] Sucesso FCM para o token ${t.token.substring(0, 10)}`);
+        }
         return res.ok;
       } catch (e) {
-        console.error('Error sending to token:', t.token, e);
+        console.error('[PUSH] Erro ao enviar para o token:', t.token.substring(0, 10), e);
         return false;
       }
     }));
