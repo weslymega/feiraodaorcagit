@@ -37,6 +37,9 @@ serve(async (req) => {
 
   try {
     const { record, type } = await req.json();
+    console.log(`[PUSH] Triggered for type: ${type}`);
+    console.log(`[PUSH] Record data:`, JSON.stringify(record));
+
     const serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT!);
     const PROJECT_ID = serviceAccount.project_id;
     
@@ -93,23 +96,28 @@ serve(async (req) => {
     }
 
     if (type === 'chat_message' && pref && !pref.push_chat_enabled) {
+      console.log(`[PUSH] User ${receiver_id} has chat notifications disabled`);
       return new Response(JSON.stringify({ success: true, reason: 'chat_push_disabled' }));
     }
 
     // 1. Buscar tokens
+    console.log(`[PUSH] Fetching tokens for user: ${receiver_id}`);
     const { data: tokens } = await supabase
       .from('push_tokens')
       .select('token')
       .eq('user_id', receiver_id);
 
     if (!tokens || tokens.length === 0) {
+      console.log(`[PUSH] No tokens found for user: ${receiver_id}`);
       return new Response(JSON.stringify({ success: true, reason: 'no_tokens' }));
     }
 
+    console.log(`[PUSH] Found ${tokens.length} tokens. Getting access token...`);
     // 2. Obter Access Token do Google
     const accessToken = await getAccessToken();
 
     // 3. Enviar para cada token (FCM v1)
+    console.log(`[PUSH] Sending notifications via FCM...`);
     const results = await Promise.all(tokens.map(async (t) => {
       try {
         const res = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
