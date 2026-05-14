@@ -1,5 +1,6 @@
 import { api, supabase } from '../services/api';
 import { App as CapApp } from '@capacitor/app';
+import { authService, AuthEvent } from '../services/authService';
 import { Capacitor } from '@capacitor/core';
 import { useState, useEffect, useRef } from 'react';
 import { Screen, User, AdItem, MessageItem, ChatMessage, NotificationItem, ReportItem, FilterContext, DashboardPromotion, RealEstatePromotion, PartsServicesPromotion, VehiclesPromotion } from '../types';
@@ -221,16 +222,13 @@ export const useAppState = () => {
   const isRecoveringRef = useRef<boolean>(false);
   const authInitializedRef = useRef<boolean>(false);
 
-  // Sincronizar ref com estado para uso dentro do listener (que tem closure fixa)
+  const currentScreenRef = useRef<Screen>(currentScreen);
   useEffect(() => {
-    authInitializedRef.current = authInitialized;
-  }, [authInitialized]);
+    currentScreenRef.current = currentScreen;
+  }, [currentScreen]);
 
   useEffect(() => {
-    // 1. Definição do mapeador de usuário (para consistência)
     const mapUser = (sessionUser: any): User => {
-      // Prioritize metadata ONLY on first creation/registration
-      // For persistent sessions, the profiles table is our Single Source of Truth
       return {
         id: sessionUser.id,
         email: sessionUser.email || '',
@@ -246,7 +244,6 @@ export const useAppState = () => {
         location: "Brasília, DF",
         bio: "",
         emailConfirmedAt: sessionUser.email_confirmed_at,
-        // --- PERSISTÊNCIA EM DUAS CAMADAS (Otimização Local) ---
         acceptedTerms: (localStorage.getItem("termsAccepted") === "true" && localStorage.getItem("termsVersion") === TERMS_VERSION) 
           || !!sessionUser.user_metadata?.accepted_terms 
           || !!sessionUser.user_metadata?.terms_accepted,
@@ -255,94 +252,19 @@ export const useAppState = () => {
       };
     };
 
-    // 2. Verificação de sessão inicial (Cold Boot)
-    const initSession = async () => {
-      console.log("🔐 [Auth] Initializing session check...");
+    const handleAuthChange = async (event: AuthEvent, session: any) => {
+      console.log(`🔐 [useAppState] Mudança detectada: ${event}`, session?.user?.id);
       
-      if (Capacitor.isNativePlatform()) {
-        try {
-          const launchData = await CapApp.getLaunchUrl();
-          
-          console.log('[AUTH FLOW]', {
-            isNative: Capacitor.isNativePlatform(),
-            launchUrl: launchData?.url,
-            authLoading: true
-          });
-
-          if (launchData?.url && (
-            launchData.url.includes('access_token') ||
-            launchData.url.includes('code')
-          )) {
-            console.log('[AUTH] OAuth detectado via LaunchUrl');
-            setAuthLoading(true);
-            
-            // Proteção extra (anti-loop)
-            setTimeout(() => {
-              setAuthLoading(false);
-              setSessionReady(true);
-            }, 5000);
-            
-            return; // Aguarda listener do App.tsx tratar e setar a sessão
-          }
-        } catch (e) {
-          console.error("Erro ao verificar getLaunchUrl", e);
-        }
-      }
-
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        if (session?.user) {
-          // Health Check: Verificando se o token ainda é aceito pelo servidor
-          // Isso evita erros 401 residuais bloqueando o app
-          const { error: userError } = await supabase.auth.getUser();
-
-          if (userError) {
-            console.warn("⚠️ [Auth] Sessão existente é inválida ou expirou. Limpando...", userError.message);
-            // Limpeza agressiva para garantir que o app volte ao estado Guest
-            await supabase.auth.signOut().catch(() => { });
-            localStorage.removeItem('orca_user');
-
-            setUser(null);
-            setCurrentScreen(Screen.LOGIN);
-          } else {
-            console.log("✅ [Auth] Session found for user:", session.user.id);
-            authenticatedUserIdRef.current = session.user.id;
-            setUser(mapUser(session.user));
-            setCurrentScreen(Screen.DASHBOARD);
-          }
-        } else {
-          console.log("📍 [Auth] No initial session found.");
-          setUser(null);
-          setCurrentScreen(Screen.LOGIN);
-        }
-      } catch (err) {
-        console.error("❌ [Auth] Error getting session:", err);
-        // Em caso de erro crítico na lib (ex: token corrompido que faz a lib travar)
-        setUser(null);
-        setCurrentScreen(Screen.LOGIN);
-      } finally {
-        setAuthInitialized(true);
-        setSessionReady(true);
-        setAuthLoading(false);
-      }
-    };
-
-    initSession();
-
-    // 3. Listener de mudanças de estado (Event-driven)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔐 [Auth] State Change Event:", event, session?.user?.id);
-
       if (event === 'SIGNED_OUT') {
         authenticatedUserIdRef.current = null;
         setUser(null);
         setProfileLoaded(false);
         setCurrentScreen(Screen.LOGIN);
         setIsAppReady(true);
-        // Limpa o contexto de usuário no Sentry — NUNCA usar await
         setSentryUser(null);
+        setAuthLoading(false);
+        setAuthInitialized(true);
+        setSessionReady(true);
         return;
       }
 
@@ -350,35 +272,47 @@ export const useAppState = () => {
         isRecoveringRef.current = true;
         setCurrentScreen(Screen.RESET_PASSWORD);
         setIsAppReady(true);
+        setAuthLoading(false);
+        setAuthInitialized(true);
+        setSessionReady(true);
         return;
       }
 
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
         const isNewUser = authenticatedUserIdRef.current !== session.user.id;
+        authenticatedUserIdRef.current = session.user.id;
+        setUser(mapUser(session.user));
 
-        if (isNewUser) {
-          console.log("✅ [Auth] User signed in:", session.user.id);
-          authenticatedUserIdRef.current = session.user.id;
-          setUser(mapUser(session.user));
-
+        if (currentScreenRef.current === Screen.LOGIN || currentScreenRef.current === Screen.SPLASH) {
           if (isRecoveringRef.current) {
             isRecoveringRef.current = false;
             setCurrentScreen(Screen.RESET_PASSWORD);
           } else {
             setCurrentScreen(Screen.DASHBOARD);
           }
+        }
 
-          // Se for uma mudança após o boot, precisamos recarregar os dados
+        if (isNewUser) {
           setIsAppReady(false);
           setLoadingMessage("");
-        } else {
-          console.log("ℹ️ [Auth] Session refreshed for same user.");
         }
+      } else if (event === 'INITIAL_SESSION' && !session) {
+        // Tratamento para Cold Start sem sessão (Guest)
+        console.log('👤 [useAppState] Nenhum usuário logado. Modo Visitante.');
+        setUser(null);
+        authenticatedUserIdRef.current = null;
       }
-    });
+
+      setAuthInitialized(true);
+      setSessionReady(true);
+      setAuthLoading(false);
+    };
+
+    // Subscreve ao Singleton em vez de criar um novo listener no Supabase
+    const unsubscribe = authService.subscribe(handleAuthChange);
 
     return () => {
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 
@@ -422,6 +356,7 @@ export const useAppState = () => {
               await supabase.auth.signOut();
               setUser(null);
               setSentryUser(null);
+              console.log("📍 [Navigation] Redirecionando para LOGIN (perfil excluído)");
               setCurrentScreen(Screen.LOGIN);
               alert("Esta conta foi excluída e não pode mais ser acessada.");
               return;
@@ -464,13 +399,15 @@ export const useAppState = () => {
             }
           } else {
             // Profile not found yet (race condition with trigger)
-            console.log(`⏳ [Data-Flow] Perfil não encontrado. Tentativa de retry ${retryProfileCount + 1}...`);
+            console.log(`⏳ [Data-Flow] Perfil ainda não disponível no banco. Tentativa ${retryProfileCount + 1}/5...`);
             
             if (retryProfileCount < 5) {
               setTimeout(() => setRetryProfileCount(prev => prev + 1), 2000);
+              return; // Mantém isAppReady como false para mostrar o loading
             } else {
-              console.error("❌ [Data-Flow] Falha crítica: Perfil não sincronizou após várias tentativas.");
-              setProfileLoaded(true); // Unblock to avoid infinite loading, but state will be inconsistent
+              console.error("❌ [Data-Flow] Tempo limite atingido. Prosseguindo com perfil básico do Auth.");
+              setProfileLoaded(true); 
+              setIsAppReady(true);
             }
           }
 

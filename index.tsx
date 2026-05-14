@@ -4,11 +4,15 @@ import App from './App';
 import './App.css';
 import { initSentry, captureError } from './services/sentry';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
+import { authService } from './services/authService';
 
 // Inicializa o Sentry ANTES do React.
 // Captura erros no boot, incluindo falhas de chunks (lazy load).
 // FAIL-SAFE: se falhar, o app continua normalmente.
 initSentry();
+
+// Inicializa o Singleton de Autenticação (Apenas uma vez)
+authService.initialize();
 
 // --- HARDENING: Window Error Handlers Globais ---
 window.addEventListener('error', (event) => {

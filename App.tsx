@@ -34,22 +34,19 @@ const App: React.FC = () => {
     };
     initStatusBar();
   }, []);
-
-  // --- DEEP LINK HANDLER (SENIOR ARCHITECTURE) ---
+  // --- DEEP LINK & AUTH HANDLER (CONSOLIDATED) ---
   useEffect(() => {
-    if (!state.sessionReady) return;
+    const instanceId = Math.random().toString(36).substring(7);
+    console.log(`🏗️ [APP MOUNT] Instância: ${instanceId}`);
 
     const handleDeepLink = async (url: string) => {
-      console.log('🔗 Deep Link Detector:', url);
+      console.log(`🔗 [DEEP LINK] [${instanceId}] URL detectada:`, url);
       
-      // Regex robusto para /ad/{id}
       const adMatch = url.match(/\/anuncio\/([a-zA-Z0-9-._~]+)/);
       const adId = adMatch ? adMatch[1] : null;
 
       if (adId) {
         try {
-          // Busca dados do anúncio via API para garantir que o estado local não falhe
-          // Isso funciona mesmo que o feed ainda esteja carregando
           const ad = await api.getAdById(adId);
           if (ad) {
             actions.handleAdClick(ad);
@@ -64,65 +61,84 @@ const App: React.FC = () => {
       }
     };
 
-    // 1. Escuta eventos com o app já em execução (Background -> Foreground)
-    const appUrlListener = CapApp.addListener('appUrlOpen', async (event) => {
-      console.log('[AUTH DEBUG] URL recebida:', event.url);
-      
+    const handleOAuthUrl = async (url: string) => {
       if (
-        event.url.includes('auth/callback') || 
-        event.url.includes('access_token') || 
-        event.url.includes('code') || 
-        event.url.includes('refresh_token') ||
-        event.url.includes('/auth')
+        url.includes('auth/callback') || 
+        url.includes('access_token') || 
+        url.includes('code') || 
+        url.includes('refresh_token') ||
+        url.includes('/auth')
       ) {
+        console.log('✨ [STATUS] URL identificada como fluxo de autenticação');
         try {
-          const urlObj = new URL(event.url);
+          const urlObj = new URL(url);
           const code = urlObj.searchParams.get('code');
+          const errorParam = urlObj.searchParams.get('error');
+          const errorDesc = urlObj.searchParams.get('error_description');
+
+          if (errorParam) {
+            console.error('❌ [ERRO URL] Erro vindo do Google/Supabase via URL:', {
+              error: errorParam,
+              description: errorDesc
+            });
+          }
           
           if (code) {
-            await supabase.auth.exchangeCodeForSession(code);
-            console.log('[AUTH DEBUG] Sessão criada');
+            console.log('🎫 [PROCESSO] Trocando código por sessão...');
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            
+            if (error) {
+              console.error('❌ [ERRO TROCA] Falha ao trocar código por sessão:', {
+                message: error.message,
+                status: error.status
+              });
+            } else {
+              console.log('✅ [SUCESSO] Código trocado. Sessão obtida para:', data.user?.id);
+            }
           } else if (urlObj.hash && urlObj.hash.includes('access_token')) {
+            console.log('🔑 [PROCESSO] Detectado token no hash (fragment). Definindo sessão...');
             const params = new URLSearchParams(urlObj.hash.substring(1));
             const access_token = params.get('access_token');
             const refresh_token = params.get('refresh_token');
             if (access_token && refresh_token) {
-              await supabase.auth.setSession({ access_token, refresh_token });
-              console.log('[AUTH DEBUG] Sessão criada');
+              const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+              if (error) {
+                console.error('❌ [ERRO TOKEN] Falha ao definir sessão via token:', error.message);
+              } else {
+                console.log('✅ [SUCESSO] Sessão definida via hash para:', data.user?.id);
+              }
             }
           }
-
-          console.log('[AUTH] Processando OAuth callback');
-          const { data } = await supabase.auth.getSession();
-          
-          // 🔴 LIBERA A UI
-          if (typeof actions.setAuthLoading === 'function') {
-            actions.setAuthLoading(false);
-          } else {
-            state.setAuthLoading(false);
-          }
-
-          if (data?.session?.user != null) {
-            console.log('[AUTH DEBUG] Usuário autenticado');
-            window.location.href = '/';
-            return;
-          }
+          return true;
         } catch (error) {
-          console.error('[AUTH DEBUG] Erro ao recuperar sessão:', error);
-          captureError(error instanceof Error ? error : new Error(String(error)), { tags: { context: 'authCallback' } });
-          if (typeof actions.setAuthLoading === 'function') {
-            actions.setAuthLoading(false);
-          } else {
-            state.setAuthLoading(false);
-          }
+          console.error('❌ Error in OAuth handler:', error);
+          state.setAuthLoading(false);
         }
       }
+      return false;
+    };
+
+    // 1. Escuta eventos com o app já em execução (Background -> Foreground)
+    const appUrlListener = CapApp.addListener('appUrlOpen', async (event) => {
+      
+      // Processamento manual apenas em plataformas nativas para evitar conflitos com o auto-detect do Web
+      if (Capacitor.isNativePlatform()) {
+        const isAuth = await handleOAuthUrl(event.url);
+        if (isAuth) return;
+      }
+      
       handleDeepLink(event.url);
     });
 
     // 2. Trata Cold Start (App fechado sendo aberto pelo link)
-    CapApp.getLaunchUrl().then((launchUrl) => {
+    CapApp.getLaunchUrl().then(async (launchUrl) => {
       if (launchUrl?.url) {
+        
+        if (Capacitor.isNativePlatform()) {
+          const isAuth = await handleOAuthUrl(launchUrl.url);
+          if (isAuth) return;
+        }
+        
         handleDeepLink(launchUrl.url);
       }
     });
@@ -130,7 +146,7 @@ const App: React.FC = () => {
     return () => {
       appUrlListener.then(l => l.remove());
     };
-  }, [state.isAppReady, state.sessionReady, actions]);
+  }, [state.sessionReady, actions]);
 
   // --- FIREBASE MONITORING ---
   useEffect(() => {
@@ -146,6 +162,17 @@ const App: React.FC = () => {
       PushService.registerUser(state.user.id, state.setToast);
     }
   }, [state.user?.id]);
+
+  // --- URL CLEANER & SYNC (WEB ONLY) ---
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() && window.location.search.includes('code=')) {
+      console.log('🧹 [Web] Limpando parâmetros de OAuth da URL...');
+      const timer = setTimeout(() => {
+        window.history.replaceState({}, '', '/');
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // --- PUSH NOTIFICATIONS INIT (FASE 3/4) ---
   useEffect(() => {

@@ -110,30 +110,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       return;
     }
 
-    try {
-      setLoading(true);
-      setErrorMsg('');
-      setShowErrorLinks(false);
+    setLoading(true);
+    setErrorMsg('');
+    setShowErrorLinks(false);
 
-      const redirectTo = 'https://feiraodaorca.com/auth/callback';
+      const isNative = Capacitor.isNativePlatform();
+      const siteUrl = getSiteUrl();
+      const redirectTo = `${siteUrl}/auth/callback`;
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          skipBrowserRedirect: true
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        await Browser.open({
-          url: data.url,
-          presentationStyle: 'fullscreen'
+      try {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo,
+            skipBrowserRedirect: isNative
+          }
         });
-      }
-    } catch (err: any) {
+
+        if (error) throw error;
+
+        if (isNative && data?.url) {
+          await Browser.open({
+            url: data.url,
+            presentationStyle: 'fullscreen'
+          });
+        }
+      } catch (err: any) {
       console.error("[GOOGLE LOGIN ERROR]", err);
       setErrorMsg("Erro ao iniciar login com Google.");
     } finally {

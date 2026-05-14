@@ -83,6 +83,8 @@ serve(async (req) => {
       notificationTitle = sender?.name || 'Novo contato';
       notificationBody = content || '📷 Enviou uma foto';
       
+      console.log(`[PUSH] Usando Firebase Project ID: ${PROJECT_ID}`);
+
       // Proteção contra avatares em Base64 que estouram o limite de 4KB do FCM
       const safeAvatarUrl = (sender?.avatar_url && sender.avatar_url.startsWith('http')) 
         ? sender.avatar_url 
@@ -189,7 +191,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: true, 
       sent: results.filter(r => r).length, 
-      total: tokens.length 
+      total: tokens.length,
+      debug_project_id: PROJECT_ID
     }));
 
   } catch (error) {
