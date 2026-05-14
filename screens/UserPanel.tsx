@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Heart, Tag, Settings, MapPin, ShieldCheck, User, Wrench, BarChart2 } from 'lucide-react';
+import { Heart, Tag, Settings, MapPin, ShieldCheck, User, Wrench, BarChart2, Terminal } from 'lucide-react';
 import { Screen, User as UserType } from '../types';
 import { CardButton } from '../components/Shared';
 import { APP_LOGOS } from '../constants';
