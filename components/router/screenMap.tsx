@@ -73,6 +73,7 @@ import { AdminRealEstatePromotions } from '../../screens/AdminRealEstatePromotio
 import { AdminPartsServicesPromotions } from '../../screens/AdminPartsServicesPromotions';
 import { AdminVehiclesPromotions } from '../../screens/AdminVehiclesPromotions';
 import { AdminSecurityLogs } from '../../screens/AdminSecurityLogs';
+import { DebugPush } from '../../screens/DebugPush';
 // ErrorBoundary importado acima
 
 export interface RouterContextProps {
@@ -148,7 +149,7 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
         Screen.ADMIN_SYSTEM_SETTINGS, Screen.ADMIN_CONTENT_MODERATION, 
         Screen.ADMIN_DASHBOARD_PROMOTIONS, Screen.ADMIN_REAL_ESTATE_PROMOTIONS, 
         Screen.ADMIN_PARTS_SERVICES_PROMOTIONS, Screen.ADMIN_VEHICLES_PROMOTIONS,
-        Screen.ADMIN_SECURITY_LOGS, Screen.BLOCKED_USERS
+        Screen.ADMIN_SECURITY_LOGS, Screen.BLOCKED_USERS, Screen.DEBUG_PUSH
     ];
 
     // --- 2. GUARDA DE SESSÃO CENTRALIZADO ---
@@ -570,6 +571,8 @@ export const renderScreen = (currentScreen: Screen, ctx: RouterContextProps) => 
 
         case Screen.FIPE_EXPLORER:
             return <FipeExplorer onBack={goBackToDashboard} />;
+        case Screen.DEBUG_PUSH:
+            return <DebugPush onBack={goBackToPanel} />;
 
         default:
             return <LoginScreen user={user} navigateTo={navigateTo} onLogin={handleLogin} onForgotPassword={() => navigateTo(Screen.FORGOT_PASSWORD)} onRegister={() => navigateTo(Screen.REGISTER)} onViewTerms={() => openExternalLink(LINKS.TERMS)} onViewPrivacy={() => openExternalLink(LINKS.PRIVACY)} />;

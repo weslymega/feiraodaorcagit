@@ -103,7 +103,7 @@ export const AboutUs: React.FC<AboutUsProps> = ({ onBack }) => {
 
                 {/* Versão do App */}
                 <div className="mt-8 mb-4 text-center text-gray-400 text-sm font-medium">
-                    Versão 1.2.9
+                    Versão 1.3.7
                 </div>
 
             </div>

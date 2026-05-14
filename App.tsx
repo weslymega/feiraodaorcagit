@@ -147,9 +147,17 @@ const App: React.FC = () => {
     }
   }, [state.user?.id]);
 
-  // --- PUSH NOTIFICATIONS INIT (FASE 3) ---
+  // --- PUSH NOTIFICATIONS INIT (FASE 3/4) ---
   useEffect(() => {
-    PushService.init();
+    PushService.init((notification) => {
+      // Exibir toast para notificações em foreground
+      if (notification.title || notification.body) {
+        state.setToast({
+          message: `${notification.title ? notification.title + ': ' : ''}${notification.body || ''}`,
+          type: 'info'
+        });
+      }
+    });
   }, []);
 
   // --- PUSH NAVIGATION HANDLER (FASE 5) ---

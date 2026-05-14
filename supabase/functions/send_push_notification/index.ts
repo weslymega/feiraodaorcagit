@@ -60,9 +60,18 @@ serve(async (req) => {
     let notificationBody;
     let customData = {};
 
+    console.log(`[PUSH] Tipo detectado final: ${type}`);
+
     if (type === 'chat_message') {
+      if (!record) {
+        console.error('[PUSH] Erro: record is null for chat_message');
+        return new Response(JSON.stringify({ success: false, error: 'record is null' }), { status: 400 });
+      }
+
       const { receiver_id: rid, sender_id, ad_id, content } = record;
       receiver_id = rid;
+
+      console.log(`[PUSH] Detalhes do Chat - Remetente: ${sender_id}, Destinatário: ${receiver_id}, Ad: ${ad_id}`);
 
       console.log(`[PUSH] Buscando perfil do remetente: ${sender_id}`);
       const { data: sender } = await supabase
@@ -127,11 +136,11 @@ serve(async (req) => {
       .eq('user_id', receiver_id);
 
     if (!tokens || tokens.length === 0) {
-      console.log(`[PUSH] No tokens found for user: ${receiver_id}`);
-      return new Response(JSON.stringify({ success: true, reason: 'no_tokens' }));
+      console.log(`[PUSH] Nenhum token encontrado para o usuário: ${receiver_id}`);
+      return new Response(JSON.stringify({ success: true, reason: 'no_tokens', user_id: receiver_id }));
     }
 
-    console.log(`[PUSH] Found ${tokens.length} tokens. Getting access token...`);
+    console.log(`[PUSH] Encontrados ${tokens.length} tokens. Gerando access token do Firebase...`);
     // 2. Obter Access Token do Google
     const accessToken = await getAccessToken();
 
@@ -157,7 +166,7 @@ serve(async (req) => {
                 priority: 'high',
                 notification: {
                   sound: 'default',
-                  click_action: 'FLUTTER_NOTIFICATION_CLICK'
+                  channel_id: 'default'
                 }
               }
             }

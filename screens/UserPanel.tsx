@@ -121,6 +121,12 @@ export const UserPanel: React.FC<UserPanelProps> = ({ user, onNavigate, onLogout
               bgIcon="bg-blue-50"
               onClick={() => onNavigate(Screen.FIPE_EXPLORER)}
             />
+            <CardButton
+              icon={<Terminal className="w-5 h-5 text-red-500" />}
+              label="Debug Notificações"
+              bgIcon="bg-red-50"
+              onClick={() => onNavigate(Screen.DEBUG_PUSH)}
+            />
           </div>
         </div>
 

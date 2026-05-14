@@ -20,12 +20,14 @@ export const PushService = {
   /**
    * Inicializa listeners globais
    */
-  async init() {
+  async init(onForegroundNotification?: (notification: any) => void) {
     if (Capacitor.getPlatform() === 'web') return;
+
+    console.log('🔍 [DEBUG PUSH] Inicializando listeners...');
 
     // Listener para quando o token é atualizado pelo Firebase
     FirebaseMessaging.addListener('tokenReceived', async (event) => {
-      console.log('Push token received/rotated:', event.token);
+      console.log('✅ [DEBUG PUSH] Token recebido/rotacionado:', event.token);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await this.saveTokenToDb(user.id, event.token);
@@ -34,21 +36,66 @@ export const PushService = {
 
     // Listener para erros do plugin
     FirebaseMessaging.addListener('error', (error) => {
-      console.error('Push Messaging Error:', error);
+      console.error('❌ [DEBUG PUSH] Erro do Plugin FirebaseMessaging:', JSON.stringify(error));
     });
 
     // Listener para recebimento em foreground (Fase 4)
-    FirebaseMessaging.addListener('notificationReceived', (event) => {
-      console.log('Push notification received (foreground):', event.notification);
+    FirebaseMessaging.addListener('notificationReceived', async (event) => {
+      console.log('📩 [DEBUG PUSH] Notificação recebida em FOREGROUND');
+      console.log('📦 [DEBUG PUSH] Payload Notification:', JSON.stringify(event.notification, null, 2));
+      
+      if (onForegroundNotification) {
+        onForegroundNotification(event.notification);
+      }
     });
 
     // Listener para clique na notificação (Fase 4/5)
     FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
-      console.log('Push notification action clicked:', event.notification);
+      console.log('🖱️ [DEBUG PUSH] Notificação CLICADA (Action Performed)');
+      console.log('📦 [DEBUG PUSH] Payload Completo no Clique:', JSON.stringify(event.notification, null, 2));
+      console.log('📊 [DEBUG PUSH] Data do payload:', JSON.stringify(event.notification.data, null, 2));
+
       if (navigationHandler && event.notification.data) {
         navigationHandler(event.notification.data);
       }
     });
+
+    // Criar canal padrão no Android ao iniciar
+    if (Capacitor.getPlatform() === 'android') {
+      await this.createDefaultChannel();
+      
+      // Logar canais existentes para verificação
+      try {
+        const { channels } = await FirebaseMessaging.listChannels();
+        console.log('📡 [DEBUG PUSH] Canais registrados no Android:', JSON.stringify(channels, null, 2));
+      } catch (e) {
+        console.error('⚠️ [DEBUG PUSH] Erro ao listar canais:', e);
+      }
+    }
+  },
+
+  /**
+   * Cria o canal de notificação obrigatório para Android 8+
+   */
+  async createDefaultChannel() {
+    if (Capacitor.getPlatform() !== 'android') return;
+
+    try {
+      console.log('[PushService] Criando canal de notificação padrão...');
+      await FirebaseMessaging.createChannel({
+        id: 'default',
+        name: 'Notificações Gerais',
+        description: 'Canal padrão para mensagens e alertas',
+        importance: 5, // High importance
+        visibility: 1, // Public
+        vibration: true,
+        lights: true,
+        lightColor: '#FF6600'
+      });
+      console.log('[PushService] Canal "default" criado com sucesso');
+    } catch (e) {
+      console.error('[PushService] Erro ao criar canal:', e);
+    }
   },
 
   /**

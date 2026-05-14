@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.log_security_event]
 verify_jwt = false
+
+[functions.send_push_notification]
+verify_jwt = false
