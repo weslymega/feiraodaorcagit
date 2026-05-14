@@ -34,14 +34,25 @@ const App: React.FC = () => {
     };
     initStatusBar();
   }, []);
-  // --- DEEP LINK & AUTH HANDLER (CONSOLIDATED) ---
+  // --- STABLE HANDLERS REFS ---
+  // Racional: listeners globais devem ser registrados apenas UMA vez no mount.
+  // Usamos refs para acessar o estado/ações mais recentes sem disparar re-runs dos efeitos.
+  const actionsRef = React.useRef(actions);
+  const stateRef = React.useRef(state);
+  const hasProcessedLaunchUrl = React.useRef(false);
+
+  useEffect(() => {
+    actionsRef.current = actions;
+    stateRef.current = state;
+  }, [actions, state]);
+
+  // --- DEEP LINK & AUTH HANDLER (SINGLETON MOUNT) ---
   useEffect(() => {
     const instanceId = Math.random().toString(36).substring(7);
-    console.log(`🏗️ [APP MOUNT] Instância: ${instanceId}`);
+    console.log(`🏗️ [APP MOUNT] Instância estável: ${instanceId}`);
 
     const handleDeepLink = async (url: string) => {
-      console.log(`🔗 [DEEP LINK] [${instanceId}] URL detectada:`, url);
-      
+      console.log(`🔗 [DEEP LINK] [${instanceId}] Processando:`, url);
       const adMatch = url.match(/\/anuncio\/([a-zA-Z0-9-._~]+)/);
       const adId = adMatch ? adMatch[1] : null;
 
@@ -49,104 +60,73 @@ const App: React.FC = () => {
         try {
           const ad = await api.getAdById(adId);
           if (ad) {
-            actions.handleAdClick(ad);
+            actionsRef.current.handleAdClick(ad);
           } else {
-            state.setToast({ message: "Anúncio indisponível ou removido.", type: 'error' });
+            stateRef.current.setToast({ message: "Anúncio indisponível.", type: 'error' });
           }
         } catch (error) {
           console.error("Deep Link Error:", error);
           captureError(error instanceof Error ? error : new Error(String(error)), { tags: { context: 'handleDeepLink' } });
-          state.setToast({ message: "Erro ao abrir o anúncio via QR Code.", type: 'error' });
         }
       }
     };
 
     const handleOAuthUrl = async (url: string) => {
-      if (
-        url.includes('auth/callback') || 
-        url.includes('access_token') || 
-        url.includes('code') || 
-        url.includes('refresh_token') ||
-        url.includes('/auth')
-      ) {
-        console.log('✨ [STATUS] URL identificada como fluxo de autenticação');
+      if (url.includes('auth/callback') || url.includes('access_token') || url.includes('code') || url.includes('/auth')) {
+        console.log('✨ [STATUS] URL de Auth detectada');
         try {
           const urlObj = new URL(url);
           const code = urlObj.searchParams.get('code');
-          const errorParam = urlObj.searchParams.get('error');
-          const errorDesc = urlObj.searchParams.get('error_description');
-
-          if (errorParam) {
-            console.error('❌ [ERRO URL] Erro vindo do Google/Supabase via URL:', {
-              error: errorParam,
-              description: errorDesc
-            });
-          }
           
           if (code) {
             console.log('🎫 [PROCESSO] Trocando código por sessão...');
-            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-            
-            if (error) {
-              console.error('❌ [ERRO TROCA] Falha ao trocar código por sessão:', {
-                message: error.message,
-                status: error.status
-              });
-            } else {
-              console.log('✅ [SUCESSO] Código trocado. Sessão obtida para:', data.user?.id);
-            }
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) console.error('❌ [ERRO TROCA]', error.message);
           } else if (urlObj.hash && urlObj.hash.includes('access_token')) {
-            console.log('🔑 [PROCESSO] Detectado token no hash (fragment). Definindo sessão...');
             const params = new URLSearchParams(urlObj.hash.substring(1));
             const access_token = params.get('access_token');
             const refresh_token = params.get('refresh_token');
             if (access_token && refresh_token) {
-              const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-              if (error) {
-                console.error('❌ [ERRO TOKEN] Falha ao definir sessão via token:', error.message);
-              } else {
-                console.log('✅ [SUCESSO] Sessão definida via hash para:', data.user?.id);
-              }
+              await supabase.auth.setSession({ access_token, refresh_token });
             }
           }
           return true;
         } catch (error) {
           console.error('❌ Error in OAuth handler:', error);
-          state.setAuthLoading(false);
+          stateRef.current.setAuthLoading(false);
         }
       }
       return false;
     };
 
-    // 1. Escuta eventos com o app já em execução (Background -> Foreground)
+    // 1. Escuta eventos em Runtime
     const appUrlListener = CapApp.addListener('appUrlOpen', async (event) => {
-      
-      // Processamento manual apenas em plataformas nativas para evitar conflitos com o auto-detect do Web
       if (Capacitor.isNativePlatform()) {
         const isAuth = await handleOAuthUrl(event.url);
         if (isAuth) return;
       }
-      
       handleDeepLink(event.url);
     });
 
-    // 2. Trata Cold Start (App fechado sendo aberto pelo link)
-    CapApp.getLaunchUrl().then(async (launchUrl) => {
-      if (launchUrl?.url) {
-        
-        if (Capacitor.isNativePlatform()) {
-          const isAuth = await handleOAuthUrl(launchUrl.url);
-          if (isAuth) return;
+    // 2. Trata Cold Start (Apenas uma vez por mount)
+    if (!hasProcessedLaunchUrl.current) {
+      CapApp.getLaunchUrl().then(async (launchUrl) => {
+        if (launchUrl?.url && !hasProcessedLaunchUrl.current) {
+          hasProcessedLaunchUrl.current = true;
+          if (Capacitor.isNativePlatform()) {
+            const isAuth = await handleOAuthUrl(launchUrl.url);
+            if (isAuth) return;
+          }
+          handleDeepLink(launchUrl.url);
         }
-        
-        handleDeepLink(launchUrl.url);
-      }
-    });
+      });
+    }
 
     return () => {
+      console.log(`🔌 [APP UNMOUNT] Removendo listeners da instância: ${instanceId}`);
       appUrlListener.then(l => l.remove());
     };
-  }, [state.sessionReady, actions]);
+  }, []); // DEPENDÊNCIA VAZIA: Roda apenas no mount real do App
 
   // --- FIREBASE MONITORING ---
   useEffect(() => {
@@ -219,7 +199,7 @@ const App: React.FC = () => {
         } else if (type === 'ad' && adId) {
           const ad = await api.getAdById(adId);
           if (ad) {
-            actions.handleAdClick(ad);
+            actionsRef.current.handleAdClick(ad);
           }
         } else if (type === 'admin') {
           state.setCurrentScreen(Screen.NOTIFICATIONS);
@@ -228,7 +208,7 @@ const App: React.FC = () => {
         console.error('Error in Push Navigation:', e);
       }
     });
-  }, [state.sessionReady, actions]);
+  }, [state.sessionReady]); // Apenas re-registra se a sessão estabilizar
 
   // --- HARDENING: MONITOR DE SELF-HEALING (Sincronização de Anúncios) ---
   useEffect(() => {
@@ -242,13 +222,13 @@ const App: React.FC = () => {
         if (now - lock.startTime > 10000) {
           console.warn(`[Self-Healing] Sincronização estagnada para ${adId}. Recuperando via Refetch...`);
           // Note: O lock é removido dentro do refetchAd após sucesso.
-          actions.refetchAd(adId);
+          actionsRef.current.refetchAd(adId);
         }
       });
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [state.sessionReady, actions]);
+  }, [state.sessionReady]); // Estável após o boot
 
   // --- AUTH HYDRATION GATE (RENDER CONTROL) ---
   const isLegalRoute = state.currentScreen === 'terms_of_use' || state.currentScreen === 'privacy_policy';

@@ -264,7 +264,15 @@ export const useAppState = () => {
     };
 
     const handleAuthChange = async (event: AuthEvent, session: any) => {
-      console.log(`🔐 [Auth Hydration] Evento: ${event} | Status Atual: ${authStatus}`, session?.user?.id);
+      const sessionUserId = session?.user?.id;
+      const currentUserId = user?.id;
+
+      // Idempotência: Evita re-processar se a sessão for idêntica (comum em INITIAL_SESSION repetido)
+      if (event === 'INITIAL_SESSION' && sessionUserId === currentUserId && authStatus !== 'initializing') {
+        return;
+      }
+
+      console.log(`🔐 [Auth Hydration] Evento: ${event} | Status Atual: ${authStatus}`, sessionUserId);
       
       if (event === 'SIGNED_OUT') {
         authenticatedUserIdRef.current = null;
