@@ -250,34 +250,36 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [state.sessionReady, actions]);
 
-  // --- CONTROLE DE LOADING GLOBAL EXPLÍCITO (FULLSCREEN & EXCLUSIVO) ---
-  // Racional: Não bloqueamos rotas híbridas (Termos/Privacidade) se já tivermos sessão básica,
-  // mesmo que o perfil completo ainda esteja sincronizando.
+  // --- AUTH HYDRATION GATE (RENDER CONTROL) ---
   const isLegalRoute = state.currentScreen === 'terms_of_use' || state.currentScreen === 'privacy_policy';
   
-  const isAppLoading = (!state.sessionReady && !isLegalRoute) || 
-                       (!!state.user && !state.profileLoaded && !isLegalRoute) || 
+  // Racional do Hydration Gate:
+  // 1. initializing: Sempre loading (Supabase ainda não respondeu INITIAL_SESSION)
+  // 2. resolved + user: Ainda loading (Aguardando fetchData e profileLoaded)
+  // 3. resolved + !user: Pronto (Renderiza tela de LOGIN)
+  // 4. ready: Pronto (Renderiza APP Principal)
+  
+  const isAppLoading = (state.authStatus === 'initializing' && !isLegalRoute) || 
+                       (state.authStatus === 'resolved' && !!state.user && !isLegalRoute) || 
                        state.authLoading;
 
-  const [showExclusiveLoading, setShowExclusiveLoading] = useState(isAppLoading);
+  const [showExclusiveLoading, setShowExclusiveLoading] = useState(true);
 
   useEffect(() => {
     if (isAppLoading) {
       setShowExclusiveLoading(true);
     } else {
-      // Debounce de 300ms para evitar flicker
-      const timer = setTimeout(() => setShowExclusiveLoading(false), 300);
+      // Pequeno debounce apenas para evitar flicker em transições ultra-rápidas
+      const timer = setTimeout(() => setShowExclusiveLoading(false), 200);
       return () => clearTimeout(timer);
     }
   }, [isAppLoading]);
 
-  // Se estiver em loading, NADA da árvore principal (AppRouter, BottomNav) é construído.
+  // Se estiver em fase de hidratação, NADA da árvore principal é construído.
   if (showExclusiveLoading) {
-    const loadingMsg = state.authLoading 
-      ? "Finalizando sessão..." 
-      : (!state.profileLoaded && state.user 
-          ? "Sincronizando perfil..." 
-          : "Iniciando sessão...");
+    const loadingMsg = state.authStatus === 'initializing'
+      ? "Iniciando sistema..."
+      : (state.user ? "Sincronizando perfil..." : "Preparando acesso...");
 
     return (
       <div id="app-main-container" className="bg-gray-50 h-[calc(100dvh-var(--sat)-var(--sab))] text-slate-800 font-sans max-w-md mx-auto shadow-2xl relative border-x border-gray-100 flex items-center justify-center">
@@ -304,13 +306,7 @@ const App: React.FC = () => {
         />
       )}
 
-      {(!state.sessionReady || state.authLoading) ? (
-        <div id="app-main-container" className="bg-gray-50 h-[calc(100dvh-var(--sat)-var(--sab))] text-slate-800 font-sans max-w-md mx-auto shadow-2xl relative border-x border-gray-100 flex items-center justify-center">
-          <AppLoadingOverlay isActive={true} message="Finalizando sessão..." />
-        </div>
-      ) : (
-        <AppRouter state={state} actions={actions} />
-      )}
+      <AppRouter state={state} actions={actions} />
     </>
   );
 };
