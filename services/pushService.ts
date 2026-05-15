@@ -81,18 +81,19 @@ export const PushService = {
     if (Capacitor.getPlatform() !== 'android') return;
 
     try {
-      console.log('[PushService] Criando canal de notificação padrão...');
+      console.log('[PushService] Criando canal de notificação default_v2...');
       await FirebaseMessaging.createChannel({
-        id: 'default',
-        name: 'Notificações Gerais',
-        description: 'Canal padrão para mensagens e alertas',
-        importance: 5, // High importance
-        visibility: 1, // Public
-        vibration: true,
+        id: 'default_v2',              // novo ID — força criação limpa no Android
+        name: 'Mensagens e Alertas',
+        description: 'Canal padrão para mensagens e alertas do Feirão da Orca',
+        importance: 4,                 // NotificationManager.IMPORTANCE_HIGH correto
+        visibility: 1,                 // Public
+        vibrate: true,                 // campo correto lido pelo plugin Java
         lights: true,
-        lightColor: '#FF6600'
+        lightColor: '#FF6600',
+        sound: 'default'              // OBRIGATÓRIO — som é propriedade do canal no Android 8+
       });
-      console.log('[PushService] Canal "default" criado com sucesso');
+      console.log('[PushService] Canal "default_v2" criado com sucesso');
     } catch (e) {
       console.error('[PushService] Erro ao criar canal:', e);
     }

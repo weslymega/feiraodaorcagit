@@ -142,44 +142,106 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, reason: 'no_tokens', user_id: receiver_id }));
     }
 
+    // ── [PUSH_AUDIT] LOG 1 — TOKEN COMPLETO (sem truncar) ──────────────────────
+    console.log(`[PUSH_AUDIT] TOKENS_FOUND: ${tokens.length}`);
+    tokens.forEach((t, idx) => {
+      console.log(`[PUSH_AUDIT] TOKEN[${idx}] FULL = ${t.token}`);
+    });
+    // ──────────────────────────────────────────────────────────────────────────
+
     console.log(`[PUSH] Encontrados ${tokens.length} tokens. Gerando access token do Firebase...`);
     // 2. Obter Access Token do Google
     const accessToken = await getAccessToken();
 
     // 3. Enviar para cada token (FCM v1)
     console.log(`[PUSH] Enviando para ${tokens.length} tokens via FCM v1...`);
+
+    // ── [PUSH_AUDIT] LOG 2 — VALIDAR E LOGAR TIPOS DOS CAMPOS data ──────────
+    const sanitizedData: Record<string, string> = {};
+    for (const [key, value] of Object.entries(customData as Record<string, unknown>)) {
+      const originalType = typeof value;
+      const strValue = value === null || value === undefined ? '' : String(value);
+      if (originalType !== 'string') {
+        console.warn(`[PUSH_AUDIT] DATA_FIELD_COERCED: data.${key} typeof=${originalType} → coerced to string = "${strValue}"`);
+      } else {
+        console.log(`[PUSH_AUDIT] DATA_FIELD_OK: data.${key} typeof=${originalType} value="${strValue}"`);
+      }
+      sanitizedData[key] = strValue;
+    }
+
+    // ── [PUSH_AUDIT] LOG 3 — MODO DO PAYLOAD ────────────────────────────────
+    const hasNotification = !!(notificationTitle || notificationBody);
+    const hasData = Object.keys(sanitizedData).length > 0;
+    const payloadMode = hasNotification && hasData
+      ? 'HYBRID'
+      : hasNotification
+        ? 'NOTIFICATION_ONLY'
+        : 'DATA_ONLY';
+    console.log(`[PUSH_AUDIT] PAYLOAD_MODE = ${payloadMode}`);
+    console.log(`[PUSH_AUDIT] NOTIFICATION_BLOCK: title="${notificationTitle}" body="${notificationBody}"`);
+    console.log(`[PUSH_AUDIT] ANDROID_BLOCK: priority=high channel_id=default sound=default`);
+    // ──────────────────────────────────────────────────────────────────────────
+
     const results = await Promise.all(tokens.map(async (t) => {
       try {
+        // ── [PUSH_AUDIT] LOG 4 — PAYLOAD FINAL COMPLETO (por token) ─────────
+        const fcmPayload = {
+          message: {
+            token: t.token,
+            notification: {
+              title: notificationTitle,
+              body: notificationBody
+            },
+            data: sanitizedData,
+            android: {
+              priority: 'high',
+              notification: {
+                sound: 'default',
+                channel_id: 'default_v2'  // canal correto com som e vibração
+              }
+            }
+          }
+        };
+        console.log(`[PUSH_AUDIT] FINAL_PAYLOAD: ${JSON.stringify(fcmPayload)}`);
+        // ───────────────────────────────────────────────────────────────────────
+
         const res = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`
           },
-          body: JSON.stringify({
-            message: {
-              token: t.token,
-              notification: {
-                title: notificationTitle,
-                body: notificationBody
-              },
-              data: customData,
-              android: {
-                priority: 'high',
-                notification: {
-                  sound: 'default',
-                  channel_id: 'default'
-                }
-              }
-            }
-          })
+          body: JSON.stringify(fcmPayload)
         });
         
-        const fcmResult = await res.json();
+        // ── [PUSH_AUDIT] LOG 5 — RESPOSTA COMPLETA DO FCM ──────────────────
+        const rawText = await res.text();
+        console.log(`[PUSH_AUDIT] FCM_STATUS: ${res.status}`);
+        console.log(`[PUSH_AUDIT] FCM_RESPONSE_RAW: ${rawText}`);
+        let fcmResult: Record<string, unknown> = {};
+        try {
+          fcmResult = JSON.parse(rawText);
+          console.log(`[PUSH_AUDIT] FCM_RESPONSE_PARSED: ${JSON.stringify(fcmResult)}`);
+        } catch (_parseErr) {
+          console.warn(`[PUSH_AUDIT] FCM_RESPONSE_NOT_JSON — raw text logged above`);
+        }
+        // ───────────────────────────────────────────────────────────────────────
+
         if (!res.ok) {
+          // ── [PUSH_AUDIT] LOG 6 — DETALHES DO ERRO FCM ─────────────────────
+          const errObj = (fcmResult.error as Record<string, unknown>) || {};
+          console.error(`[PUSH_AUDIT] FCM_ERROR_NAME: ${errObj.status ?? 'N/A'}`);
+          console.error(`[PUSH_AUDIT] FCM_ERROR_CODE: ${res.status}`);
+          console.error(`[PUSH_AUDIT] FCM_ERROR_MESSAGE: ${errObj.message ?? rawText}`);
+          const details = errObj.details;
+          if (details) {
+            console.error(`[PUSH_AUDIT] FCM_ERROR_DETAILS: ${JSON.stringify(details)}`);
+          }
+          // ───────────────────────────────────────────────────────────────────
           console.error(`[PUSH] Erro FCM para o token ${t.token.substring(0, 10)}:`, JSON.stringify(fcmResult));
         } else {
           console.log(`[PUSH] Sucesso FCM para o token ${t.token.substring(0, 10)}`);
+          console.log(`[PUSH_AUDIT] FCM_SUCCESS_NAME: ${fcmResult.name ?? 'N/A'}`);
         }
         return res.ok;
       } catch (e) {
