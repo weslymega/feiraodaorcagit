@@ -88,6 +88,17 @@ class AuthService {
   }
 
   public async signOut() {
+    // FASE 3 PUSH: Limpar token no banco ao sair (Evita notificações de outros usuários no mesmo aparelho)
+    try {
+      const { PushService } = await import('./pushService');
+      const token = await PushService.getToken();
+      if (token) {
+        await PushService.removeToken(token);
+      }
+    } catch (e) {
+      console.warn('[AuthService] Falha ao remover push token no logout:', e);
+    }
+
     await supabase.auth.signOut();
     this.currentSession = null;
   }

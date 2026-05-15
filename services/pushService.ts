@@ -171,6 +171,14 @@ export const PushService = {
    */
   async saveTokenToDb(userId: string, token: string) {
     try {
+      // 1. Limpeza Proativa: Se este token já existir para OUTRO usuário, removemos do outro
+      // Isso evita que o usuário anterior receba notificações neste aparelho.
+      await supabase
+        .from('push_tokens')
+        .delete()
+        .eq('token', token)
+        .neq('user_id', userId);
+
       console.log(`[PushService] Salvando token no DB para user ${userId}...`);
       const { error } = await supabase
         .from('push_tokens')

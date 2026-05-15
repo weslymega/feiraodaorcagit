@@ -6,6 +6,8 @@ const findEnv = () => {
     while (currentPath !== path.parse(currentPath).root) {
         const envPath = path.join(currentPath, '.env');
         if (fs.existsSync(envPath)) return envPath;
+        const envPathUp = path.join(path.dirname(currentPath), '.env');
+        if (fs.existsSync(envPathUp)) return envPathUp;
         currentPath = path.dirname(currentPath);
     }
     return null;
@@ -34,7 +36,7 @@ async function checkTriggers() {
         method: 'POST',
         headers: { 
             'apikey': supabaseKey, 
-            'Authorization': \`Bearer \${supabaseKey}\`,
+            'Authorization': `Bearer ${supabaseKey}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ sql: query })
@@ -47,10 +49,9 @@ async function checkTriggers() {
         const error = await res.text();
         console.error("Error fetching triggers:", error);
         
-        // Try another way if RPC doesn't exist
         console.log("Trying via direct query if possible...");
         const res2 = await fetch(`${supabaseUrl}/rest/v1/?select=1`, {
-             headers: { 'apikey': supabaseKey, 'Authorization': \`Bearer \${supabaseKey}\` }
+             headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
         });
         console.log("Supabase is reachable.");
     }

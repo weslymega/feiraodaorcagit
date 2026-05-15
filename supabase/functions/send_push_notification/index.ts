@@ -202,6 +202,7 @@ serve(async (req) => {
             }
           }
         };
+        console.log(`[PUSH_AUDIT] SENDING_TO_TOKEN: ${t.token.substring(0, 20)}...`);
         console.log(`[PUSH_AUDIT] FINAL_PAYLOAD: ${JSON.stringify(fcmPayload)}`);
         // ───────────────────────────────────────────────────────────────────────
 
@@ -214,36 +215,34 @@ serve(async (req) => {
           body: JSON.stringify(fcmPayload)
         });
         
-        // ── [PUSH_AUDIT] LOG 5 — RESPOSTA COMPLETA DO FCM ──────────────────
         const rawText = await res.text();
         console.log(`[PUSH_AUDIT] FCM_STATUS: ${res.status}`);
-        console.log(`[PUSH_AUDIT] FCM_RESPONSE_RAW: ${rawText}`);
-        let fcmResult: Record<string, unknown> = {};
+        
+        let fcmResult: Record<string, any> = {};
         try {
           fcmResult = JSON.parse(rawText);
-          console.log(`[PUSH_AUDIT] FCM_RESPONSE_PARSED: ${JSON.stringify(fcmResult)}`);
-        } catch (_parseErr) {
-          console.warn(`[PUSH_AUDIT] FCM_RESPONSE_NOT_JSON — raw text logged above`);
+        } catch (_e) {
+          console.warn(`[PUSH_AUDIT] FCM_RESPONSE_NOT_JSON: ${rawText}`);
         }
-        // ───────────────────────────────────────────────────────────────────────
 
         if (!res.ok) {
-          // ── [PUSH_AUDIT] LOG 6 — DETALHES DO ERRO FCM ─────────────────────
-          const errObj = (fcmResult.error as Record<string, unknown>) || {};
-          console.error(`[PUSH_AUDIT] FCM_ERROR_NAME: ${errObj.status ?? 'N/A'}`);
-          console.error(`[PUSH_AUDIT] FCM_ERROR_CODE: ${res.status}`);
-          console.error(`[PUSH_AUDIT] FCM_ERROR_MESSAGE: ${errObj.message ?? rawText}`);
-          const details = errObj.details;
-          if (details) {
-            console.error(`[PUSH_AUDIT] FCM_ERROR_DETAILS: ${JSON.stringify(details)}`);
+          const errorCode = fcmResult.error?.status;
+          const errorMessage = fcmResult.error?.message;
+          console.error(`[PUSH_AUDIT] FCM_ERROR: ${errorCode} - ${errorMessage}`);
+
+          // Autolimpeza de tokens inválidos (FCM v1 usa NOT_FOUND ou UNREGISTERED)
+          if (errorCode === 'UNREGISTERED' || errorCode === 'NOT_FOUND' || errorCode === 'INVALID_ARGUMENT') {
+            console.log(`[PUSH_AUDIT] CLEANING_UP_INVALID_TOKEN: ${t.token.substring(0, 20)}...`);
+            await supabase
+              .from('push_tokens')
+              .delete()
+              .eq('token', t.token);
           }
-          // ───────────────────────────────────────────────────────────────────
-          console.error(`[PUSH] Erro FCM para o token ${t.token.substring(0, 10)}:`, JSON.stringify(fcmResult));
+          return false;
         } else {
           console.log(`[PUSH] Sucesso FCM para o token ${t.token.substring(0, 10)}`);
-          console.log(`[PUSH_AUDIT] FCM_SUCCESS_NAME: ${fcmResult.name ?? 'N/A'}`);
+          return true;
         }
-        return res.ok;
       } catch (e) {
         console.error('[PUSH] Erro ao enviar para o token:', t.token.substring(0, 10), e);
         return false;
