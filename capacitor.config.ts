@@ -7,6 +7,11 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     allowNavigation: ['*']
+  },
+  plugins: {
+    FirebaseMessaging: {
+      presentationOptions: ["badge", "sound", "alert"],
+    },
   }
 };
 
