@@ -1385,7 +1385,7 @@ export const useAppActions = (state: AppState) => {
 
     // --- HOME NAVIGATION ACTIONS ---
     const openNewArrivals = () => {
-        setFilterContext({ mode: 'recent', sort: 'recent' });
+        setFilterContext({ mode: 'recent', sort: 'recent', category: 'veiculos' });
         navigateTo(Screen.VEHICLES_LIST);
     };
 

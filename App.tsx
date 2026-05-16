@@ -159,10 +159,32 @@ const App: React.FC = () => {
     PushService.init((notification) => {
       // Exibir toast para notificações em foreground
       if (notification.title || notification.body) {
-        state.setToast({
-          message: `${notification.title ? notification.title + ': ' : ''}${notification.body || ''}`,
-          type: 'info'
-        });
+        const isChatActive = stateRef.current.currentScreen === 'chat_detail';
+        const isChatPayload = notification.data?.type === 'chat';
+        
+        // Se for um push de chat e o usuário já estiver na tela de chat, evitamos a notificação
+        const shouldSkipNotification = isChatActive && isChatPayload;
+
+        if (!shouldSkipNotification) {
+          if (Capacitor.getPlatform() === 'android') {
+            import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+              LocalNotifications.schedule({
+                notifications: [{
+                  title: notification.title || "Nova mensagem",
+                  body: notification.body || "",
+                  id: Math.floor(Math.random() * 1000000), // Evita overflow de int32 no Java
+                  extra: notification.data,
+                  channelId: 'default_v2' // Usa o canal de alta prioridade
+                }]
+              });
+            }).catch(e => console.error('Error scheduling local notification:', e));
+          }
+
+          stateRef.current.setToast({
+            message: `${notification.title ? notification.title + ': ' : ''}${notification.body || ''}`,
+            type: 'info'
+          });
+        }
       }
     });
   }, []);

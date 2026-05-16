@@ -32,6 +32,33 @@ const loadFromStorage = <T,>(key: string, fallback: T): T => {
   }
 };
 
+/**
+ * Helper para mapear usuário da sessão para o modelo interno da App.
+ */
+const mapUser = (sessionUser: any): User => {
+  return {
+    id: sessionUser.id,
+    email: sessionUser.email || '',
+    name: sessionUser.user_metadata?.name || "Usuário",
+    avatarUrl: sessionUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${sessionUser.email}&background=random`,
+    balance: 0,
+    adsCount: 0,
+    activePlan: 'free',
+    isAdmin: false,
+    verified: !!sessionUser.email_confirmed_at,
+    joinDate: new Date(sessionUser.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+    phone: "",
+    location: "Brasília, DF",
+    bio: "",
+    emailConfirmedAt: sessionUser.email_confirmed_at,
+    acceptedTerms: (localStorage.getItem("termsAccepted") === "true" && localStorage.getItem("termsVersion") === TERMS_VERSION) 
+      || !!sessionUser.user_metadata?.accepted_terms 
+      || !!sessionUser.user_metadata?.terms_accepted,
+    termsAccepted: localStorage.getItem("termsAccepted") === "true" && localStorage.getItem("termsVersion") === TERMS_VERSION,
+    termsVersion: localStorage.getItem("termsVersion") || sessionUser.user_metadata?.terms_version
+  };
+};
+
 export const useAppState = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.LOGIN);
   const [previousScreen, setPreviousScreen] = useState<Screen>(Screen.DASHBOARD);
@@ -49,12 +76,18 @@ export const useAppState = () => {
 
   // --- AUTH HYDRATION GATE (STATE MACHINE) ---
   // initializing -> resolved -> ready
-  const [authStatus, setAuthStatus] = useState<'initializing' | 'resolved' | 'ready'>('initializing');
+  const [authStatus, setAuthStatus] = useState<'initializing' | 'resolved' | 'ready'>(() => {
+    const session = authService.getSession();
+    return session ? 'resolved' : 'initializing';
+  });
   
   // Clean Slate State
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const session = authService.getSession();
+    return session ? mapUser(session.user) : null;
+  });
   const [profileLoaded, setProfileLoaded] = useState<boolean>(false);
-  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [authLoading, setAuthLoading] = useState<boolean>(() => !authService.getSession());
   
   // Legacy support for App.tsx (maintained for compatibility)
   const authInitialized = authStatus !== 'initializing';
@@ -238,102 +271,82 @@ export const useAppState = () => {
     currentScreenRef.current = currentScreen;
   }, [currentScreen]);
 
-  useEffect(() => {
-    const mapUser = (sessionUser: any): User => {
-      return {
-        id: sessionUser.id,
-        email: sessionUser.email || '',
-        name: sessionUser.user_metadata?.name || "Usuário",
-        avatarUrl: sessionUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${sessionUser.email}&background=random`,
-        balance: 0,
-        adsCount: 0,
-        activePlan: 'free',
-        isAdmin: false,
-        verified: !!sessionUser.email_confirmed_at,
-        joinDate: new Date(sessionUser.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
-        phone: "",
-        location: "Brasília, DF",
-        bio: "",
-        emailConfirmedAt: sessionUser.email_confirmed_at,
-        acceptedTerms: (localStorage.getItem("termsAccepted") === "true" && localStorage.getItem("termsVersion") === TERMS_VERSION) 
-          || !!sessionUser.user_metadata?.accepted_terms 
-          || !!sessionUser.user_metadata?.terms_accepted,
-        termsAccepted: localStorage.getItem("termsAccepted") === "true" && localStorage.getItem("termsVersion") === TERMS_VERSION,
-        termsVersion: localStorage.getItem("termsVersion") || sessionUser.user_metadata?.terms_version
-      };
-    };
+  const handleAuthChange = async (event: AuthEvent, session: any) => {
+    const sessionUserId = session?.user?.id;
+    const currentUserId = authenticatedUserIdRef.current;
 
-    const handleAuthChange = async (event: AuthEvent, session: any) => {
-      const sessionUserId = session?.user?.id;
-      const currentUserId = user?.id;
+    const isSameUser = sessionUserId === currentUserId;
+    const isRoutineEvent = event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED';
+    
+    if (isRoutineEvent && isSameUser && (authStatus === 'ready' || authStatus === 'resolved')) {
+      console.log(`♻️ [Auth Hydration] Evento ${event} ignorado (Já estamos sincronizados para este usuário).`);
+      return;
+    }
 
-      // Idempotência: Evita re-processar se a sessão for idêntica (comum em INITIAL_SESSION repetido)
-      if (event === 'INITIAL_SESSION' && sessionUserId === currentUserId && authStatus !== 'initializing') {
-        return;
-      }
-
-      console.log(`🔐 [Auth Hydration] Evento: ${event} | Status Atual: ${authStatus}`, sessionUserId);
-      
-      if (event === 'SIGNED_OUT') {
-        authenticatedUserIdRef.current = null;
-        setUser(null);
-        setProfileLoaded(false);
-        setCurrentScreen(Screen.LOGIN);
-        setIsAppReady(true);
-        setSentryUser(null);
-        setAuthLoading(false);
-        setAuthStatus('resolved'); // Resolvido sem usuário
-        return;
-      }
-
-      if (event === 'PASSWORD_RECOVERY') {
-        isRecoveringRef.current = true;
-        setCurrentScreen(Screen.RESET_PASSWORD);
-        setIsAppReady(true);
-        setAuthLoading(false);
-        setAuthStatus('resolved');
-        return;
-      }
-
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
-        const isNewUser = authenticatedUserIdRef.current !== session.user.id;
-        authenticatedUserIdRef.current = session.user.id;
-        
-        const mappedUser = mapUser(session.user);
-        setUser(mappedUser);
-
-        if (currentScreenRef.current === Screen.LOGIN || currentScreenRef.current === Screen.SPLASH) {
-          if (isRecoveringRef.current) {
-            isRecoveringRef.current = false;
-            setCurrentScreen(Screen.RESET_PASSWORD);
-          } else {
-            setCurrentScreen(Screen.DASHBOARD);
-          }
-        }
-
-        if (isNewUser) {
-          setIsAppReady(false);
-          setLoadingMessage("");
-          setProfileLoaded(false);
-        }
-        
-        setAuthStatus('resolved'); // Sessão confirmada
-      } else if (event === 'INITIAL_SESSION' && !session) {
-        console.log('👤 [Auth Hydration] Nenhum usuário logado. Pronto para Login.');
-        setUser(null);
-        authenticatedUserIdRef.current = null;
-        setAuthStatus('resolved'); // Resolvido sem usuário
-      }
-
+    console.log(`🔐 [Auth Hydration] Evento: ${event} | Status Atual: ${authStatus}`, sessionUserId);
+    
+    if (event === 'SIGNED_OUT') {
+      authenticatedUserIdRef.current = null;
+      setUser(null);
+      setProfileLoaded(false);
+      setCurrentScreen(Screen.LOGIN);
+      setIsAppReady(true);
+      setSentryUser(null);
       setAuthLoading(false);
-    };
+      setAuthStatus('resolved');
+      return;
+    }
 
-    // Subscreve ao Singleton em vez de criar um novo listener no Supabase
-    const unsubscribe = authService.subscribe(handleAuthChange);
+    if (event === 'PASSWORD_RECOVERY') {
+      isRecoveringRef.current = true;
+      setCurrentScreen(Screen.RESET_PASSWORD);
+      setIsAppReady(true);
+      setAuthLoading(false);
+      setAuthStatus('resolved');
+      return;
+    }
 
-    return () => {
-      unsubscribe();
-    };
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
+      const isNewUser = authenticatedUserIdRef.current !== session.user.id;
+      authenticatedUserIdRef.current = session.user.id;
+      
+      const mappedUser = mapUser(session.user);
+      setUser(mappedUser);
+
+      if (currentScreenRef.current === Screen.LOGIN || currentScreenRef.current === Screen.SPLASH) {
+        if (isRecoveringRef.current) {
+          isRecoveringRef.current = false;
+          setCurrentScreen(Screen.RESET_PASSWORD);
+        } else {
+          setCurrentScreen(Screen.DASHBOARD);
+        }
+      }
+
+      if (isNewUser) {
+        setIsAppReady(false);
+        setLoadingMessage("");
+        setProfileLoaded(false);
+      }
+      
+      setAuthStatus('resolved');
+    } else if (event === 'INITIAL_SESSION' && !session) {
+      console.log('👤 [Auth Hydration] Nenhum usuário logado. Pronto para Login.');
+      setUser(null);
+      authenticatedUserIdRef.current = null;
+      setAuthStatus('resolved');
+    }
+
+    setAuthLoading(false);
+  };
+
+  const handleAuthChangeRef = useRef(handleAuthChange);
+  useEffect(() => {
+    handleAuthChangeRef.current = handleAuthChange;
+  }, [handleAuthChange]);
+
+  useEffect(() => {
+    const unsubscribe = authService.subscribe((e, s) => handleAuthChangeRef.current(e, s));
+    return () => unsubscribe();
   }, []);
 
   // Fetch Data Effect State
@@ -360,7 +373,7 @@ export const useAppState = () => {
       if (isFetchingRef.current) return;
       isFetchingRef.current = true;
 
-      console.log(`[Data-Flow] 🚀 Carregando dados. Usuário: ${user.id}`);
+      console.log(`📡 [Auth Hydration] 🚀 Iniciando fetchData. Usuário: ${user.id} | Status: ${authStatus}`);
       lastFetchedUserIdRef.current = user.id;
 
       const softTimeout = setTimeout(() => {
@@ -368,18 +381,31 @@ export const useAppState = () => {
       }, 2500);
 
       try {
-        // A. BUSCAS PÚBLICAS
-        if (realAds.length === 0) {
-          const ads = await api.getAds();
-          if (ads) setRealAds(ads);
-        }
+        console.log("📡 [Auth Hydration] Iniciando buscas Top-Level em paralelo (Ads + Profile)...");
 
-        // B. BUSCAS PRIVADAS
-        const freshProfile = await api.getProfile();
+        const [_, freshProfile] = await Promise.all([
+          // A. BUSCAS PÚBLICAS
+          realAds.length === 0 
+            ? api.getAds().then(ads => {
+                if (ads) {
+                  console.log(`✅ [Auth Hydration] ${ads.length} anúncios carregados.`);
+                  setRealAds(ads);
+                }
+                return ads;
+              })
+            : Promise.resolve().then(() => {
+                console.log(`ℹ️ [Auth Hydration] Usando anúncios em cache: ${realAds.length}`);
+                return null;
+              }),
+              
+          // B. BUSCAS PRIVADAS
+          api.getProfile()
+        ]);
+
         if (freshProfile) {
           // ... (mesma lógica de deletedAt, etc)
           if (freshProfile.deletedAt) {
-            console.log("🚫 [Auth] Conta excluída detectada. Deslogando...");
+            console.log("🚫 [Auth Hydration] Conta excluída detectada. Deslogando...");
             await supabase.auth.signOut();
             setUser(null);
             setSentryUser(null);
@@ -399,10 +425,12 @@ export const useAppState = () => {
                               (localStorage.getItem("termsAccepted") === "true" && localStorage.getItem("termsVersion") === TERMS_VERSION);
 
           if (!hasValidity) {
+            console.log("📝 [Auth Hydration] Redirecionando para aceite de termos.");
             setCurrentScreen(Screen.ACCEPT_TERMS);
           }
 
           // Carregamento essencial...
+          console.log("📥 [Auth Hydration] Carregando dados complementares (Ads, Promos, Favoritos, Chat)...");
           await Promise.allSettled([
             api.getMyAds().then(res => res && setMyAds(res)),
             api.getPromotions('dashboard').then(res => res.length > 0 && setDashboardPromotions(res)),
@@ -412,26 +440,31 @@ export const useAppState = () => {
             api.getWhoBlockedMeIds().then(res => res && setBlockedByOthers(res))
           ]);
 
+          console.log("🎉 [Auth Hydration] Tudo pronto! Liberando App.");
           setAuthStatus('ready'); // 🎉 TUDO PRONTO
         } else {
-          console.log(`⏳ [Data-Flow] Perfil ainda não disponível. Tentativa ${retryProfileCount + 1}/5...`);
+          console.log(`⏳ [Auth Hydration] Perfil ainda não disponível. Tentativa ${retryProfileCount + 1}/5...`);
           if (retryProfileCount < 5) {
             setTimeout(() => setRetryProfileCount(prev => prev + 1), 2000);
             return;
           } else {
+            console.warn("⚠️ [Auth Hydration] Perfil não carregou após 5 tentativas. Liberando App com dados limitados.");
             setProfileLoaded(true);
             setAuthStatus('ready');
           }
         }
       } catch (error) {
-        console.error("[Data-Flow] ❌ Erro ao buscar dados:", error);
+        console.error("❌ [Auth Hydration] Erro ao buscar dados:", error);
       } finally {
         clearTimeout(softTimeout);
         isFetchingRef.current = false;
         setLoadingMessage("");
         setIsAppReady(true);
         // Garantia: Se chegamos aqui com um usuário, marcamos como ready para liberar a UI
-        if (user?.id) setAuthStatus('ready');
+        if (user?.id) {
+           console.log("🏁 [Auth Hydration] Finalizando fetchData (Garantia Ready)");
+           setAuthStatus('ready');
+        }
       }
     };
 

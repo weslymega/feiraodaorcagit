@@ -149,13 +149,7 @@ const mapAdData = (ad: any, isOwner: boolean = false) => {
         ad.image ? [ad.image] : []
     ];
 
-    // LOG DE DEBUG (TEMPORÁRIO) - Estrutura completa para auditoria
-    console.log('IMAGEM DEBUG:', { 
-        id: ad.id, 
-        details_images: detalhes.images, 
-        imagens: ad.imagens,
-        thumbnail_col: ad.thumbnail_url 
-    });
+    // LOG DE DEBUG (TEMPORÁRIO) - Removido para otimização de performance
 
     let combinedRaw: any[] = [];
     for (const source of rawImagesSources) {

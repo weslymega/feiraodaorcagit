@@ -452,13 +452,10 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
     // --- LÓGICA ESTRITA ORIGINAL (Mantida para buscas específicas) ---
     const filtered = ads.filter(ad => {
-      // Filter Recent Logic
-      if (isRecentFilterActive) {
-        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-        const adDate = ad.createdAt ? new Date(ad.createdAt) : new Date(ad.date || '');
-        if (isNaN(adDate.getTime()) || adDate < fortyEightHoursAgo) return false;
-      }
-
+      // 🎯 [LÓGICA DE RECENTES]
+      // Removemos a restrição estrita de 48h que causava telas vazias ("Nenhum veículo encontrado")
+      // se não houvesse anúncios novos no período. Agora a ordenação cuida disso.
+      
       // Status (Relaxed for mocks)
       if (ad.status !== AdStatus.ACTIVE) return false;
 
@@ -558,11 +555,27 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       return true;
     });
 
-    // 2. Ordenação (Destaques Primeiro) - com Spread p/ Garantir array limpa referenciada p/ evitar mutação silenciosa
+    // 2. Ordenação (Destaques Primeiro vs Recentes Primeiro)
     return [...filtered].sort((a, b) => {
+      // Se estamos no modo "Novidades", a data tem precedência sobre o plano, 
+      // mas mantemos destaques no topo se forem do mesmo dia (empate técnico).
+      if (isRecentFilterActive) {
+        const dateA = new Date(a.createdAt || a.date || 0).getTime();
+        const dateB = new Date(b.createdAt || b.date || 0).getTime();
+        if (Math.abs(dateA - dateB) > 86400000) { // Diferença maior que 24h
+           return dateB - dateA;
+        }
+      }
+
       const weightA = getBoostPriority(a.boostPlan);
       const weightB = getBoostPriority(b.boostPlan);
-      return weightB - weightA;
+      
+      if (weightA !== weightB) return weightB - weightA;
+
+      // Desempate por data
+      const dateA = new Date(a.createdAt || a.date || 0).getTime();
+      const dateB = new Date(b.createdAt || b.date || 0).getTime();
+      return dateB - dateA;
     });
 
   }, [ads, selectedGroup, debouncedSearch, searchTerm, filters, isRecentFilterActive, filterContext]);

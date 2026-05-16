@@ -49,7 +49,7 @@ export const PushService = {
       }
     });
 
-    // Listener para clique na notificação (Fase 4/5)
+    // Listener para clique na notificação remota (Fase 4/5)
     FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
       console.log('🖱️ [DEBUG PUSH] Notificação CLICADA (Action Performed)');
       console.log('📦 [DEBUG PUSH] Payload Completo no Clique:', JSON.stringify(event.notification, null, 2));
@@ -59,6 +59,17 @@ export const PushService = {
         navigationHandler(event.notification.data);
       }
     });
+
+    if (Capacitor.getPlatform() === 'android') {
+      import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+        LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
+          console.log('🖱️ [DEBUG PUSH] Notificação Local CLICADA (Action Performed)');
+          if (navigationHandler && event.notification.extra) {
+            navigationHandler(event.notification.extra);
+          }
+        });
+      }).catch(err => console.error('Failed to import LocalNotifications', err));
+    }
 
     // Criar canal padrão no Android ao iniciar
     if (Capacitor.getPlatform() === 'android') {
