@@ -381,29 +381,10 @@ export const useAppState = () => {
       }, 2500);
 
       try {
-        console.log("📡 [Auth Hydration] Iniciando buscas Top-Level em paralelo (Ads + Profile)...");
-
-        const [_, freshProfile] = await Promise.all([
-          // A. BUSCAS PÚBLICAS
-          realAds.length === 0 
-            ? api.getAds().then(ads => {
-                if (ads) {
-                  console.log(`✅ [Auth Hydration] ${ads.length} anúncios carregados.`);
-                  setRealAds(ads);
-                }
-                return ads;
-              })
-            : Promise.resolve().then(() => {
-                console.log(`ℹ️ [Auth Hydration] Usando anúncios em cache: ${realAds.length}`);
-                return null;
-              }),
-              
-          // B. BUSCAS PRIVADAS
-          api.getProfile()
-        ]);
+        console.log("📡 [Auth Hydration] Carregando perfil principal...");
+        const freshProfile = await api.getProfile();
 
         if (freshProfile) {
-          // ... (mesma lógica de deletedAt, etc)
           if (freshProfile.deletedAt) {
             console.log("🚫 [Auth Hydration] Conta excluída detectada. Deslogando...");
             await supabase.auth.signOut();
@@ -429,19 +410,44 @@ export const useAppState = () => {
             setCurrentScreen(Screen.ACCEPT_TERMS);
           }
 
-          // Carregamento essencial...
-          console.log("📥 [Auth Hydration] Carregando dados complementares (Ads, Promos, Favoritos, Chat)...");
-          await Promise.allSettled([
-            api.getMyAds().then(res => res && setMyAds(res)),
-            api.getPromotions('dashboard').then(res => res.length > 0 && setDashboardPromotions(res)),
-            api.getFavorites().then(res => res && setFavorites(res)),
-            api.getUserConversations().then(res => res && setConversations(res)),
-            api.getBlockedUserIds().then(res => res && setBlockedByMe(res)),
-            api.getWhoBlockedMeIds().then(res => res && setBlockedByOthers(res))
-          ]);
+          // --- LIBERAÇÃO ULTRA-RÁPIDA DA UI ---
+          console.log("🎉 [Auth Hydration] Perfil carregado! Liberando interface principal...");
+          setAuthStatus('ready'); // 🎉 TUDO PRONTO PARA O USUÁRIO VER O DASHBOARD!
 
-          console.log("🎉 [Auth Hydration] Tudo pronto! Liberando App.");
-          setAuthStatus('ready'); // 🎉 TUDO PRONTO
+          // --- CARREGAMENTO ASSÍNCRONO EM SEGUNDO PLANO ---
+          console.log("📥 [Auth Hydration BG] Carregando dados complementares em background (Ads, Promos, Favoritos, Chat)...");
+          
+          const loadBackgroundData = async () => {
+            try {
+              await Promise.allSettled([
+                // A. BUSCAS PÚBLICAS (Anúncios)
+                realAds.length === 0 
+                  ? api.getAds().then(ads => {
+                      if (ads) {
+                        console.log(`✅ [Auth Hydration BG] ${ads.length} anúncios carregados.`);
+                        setRealAds(ads);
+                      }
+                    })
+                  : Promise.resolve(),
+                
+                // B. BUSCAS PRIVADAS COMPLEMENTARES
+                api.getMyAds().then(res => res && setMyAds(res)),
+                api.getPromotions('dashboard').then(res => res.length > 0 && setDashboardPromotions(res)),
+                api.getFavorites().then(res => res && setFavorites(res)),
+                api.getUserConversations().then(res => res && setConversations(res)),
+                api.getBlockedUserIds().then(res => res && setBlockedByMe(res)),
+                api.getWhoBlockedMeIds().then(res => res && setBlockedByOthers(res))
+              ]);
+            } catch (err) {
+              console.error("❌ [Auth Hydration BG] Erro nas buscas em segundo plano:", err);
+            } finally {
+              console.log("🏁 [Auth Hydration BG] Carregamento completo. Ocultando skeletons.");
+              setIsAppReady(true); // 🌟 Remove skeletons e mostra o conteúdo real
+            }
+          };
+
+          loadBackgroundData();
+
         } else {
           console.log(`⏳ [Auth Hydration] Perfil ainda não disponível. Tentativa ${retryProfileCount + 1}/5...`);
           if (retryProfileCount < 5) {
@@ -451,20 +457,20 @@ export const useAppState = () => {
             console.warn("⚠️ [Auth Hydration] Perfil não carregou após 5 tentativas. Liberando App com dados limitados.");
             setProfileLoaded(true);
             setAuthStatus('ready');
+            setIsAppReady(true);
           }
         }
       } catch (error) {
         console.error("❌ [Auth Hydration] Erro ao buscar dados:", error);
+        setIsAppReady(true);
+        if (user?.id) {
+           console.log("🏁 [Auth Hydration] Finalizando fetchData após erro (Garantia Ready)");
+           setAuthStatus('ready');
+        }
       } finally {
         clearTimeout(softTimeout);
         isFetchingRef.current = false;
         setLoadingMessage("");
-        setIsAppReady(true);
-        // Garantia: Se chegamos aqui com um usuário, marcamos como ready para liberar a UI
-        if (user?.id) {
-           console.log("🏁 [Auth Hydration] Finalizando fetchData (Garantia Ready)");
-           setAuthStatus('ready');
-        }
       }
     };
 

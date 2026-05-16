@@ -114,10 +114,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [marketPrices, setMarketPrices] = useState<MarketPriceItem[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(true);
-  const hasLoaded = React.useRef(false);
   useEffect(() => {
-    if (hasLoaded.current) return;
-    hasLoaded.current = true;
     const loadPrices = async () => {
       setLoadingPrices(true);
       const prices = await marketPriceService.getMarketPrices(favorites);
@@ -125,7 +122,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       setLoadingPrices(false);
     };
     loadPrices();
-  }, []);
+  }, [favorites]);
   const handleMarketPriceClick = (item: MarketPriceItem) => {
     if (setFilterContext) {
       setFilterContext({ mode: 'category', category: 'veiculos', brand: item.brand, model: item.model, searchTerm: `${item.brand} ${item.model}` });
