@@ -1,6 +1,4 @@
 apply plugin: 'com.android.application'
-apply plugin: 'com.google.gms.google-services'
-apply plugin: 'com.google.firebase.crashlytics'
 
 android {
     namespace = "com.feiraodaorca.app"
@@ -75,4 +73,7 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+apply plugin: 'com.google.gms.google-services'
+apply plugin: 'com.google.firebase.crashlytics'
 
