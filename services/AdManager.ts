@@ -219,15 +219,11 @@ class AdManager {
             this.isProcessingShow = false;
 
             // CRITICAL HARDENING: SAFE DELAY PRELOAD
-            // Não fazemos preload imediatamente no callback de fechamento nativo.
-            // O AdMob SDK no Android ainda está destruindo a Activity do anúncio.
-            // Fazer um novo carregamento imediato pode gerar colisões de thread e crash nativo.
-            console.log(`[AdDebug] Scheduling delayed preload (3000ms) to prevent native Android lifecycle crash...`);
-            setTimeout(() => {
-                this.preload().catch(err => {
-                    console.error('[AdMob] Delayed preload failed:', err);
-                });
-            }, 3000);
+            // Para evitar colisões de thread e crash nativo no Android durante o ciclo
+            // de destruição do AdMob, removemos o preload automático no fechamento direto.
+            // O preload é agora acionado sob demanda de forma segura pela UI do BoostTurboScreen
+            // logo após o fechamento do overlay de sucesso ou ao re-iniciar a tela.
+            console.log(`[AdDebug] Preload on dismiss disabled for safety.`);
         };
 
         this.listenersInitialized = true;
@@ -430,15 +426,15 @@ class AdManager {
     }
 
     public isAdReady(): boolean { return this.state === AdState.READY; }
-    public onReady(cb: AdEventHandler) { this.onReadyCallbacks.push(cb); }
+    public onReady(cb: AdEventHandler) { this.onReadyCallbacks = [cb]; }
     public onRewarded(cb: (rewardId?: string) => Promise<void> | void) { 
         console.log("📥 [AdManager] Registro de callback de recompensa (Singleton Mode).");
         debugLogger.log('📥 Callback registrado no AdManager');
         // Prevenir vazamento: apenas um listener ativo por vez no fluxo de recompensa
         this.onRewardedCallbacks = [cb as any]; 
     }
-    public onDismissed(cb: AdEventHandler) { this.onDismissedCallbacks.push(cb); }
-    public onError(cb: AdErrorHandler) { this.onErrorCallbacks.push(cb); }
+    public onDismissed(cb: AdEventHandler) { this.onDismissedCallbacks = [cb]; }
+    public onError(cb: AdErrorHandler) { this.onErrorCallbacks = [cb]; }
 
     public removeAllListeners() {
         console.log('[AdDebug] removeAllListeners() (JS cleared)');

@@ -173,8 +173,12 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                 finalizingRef.current = true;
 
                 setTimeout(async () => {
-                    if (Capacitor.isNativePlatform()) {
-                        await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
+                    if (Capacitor.isNativePlatform() && Haptics && typeof Haptics.notification === 'function') {
+                        try {
+                            await Haptics.notification({ type: NotificationType.Success });
+                        } catch (err) {
+                            console.log('Haptics ignore:', err);
+                        }
                     }
                     setShowSuccess(true);
                     
@@ -183,6 +187,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         setShowSuccess(false);
                         setIsFinalizing(false);
                         finalizingRef.current = false;
+                        
+                        // Safe background preload after success overlay closes
+                        adManager.preload().catch(err => console.error('[AdMob] Safe preload failed:', err));
                     }, 6000);
                 }, 1500);
             } catch (err: any) {
@@ -220,8 +227,12 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                     setIsFinalizing(true);
                     finalizingRef.current = true;
                     setTimeout(async () => {
-                        if (Capacitor.isNativePlatform()) {
-                            await Haptics.notification({ type: NotificationType.Success }).catch(err => console.log('Haptics ignore:', err));
+                        if (Capacitor.isNativePlatform() && Haptics && typeof Haptics.notification === 'function') {
+                            try {
+                                await Haptics.notification({ type: NotificationType.Success });
+                            } catch (err) {
+                                console.log('Haptics ignore:', err);
+                            }
                         }
                         setShowSuccess(true);
                         
@@ -230,6 +241,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                             setShowSuccess(false);
                             setIsFinalizing(false);
                             finalizingRef.current = false;
+                            
+                            // Safe background preload after success overlay closes
+                            adManager.preload().catch(err => console.error('[AdMob] Safe preload failed:', err));
                         }, 6000);
                     }, 1500);
                 }
@@ -529,6 +543,9 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                         setShowSuccess(false);
                         setIsFinalizing(false);
                         finalizingRef.current = false;
+                        
+                        // Safe background preload when user clicks to close early
+                        adManager.preload().catch(err => console.error('[AdMob] Safe preload failed:', err));
                     }}
                     className="absolute inset-0 z-[1600] bg-blue-600 flex flex-col items-center justify-center p-8 text-center animate-in zoom-in duration-500 cursor-pointer"
                 >
