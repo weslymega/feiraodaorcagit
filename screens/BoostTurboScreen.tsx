@@ -230,7 +230,6 @@ export const BoostTurboScreen: React.FC<BoostTurboScreenProps> = ({ adId, onBack
                             setShowSuccess(false);
                             setIsFinalizing(false);
                             finalizingRef.current = false;
-                            onBackRef.current(); // No modo sessão, voltamos após completar
                         }, 6000);
                     }, 1500);
                 }

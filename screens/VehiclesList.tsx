@@ -386,8 +386,47 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
 
 
   const filteredAds = useMemo(() => {
-    // Se a nova API estiver ativa, retornamos os anúncios paginados sem filtros redundantes no JS
+    const matchesGroup = (ad: AdItem, group: string) => {
+      if (group === 'todos') return true;
+      const norm = (val: string) => (val || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      
+      const type = norm(ad.vehicleType);
+      const title = norm(ad.title);
+
+      if (group === 'carros') {
+        const isExplicitCar = type.includes('carro') || type.includes('seda') || type.includes('suv') || type.includes('passeio');
+        if (isExplicitCar) return true;
+        if (type.includes('moto') || type.includes('caminh')) return false;
+        
+        const titleNorm = norm(ad.title);
+        if (titleNorm.includes('moto') || titleNorm.includes('caminh')) {
+          const carBrands = ['toyota', 'chevrolet', 'ford', 'fiat', 'honda', 'hyundai', 'volkswagen', 'vw', 'renault', 'nissan', 'jeep', 'chery', 'caoa', 'mitsubishi', 'peugeot', 'citroen', 'audi', 'bmw', 'mercedes', 'corolla', 'civic', 'onix', 'gol', 'uno', 'palio', 'hb20', 'compass', 'renegade', 'sande', 'logan', 'clio', 'celta', 'corsa', 'fiesta', 'focus', 'ka', 'cruze', 'tracker', 'creta', 'tucson', 'ix35', 'hrv', 'fit', 'city'];
+          return carBrands.some(brand => titleNorm.includes(brand));
+        }
+        return true;
+      }
+      
+      if (group === 'motos') {
+        if (type.includes('carro') || type.includes('seda') || type.includes('suv') || type.includes('caminh')) return false;
+        return type.includes('moto') || norm(ad.title).includes('moto');
+      }
+      
+      if (group === 'caminhoes') {
+        if (type.includes('carro') || type.includes('seda') || type.includes('suv') || type.includes('moto')) return false;
+        return type.includes('caminh') || norm(ad.title).includes('caminh');
+      }
+      
+      if (group === 'suvs') return type.includes('suv') || norm(ad.title).includes('suv');
+      if (group === 'sedas') return type.includes('seda') || norm(ad.title).includes('seda');
+      
+      return type.includes(group.toLowerCase());
+    };
+
+    // Se a nova API estiver ativa, retornamos os anúncios paginados com o filtro de categoria/grupo aplicado no JS
     if (USE_NEW_API) {
+      if (selectedGroup !== 'todos') {
+        return pagedAds.filter(ad => matchesGroup(ad, selectedGroup));
+      }
       return pagedAds;
     }
 
@@ -420,23 +459,6 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       selectedGroup !== 'todos' ||
       isRecentFilterActive
     );
-
-    const matchesGroup = (ad: AdItem, group: string) => {
-      if (group === 'todos') return true;
-      const norm = (val: string) => (val || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-      
-      const type = norm(ad.vehicleType);
-      const title = norm(ad.title);
-      const searchPool = `${type} ${title}`;
-
-      if (group === 'carros') return !searchPool.includes('moto') && !searchPool.includes('caminh');
-      if (group === 'motos') return searchPool.includes('moto');
-      if (group === 'caminhoes') return searchPool.includes('caminh');
-      if (group === 'suvs') return searchPool.includes('suv');
-      if (group === 'sedas') return searchPool.includes('seda');
-      
-      return type.includes(group.toLowerCase());
-    };
 
     // Se houver filtros específicos, mantemos a lógica estrita original (sem fallback)
     // Se NÃO houver filtros específicos, usamos a lógica inteligente de Fallback para preencher a tela
@@ -580,7 +602,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       return dateB - dateA;
     });
 
-  }, [ads, selectedGroup, debouncedSearch, searchTerm, filters, isRecentFilterActive, filterContext]);
+  }, [ads, selectedGroup, debouncedSearch, searchTerm, filters, isRecentFilterActive, filterContext, pagedAds]);
 
   const feedItems = filteredAds;
 
