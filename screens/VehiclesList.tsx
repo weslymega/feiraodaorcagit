@@ -35,6 +35,7 @@ interface VehiclesListProps {
 // Grupos de Veículos (Categorias)
 const VEHICLE_GROUPS = [
   { id: 'todos', label: 'Todos' },
+  { id: 'carros', label: 'Carros' },
   { id: 'motos', label: 'Motos' },
   { id: 'caminhoes', label: 'Caminhões' },
   { id: 'suvs', label: 'SUVs' },
@@ -428,6 +429,7 @@ export const VehiclesList: React.FC<VehiclesListProps> = ({ ads, onBack, onAdCli
       const title = norm(ad.title);
       const searchPool = `${type} ${title}`;
 
+      if (group === 'carros') return !searchPool.includes('moto') && !searchPool.includes('caminh');
       if (group === 'motos') return searchPool.includes('moto');
       if (group === 'caminhoes') return searchPool.includes('caminh');
       if (group === 'suvs') return searchPool.includes('suv');

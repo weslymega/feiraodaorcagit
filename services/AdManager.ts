@@ -104,28 +104,60 @@ class AdManager {
         console.log(`[AdDebug] REGISTERING LISTENERS. Global Instance Count: ${globalCount}`);
         debugLogger.log(`[AdDebug] REGISTERING LISTENERS. Count: ${globalCount}`);
 
+        // --- HARDENED SINGLE-REGISTRATION LISTENERS ---
+        // Registramos exatamente uma vez para cada evento principal do enum nativo do AdMob
         
-        // --- ULTRA DIAGNÓSTICO: CAPTURAR TODOS OS EVENTOS DO ENUM ---
-        Object.values(RewardAdPluginEvents).forEach(eventName => {
-            AdMob.addListener(eventName as any, (data: any) => {
-                const eventKey = Object.keys(RewardAdPluginEvents).find(k => (RewardAdPluginEvents as any)[k] === eventName);
-                console.log(`[AD-RAW] EVENTO RECEBIDO: ${eventKey} (${eventName})`, data);
-                debugLogger.log(`[AD-RAW] ${eventKey}`);
-
-                // --- PROCESSAMENTO UNIFICADO ---
-                if (eventKey === 'Rewarded' || eventName === 'rewardAdRewarded' || eventName === 'onAdRewarded') {
-                    console.log("🎁 [AdManager] RECOMPENSA DETECTADA NO LOOP PRINCIPAL");
-                    debugLogger.log('🎁 RECOMPENSA PROCESSADA');
-                    handleReward(data);
-                } else if (eventKey === 'Dismissed' || eventName === 'onAdDismissed') {
-                    console.log("🚪 [AdManager] FECHAMENTO DETECTADO NO LOOP PRINCIPAL");
-                    handleDismiss();
-                }
-            });
+        AdMob.addListener(RewardAdPluginEvents.Loaded, (info: any) => {
+            console.log(`[AdDebug] EVENT: Loaded (Exec: ${this.lastExecutionId})`, info);
+            if (this.state === AdState.SHOWING) {
+                console.log('[AdDebug] Load event ignored while SHOWING');
+                return;
+            }
+            this.state = AdState.READY;
+            this.clearTimeout();
+            debugLogger.log(`[AdMob] SUCESSO: Vídeo pronto para exibição.`);
+            this.onReadyCallbacks.forEach(cb => cb());
         });
 
-        // --- VARIANTES MANUAIS DE STRINGS (Caso o Enum esteja incompleto) ---
-        const variantEvents = ['onAdRewarded', 'onReward', 'rewardEarned', 'rewardAdRewarded', 'rewarded'];
+        AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (error: any) => {
+            console.log(`[AdDebug] EVENT: FailedToLoad (Exec: ${this.lastExecutionId})`, error);
+            debugLogger.log(`[AdDebug] FailedToLoad: ${error.message} (Exec: ${this.lastExecutionId})`);
+            this.state = AdState.ERROR;
+            this.clearTimeout();
+            this.handleAdError('FAILED_TO_LOAD', error);
+            this.onErrorCallbacks.forEach(cb => cb(error.message));
+        });
+
+        AdMob.addListener(RewardAdPluginEvents.Showed, () => {
+            console.log(`[AdDebug] EVENT: Showed (Exec: ${this.lastExecutionId})`);
+            this.state = AdState.SHOWING;
+            this.startShowTimeout();
+        });
+
+        AdMob.addListener(RewardAdPluginEvents.FailedToShow, (error: any) => {
+            console.log(`[AdDebug] EVENT: FailedToShow (Exec: ${this.lastExecutionId})`, error);
+            debugLogger.log(`[AdDebug] FailedToShow: ${error.message} (Exec: ${this.lastExecutionId})`);
+            this.state = AdState.ERROR;
+            console.log(`[AdDebug] RESETTING isProcessingShow from ${this.isProcessingShow} to false (FailedToShow)`);
+            this.isProcessingShow = false;
+            this.clearTimeout();
+            this.handleAdError('FAILED_TO_SHOW', error);
+            this.onErrorCallbacks.forEach(cb => cb(error.message));
+        });
+
+        AdMob.addListener(RewardAdPluginEvents.Rewarded, (data: any) => {
+            console.log(`[AdDebug] EVENT: Rewarded (Exec: ${this.lastExecutionId})`, data);
+            debugLogger.log('🎁 RECOMPENSA PROCESSADA');
+            handleReward(data);
+        });
+
+        AdMob.addListener(RewardAdPluginEvents.Dismissed, () => {
+            console.log(`[AdDebug] EVENT: Dismissed (Exec: ${this.lastExecutionId})`);
+            handleDismiss();
+        });
+
+        // --- VARIANTES ADICIONAIS DE SEGURANÇA (Sem duplicar com o enum principal) ---
+        const variantEvents = ['onAdRewarded', 'onReward', 'rewardEarned', 'rewarded'];
         variantEvents.forEach(evt => {
             AdMob.addListener(evt as any, (data: any) => {
                 console.log(`[AD-VARIANT] STRING EVENT DETECTED: ${evt}`, data);
@@ -153,8 +185,6 @@ class AdManager {
             await Promise.all(this.onRewardedCallbacks.map(async (cb, idx) => {
                 try {
                     debugLogger.log(`🚀 Executando callback #${idx}`);
-                    // Passamos o currentRewardId para o callback se ele aceitar argumentos
-                    // No Typescript, se o tipo for (), adicionar o argumento aqui não quebra o JS
                     await (cb as any)(this.currentRewardId);
                     console.log(`[AD FLOW] Callback ${idx} success`);
                 } catch (e) {
@@ -162,7 +192,6 @@ class AdManager {
                 }
             }));
             
-            // IMPORTANTE: Limpar o rewardId após o processamento para evitar reuso acidental
             this.currentRewardId = null;
         };
 
@@ -188,49 +217,18 @@ class AdManager {
 
             console.log(`[AdDebug] RESETTING isProcessingShow from ${this.isProcessingShow} to false (Dismissed)`);
             this.isProcessingShow = false;
-            this.preload();
+
+            // CRITICAL HARDENING: SAFE DELAY PRELOAD
+            // Não fazemos preload imediatamente no callback de fechamento nativo.
+            // O AdMob SDK no Android ainda está destruindo a Activity do anúncio.
+            // Fazer um novo carregamento imediato pode gerar colisões de thread e crash nativo.
+            console.log(`[AdDebug] Scheduling delayed preload (3000ms) to prevent native Android lifecycle crash...`);
+            setTimeout(() => {
+                this.preload().catch(err => {
+                    console.error('[AdMob] Delayed preload failed:', err);
+                });
+            }, 3000);
         };
-
-
-        AdMob.addListener(RewardAdPluginEvents.Loaded, (info: any) => {
-            console.log(`[AdDebug] EVENT: Loaded (Exec: ${this.lastExecutionId})`, info);
-            if (this.state === AdState.SHOWING) {
-                console.log('[AdDebug] Load event ignored while SHOWING');
-                return;
-            }
-            this.state = AdState.READY;
-            this.clearTimeout();
-            debugLogger.log(`[AdMob] SUCESSO: Vídeo pronto para exibição.`);
-            this.onReadyCallbacks.forEach(cb => cb());
-        });
-
-        AdMob.addListener(RewardAdPluginEvents.FailedToLoad, (error: any) => {
-            console.log(`[AdDebug] EVENT: FailedToLoad (Exec: ${this.lastExecutionId})`, error);
-            debugLogger.log(`[AdDebug] FailedToLoad: ${error.message} (Exec: ${this.lastExecutionId})`);
-            this.state = AdState.ERROR;
-
-            this.clearTimeout();
-            this.handleAdError('FAILED_TO_LOAD', error);
-            this.onErrorCallbacks.forEach(cb => cb(error.message));
-        });
-
-        AdMob.addListener(RewardAdPluginEvents.Showed, () => {
-            console.log(`[AdDebug] EVENT: Showed (Exec: ${this.lastExecutionId})`);
-            this.state = AdState.SHOWING;
-            this.startShowTimeout();
-        });
-
-        AdMob.addListener(RewardAdPluginEvents.FailedToShow, (error: any) => {
-            console.log(`[AdDebug] EVENT: FailedToShow (Exec: ${this.lastExecutionId})`, error);
-            debugLogger.log(`[AdDebug] FailedToShow: ${error.message} (Exec: ${this.lastExecutionId})`);
-            this.state = AdState.ERROR;
-
-            console.log(`[AdDebug] RESETTING isProcessingShow from ${this.isProcessingShow} to false (FailedToShow)`);
-            this.isProcessingShow = false;
-            this.clearTimeout();
-            this.handleAdError('FAILED_TO_SHOW', error);
-            this.onErrorCallbacks.forEach(cb => cb(error.message));
-        });
 
         this.listenersInitialized = true;
     }
